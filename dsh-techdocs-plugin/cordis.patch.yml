@@ -1,0 +1,58 @@
+- insert:
+    - id: kbbench-techdocs
+      name: '@deepseek-ai/cordis-plugin-group'
+      group: true
+      isolate:
+        techdocsKb: true
+        techdocs: true
+        techdocsIntent: true
+        techdocsRouting: true
+        techdocsPolicyState: true
+      config:
+        - id: kbbench-techdocs-runtime
+          name: '@kbbench/dsh-techdocs'
+        - id: kbbench-narration-ablation
+          name: '@kbbench/dsh-techdocs/narration-ablation'
+          disabled: true
+        - id: kbbench-techdocs-capability
+          name: '@kbbench/dsh-techdocs/capability'
+          disabled: true
+        - id: kbbench-techdocs-provider-repo
+          name: '@kbbench/dsh-techdocs/provider-repo'
+          disabled: true
+        - id: kbbench-techdocs-provider-repo-generalized
+          name: '@kbbench/dsh-techdocs/provider-repo-generalized'
+          disabled: true
+        - id: kbbench-techdocs-intent-capability
+          name: '@kbbench/dsh-techdocs/intent-capability'
+          disabled: true
+        - id: kbbench-techdocs-intent-provider-llm
+          name: '@kbbench/dsh-techdocs/intent-provider-llm'
+          disabled: true
+        - id: kbbench-techdocs-observation-state
+          name: '@kbbench/dsh-techdocs/observation-state'
+          disabled: true
+        - id: kbbench-techdocs-routing-capability
+          name: '@kbbench/dsh-techdocs/routing-capability'
+          disabled: true
+        - id: kbbench-techdocs-routing-rules
+          name: '@kbbench/dsh-techdocs/routing-rules'
+          disabled: true
+        - id: kbbench-tool-techdocs
+          name: '@kbbench/dsh-techdocs/tool-composite'
+          disabled: true
+        - id: kbbench-tool-techdocs-policy
+          name: '@kbbench/dsh-techdocs/tool-policy'
+          disabled: true
+        - id: kbbench-skill-techdocs
+          name: '@kbbench/dsh-techdocs/skill-techdocs'
+          disabled: true
+        - id: kbbench-techdocs-coding-consumer
+          name: '@kbbench/dsh-techdocs/consumer-coding'
+          disabled: true
+        - id: kbbench-techdocs-policy-consumer
+          name: '@kbbench/dsh-techdocs/consumer-policy'
+          disabled: true
+        - id: kbbench-techdocs-generalized-consumer
+          name: '@kbbench/dsh-techdocs/consumer-generalized'
+          disabled: true

@@ -1,0 +1,8 @@
+hnswlib==0.8.0
+markdown-it-py==4.0.0
+numpy==1.26.4
+scikit-learn==1.7.2
+pandas==2.3.3
+pyarrow==23.0.1
+datasets==5.0.1
+swebench==5.0.0

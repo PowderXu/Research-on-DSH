@@ -1,0 +1,12 @@
+.env
+.venv/
+node_modules/
+dsh_home/sessions/
+dsh_home/profiles/node_modules/
+dsh_home/profiles/headless/node_modules/
+dsh_home/profiles/headless/package-lock.json
+data/
+results/
+__pycache__/
+*.pyc
+.pytest_cache/

@@ -1,0 +1,20 @@
+{
+  "name": "codex-dsh-small-trial-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pinned DSH and FastCtx runtime for the small agent trial",
+  "engines": {
+    "node": "^22.19.0 || >=24"
+  },
+  "scripts": {
+    "setup:dsh-profile": "npm install --prefix dsh_home/profiles/headless",
+    "test:plugin": "node --test dsh-techdocs-plugin/*.test.mjs"
+  },
+  "dependencies": {
+    "@deepseek-ai/cordis": "4.0.1",
+    "@deepseek-ai/dsh": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-llm": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-tools": "0.1.0-rc.6",
+    "fastctx": "0.2.5"
+  }
+}

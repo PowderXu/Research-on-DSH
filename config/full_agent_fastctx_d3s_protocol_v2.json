@@ -1,0 +1,62 @@
+{
+  "schema_version": 2,
+  "name": "SWE-bench Verified FastCtx versus DSH D3-S comparison",
+  "supersedes": "evaluation/full_agent_fastctx_d3s_protocol_v1.json",
+  "supersession_reason": "The v1 pilot showed that a preference inside the optional techdocs skill is not visible when that skill is not activated, so Codex continued using shell rg. V2 places the filesystem-search rule in the C3-SF arm prompt and audits compliance.",
+  "objective": "Test whether replacing Codex shell-led repository discovery with a structured FastCtx grep/glob MCP surface explains the D3-S token and latency advantage while preserving full coding-agent capability.",
+  "dataset": {
+    "manifest": "evaluation/manifests/swebench_techdocs_subset_v1.json",
+    "manifest_sha256": "1dd7bc5149d331a1a93faad5c0abe0a19363ca21f21e0181383eefe404219bc9",
+    "scorer": "official SWE-bench Verified Docker harness",
+    "tasks": 27
+  },
+  "arms": [
+    {
+      "id": "C3-SF",
+      "harness": "codex",
+      "integration": "skill",
+      "filesystem_search": "FastCtx 0.2.5 MCP with only grep and glob enabled"
+    },
+    {
+      "id": "D3-S",
+      "harness": "dsh",
+      "integration": "skill",
+      "filesystem_search": "@deepseek-ai/dsh-tool-fs-search"
+    }
+  ],
+  "matched_controls": {
+    "model": "gpt-5.4-mini",
+    "reasoning_effort": "low",
+    "coding_capabilities": "full",
+    "web": false,
+    "workspace": "clean detached worktree at the task base commit",
+    "kb_backend": "one task-local TechdocsIndexService instance",
+    "kb_query_contract": "one composite technical-document tool",
+    "result_limit": 8,
+    "evidence_token_budget": 2200,
+    "skill_name": "techdocs-research"
+  },
+  "execution": {
+    "pairing": "Both arms run every selected task.",
+    "order": "Arm order alternates by scheduled task index.",
+    "fastctx_scope": "Invocation-scoped Codex MCP configuration; user configuration is ignored and unchanged.",
+    "fastctx_tools": [
+      "grep",
+      "glob"
+    ],
+    "codex_search_policy": "The arm-level task prompt requires FastCtx for repository content/path search and prohibits shell rg, grep, and find for that purpose.",
+    "shell_policy": "Shell remains available for builds, tests, version-control inspection, and non-search commands.",
+    "compliance": "Shell search calls are traced on both harnesses. A task with a shell rg, grep, or find call is marked filesystem_search_compliant=false."
+  },
+  "primary_contrast": "D3-S - C3-SF",
+  "outcomes": [
+    "official patch resolution",
+    "total/fresh/cached/output tokens per task",
+    "agent wall-clock latency per task",
+    "filesystem-search calls and returned characters",
+    "fallback shell-search calls and returned characters",
+    "filesystem-search compliance rate",
+    "KB activation",
+    "normalized API cost"
+  ]
+}
