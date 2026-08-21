@@ -515,6 +515,7 @@ def run_codex_case(
     python: Path,
     codex_bin: Path,
     fastctx_bin: Path | None,
+    codex_home: Path | None = None,
     model: str,
     reasoning_effort: str,
     timeout_seconds: int,
@@ -622,10 +623,21 @@ def run_codex_case(
                 f"FastCtx {FASTCTX_VERSION} executable was not found: {fastctx_bin}"
             )
         add_fastctx_mcp_config(command, fastctx_bin)
+    # Optional custom Codex provider via an isolated CODEX_HOME config (e.g. an
+    # opencode gateway). When active, load that config instead of ignoring user
+    # config, and inherit the API key env the provider references (env_key).
+    environment = dict(os.environ)
+    use_codex_home = codex_home is not None and (codex_home / "config.toml").is_file()
+    if use_codex_home:
+        environment["CODEX_HOME"] = str(codex_home.resolve())
+        try:
+            command.remove("--ignore-user-config")
+        except ValueError:
+            pass
     command.append(prompt)
     started = time.perf_counter()
     try:
-        completed = _run(command, cwd=worktree, timeout=timeout_seconds)
+        completed = _run(command, cwd=worktree, env=environment, timeout=timeout_seconds)
         stdout, stderr, return_code = completed.stdout, completed.stderr, completed.returncode
         error = None
     except (subprocess.TimeoutExpired, OSError) as exc:
@@ -671,6 +683,7 @@ def run_codex_case(
     return row
 
 
+
 def _write_dsh_patches(
     *,
     artifacts: dict[str, Path],
@@ -686,6 +699,9 @@ def _write_dsh_patches(
 ) -> tuple[Path, Path]:
     model_patch = artifacts["raw"] / "model.patch.yml"
     runtime_patch = artifacts["raw"] / "runtime.patch.yml"
+    # Optional OpenAI base URL override (e.g. an OpenAI-compatible gateway such
+    # as opencode). DSH reads this from the provider config, not from an env var.
+    base_url = os.environ.get("DSH_OPENAI_BASE_URL") or os.environ.get("OPENAI_BASE_URL")
     model_patch.write_text(
         "\n".join(
             [
@@ -700,6 +716,9 @@ def _write_dsh_patches(
                 "    providers:",
                 "      openai:",
                 "        apiKeyEnv: OPENAI_API_KEY",
+                *(
+                    [f"        baseURL: {json.dumps(base_url)}"] if base_url else []
+                ),
                 "        models:",
                 f"          - id: {json.dumps(model)}",
                 "            contextWindow: 400000",
@@ -1265,6 +1284,11 @@ def main() -> None:
         default=project_root / "node_modules/.bin/fastctx",
     )
     parser.add_argument(
+        "--codex-home",
+        type=Path,
+        default=Path(os.environ.get("CODEX_HOME") or (project_root / "config/codex_opencode_home")),
+    )
+    parser.add_argument(
         "--dsh-bin",
         type=Path,
         default=project_root / "node_modules/.bin/dsh",
@@ -1471,6 +1495,7 @@ def main() -> None:
                             row = run_codex_case(
                                 codex_bin=args.codex_bin.resolve(),
                                 fastctx_bin=args.fastctx_bin.resolve(),
+                                codex_home=args.codex_home,
                                 **common,
                             )
                         else:

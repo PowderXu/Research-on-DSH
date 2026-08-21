@@ -6,6 +6,7 @@ import html
 import json
 import os
 import shlex
+import shutil
 import subprocess
 import tempfile
 import threading
@@ -97,13 +98,28 @@ def _dsh_session_files(dsh_home: Path) -> set[Path]:
 
 
 def _read_dsh_session(path: Path) -> list[dict[str, Any]]:
-    completed = subprocess.run(
-        ["zstdcat", str(path)], capture_output=True, text=True, check=False
-    )
-    if completed.returncode != 0:
-        return []
+    raw = b""
+    if shutil.which("zstdcat") is not None:
+        completed = subprocess.run(
+            ["zstdcat", str(path)], capture_output=True, check=False
+        )
+        if completed.returncode == 0:
+            raw = completed.stdout
+    if not raw:
+        # Fall back to the `zstandard` Python package when the zstd CLI is absent.
+        try:
+            import zstandard
+        except ImportError:
+            return []
+        try:
+            with open(path, "rb") as handle:
+                dctx = zstandard.ZstdDecompressor()
+                raw = dctx.stream_reader(handle).read()
+        except (OSError, zstandard.ZstdError):
+            return []
+    text = raw.decode("utf-8", errors="replace")
     events: list[dict[str, Any]] = []
-    for line in completed.stdout.splitlines():
+    for line in text.splitlines():
         try:
             value = json.loads(line)
         except json.JSONDecodeError:
