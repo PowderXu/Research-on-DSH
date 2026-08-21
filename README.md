@@ -232,6 +232,13 @@ package does not vendor `node_modules`.
 The runner reads `OPENAI_API_KEY` from the environment or from `--env-file`.
 Do not commit an API key.
 
+Forwarding providers are opt-in and **not shipped** here: to run Codex against
+a custom OpenAI-compatible gateway, pass `--codex-home <dir>` where `<dir>/
+config.toml` declares a `model_providers` block you provide yourself; to point
+DSH at a gateway export `DSH_OPENAI_BASE_URL` (alias `OPENAI_BASE_URL`).
+Without these, Codex uses its default configuration and DSH uses the official
+OpenAI API.
+
 The expected local public-data paths are:
 
 ```text
