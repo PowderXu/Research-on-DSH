@@ -201,7 +201,9 @@ Codex-side treatment bundled here.
 The original trial environment used Python `3.10.15`, Codex CLI `0.147.0`,
 DSH `0.1.0-rc.6`, FastCtx `0.2.5`, Node.js `22.22.0`, and the
 `gpt-5.4-mini` model identifier with low reasoning effort. Direct Python
-packages, DSH, and FastCtx are pinned by this package. Codex and the model
+packages and FastCtx are pinned by this package. The committed reference
+results retain the original DSH `0.1.0-rc.6` provenance; the maintained runtime
+now uses the coherent DSH `0.1.1-rc.2` package family. Codex and the model
 service are external, so record their versions in any reproduction and report
 deviations from the original environment.
 
@@ -219,15 +221,17 @@ version-pinned in both `pyproject.toml` and `requirements.txt`.
 Install the pinned DSH and FastCtx dependencies:
 
 ```bash
-npm install
+npm ci
 npm run setup:dsh-profile
-npm run test:plugin
+npm run verify:dsh
 ```
 
-The direct runtime versions are pinned in `package.json`: DSH
-`0.1.0-rc.6` and FastCtx `0.2.5`. The DSH release has a large transitive
-dependency tree, so its first installation can take several minutes. This
-package does not vendor `node_modules`.
+The root and headless-profile lockfiles make transitive resolution
+reproducible. All direct DSH packages and the TechDocs plugin's DSH peer and
+development dependencies use `0.1.1-rc.2`; `npm run verify:dsh` rejects a
+mixed installed DSH family. FastCtx remains pinned at `0.2.5`. The DSH release
+has a large transitive dependency tree, so its first installation can take
+several minutes. This package does not vendor `node_modules`.
 
 The runner reads `OPENAI_API_KEY` from the environment or from `--env-file`.
 Do not commit an API key.
