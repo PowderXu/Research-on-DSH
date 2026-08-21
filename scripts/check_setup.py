@@ -22,6 +22,9 @@ PYTHON_PACKAGES = {
     "scikit-learn": "1.7.2",
     "swebench": "5.0.0",
 }
+ROOT_PACKAGE = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
+EXPECTED_DSH_VERSION = ROOT_PACKAGE["dependencies"]["@deepseek-ai/dsh"]
+EXPECTED_FASTCTX_VERSION = ROOT_PACKAGE["dependencies"]["fastctx"]
 
 
 def command_version(name: str, command: list[str]) -> tuple[bool, str]:
@@ -99,13 +102,21 @@ def main() -> None:
             [str(dsh_bin), "--version"], capture_output=True, text=True, check=False
         )
         actual = completed.stdout.strip()
-        checks.append((actual == "0.1.0-rc.6", f"DSH version: {actual}"))
+        checks.append(
+            (
+                actual == EXPECTED_DSH_VERSION,
+                f"DSH version: {actual} (expected {EXPECTED_DSH_VERSION})",
+            )
+        )
     if not args.dsh_only and fastctx_bin.is_file():
         completed = subprocess.run(
             [str(fastctx_bin), "--version"], capture_output=True, text=True, check=False
         )
         actual = completed.stdout.strip()
-        checks.append((actual == "fastctx 0.2.5", f"FastCtx version: {actual}"))
+        expected = f"fastctx {EXPECTED_FASTCTX_VERSION}"
+        checks.append(
+            (actual == expected, f"FastCtx version: {actual} (expected {expected})")
+        )
 
     manifest = json.loads(
         (ROOT / "config/swebench_fastctx_pilot5_v1.json").read_text(encoding="utf-8")
