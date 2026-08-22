@@ -1,4 +1,4 @@
-# GitHub Docs KB benchmark
+# DocsQA -- GitHub-Style Docs KB benchmark
 
 This repository is now the standalone benchmark for a knowledge base built from
 many small, linked Markdown files. It packages the GitHub Docs corpus, 328 real
