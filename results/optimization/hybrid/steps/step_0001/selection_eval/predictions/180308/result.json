@@ -1,0 +1,85 @@
+{
+  "id": "180308",
+  "hard": 0.0,
+  "soft": 0.0,
+  "question": "Does a Rest API endpoint exist for enabling the dependency graph on a per repo basis?\nSelect Topic Area\nQuestion\nI'm trying to enable the dependency graph on a per repo basis, rather then at a global org or enterprise level. I can't seem to see it in the repo settings when I call is this not possible via the rest API? Thanks!",
+  "task_description": "Does a Rest API endpoint exist for enabling the dependency graph on a per repo basis?\nSelect Topic Area\nQuestion\nI'm trying to enable the dependency graph on a per repo basis, rather then at a global org or enterprise level. I can't seem to see it in the repo settings when I call is this not possible via the rest API? Thanks!",
+  "task_type": "single_page_section",
+  "intent_category": "troubleshooting",
+  "graph_opportunity": false,
+  "predicted_answer": "No — there is no REST API to toggle/enable the dependency graph per repository. The docs show enabling is done via the repository Settings (or account/org bulk settings), while the REST APIs cover dependency submission and SBOM/export, not enabling the feature.",
+  "ranked_ids": [
+    "/code-security/how-tos/secure-your-supply-chain/secure-your-dependencies/enable-dependency-graph",
+    "/rest/dependency-graph/dependency-submission",
+    "/rest/dependency-graph",
+    "/code-security/concepts/supply-chain-security/dependency-graph-data",
+    "/rest/dependency-graph/sboms",
+    "/code-security/concepts/supply-chain-security/dependency-graph",
+    "/code-security/reference/supply-chain-security/troubleshoot-dependabot/dependabot-errors",
+    "/code-security/how-tos/secure-your-supply-chain/secure-your-dependencies/submit-dependencies-automatically",
+    "/code-security/how-tos/secure-your-supply-chain/secure-your-dependencies/explore-dependencies",
+    "/code-security/concepts/supply-chain-security/supply-chain-security"
+  ],
+  "citation_ranked_ids": [
+    "/code-security/how-tos/secure-your-supply-chain/secure-your-dependencies/enable-dependency-graph",
+    "/rest/dependency-graph/dependency-submission",
+    "/rest/dependency-graph/sboms"
+  ],
+  "visible_sources": [
+    "/code-security/how-tos/secure-your-supply-chain/secure-your-dependencies/enable-dependency-graph",
+    "/rest/dependency-graph/dependency-submission",
+    "/rest/dependency-graph",
+    "/code-security/concepts/supply-chain-security/dependency-graph-data",
+    "/rest/dependency-graph/sboms",
+    "/code-security/concepts/supply-chain-security/dependency-graph",
+    "/code-security/reference/supply-chain-security/troubleshoot-dependabot/dependabot-errors",
+    "/code-security/how-tos/secure-your-supply-chain/secure-your-dependencies/submit-dependencies-automatically",
+    "/code-security/how-tos/secure-your-supply-chain/secure-your-dependencies/explore-dependencies",
+    "/code-security/concepts/supply-chain-security/supply-chain-security",
+    "/code-security/how-tos/secure-your-supply-chain/secure-your-dependencies/enable-dependency-graph",
+    "/rest/dependency-graph",
+    "/rest/dependency-graph/dependency-submission",
+    "/rest/dependency-graph/sboms"
+  ],
+  "agent_sources": [
+    "code-security/how-tos/secure-your-supply-chain/secure-your-dependencies/enable-dependency-graph.md",
+    "rest/dependency-graph/dependency-submission.md",
+    "rest/dependency-graph/sboms.md"
+  ],
+  "agent_ok": true,
+  "fail_reason": "",
+  "target_system_prompt": "---\nname: github-docs-hybrid\ndescription: Retrieve GitHub Docs with metadata-aware BM25 and dense search, then verify citation-ready evidence.\narm: hybrid\nversion: 1\n---\n\n# GitHub Docs hybrid retrieval\n\n## Contract\n\n- Use `techdocs_search` for retrieval and `techdocs_fetch` only for URIs returned by search.\n- Treat returned passages as candidate evidence, not automatic truth.\n- Preserve canonical repository paths, headings, versions, and citations. Abstain when evidence is insufficient.\n\n## Strategy\n\n1. Form a concise query that preserves exact identifiers, product/version cues, and the user's material constraint.\n2. Always begin by calling the retrieval tool: perform techdocs_search with limit: 10 and the concise query described below. Do not skip or simulate search locally; use the provider's combined BM25/HNSW/reciprocal-rank fusion results. Treat the returned ranked passages and their metadata as candidate evidence that must be inspected before fetching. If the initial search yields weak or irrelevant results, perform at most one materially different reformulation (see Failure recovery) and repeat techdocs_search once; if the second attempt is still insufficient, abstain.\n3. Use title, short title, intro, heading, route, content type, version, category, and redirect metadata as retrieval signals.\n4. Treat inferred route and version metadata as soft preferences unless the user explicitly supplied that constraint.\n5. Inspect the returned section and evidence signals rather than trusting only a page title.\n6. Fetch only the smallest additional passage needed to verify an answer or resolve an explicit ambiguity.\n7. Cite the canonical page and relevant section.\n\n## Failure recovery\n\n- If the first result set is weak, make at most one materially different reformulation using a documentation synonym while preserving exact identifiers.\n- If the top results cover the wrong product or version, add that missing constraint rather than adding generic words.\n- Ignore high-scoring passages that do not entail the requested claim.\n- Stop and abstain when the bounded second attempt still lacks supporting evidence.\n\nOperational checklist (must follow during each retrieval attempt):\n\n- Compose a concise query that preserves exact identifiers, product/version cues, and any user material constraints.\n- Call techdocs_search(query, limit=10) as the first action. Record and inspect top results, their titles, routes, versions, and relevance signals.\n- Only call techdocs_fetch for URIs returned by techdocs_search and fetch the smallest passage needed to verify a claim.\n- If top results are irrelevant or point to the wrong product/version, perform one reformulation that adds the missing explicit constraint (do not add generic words), then call techdocs_search(limit=10) again.\n- After the second search, if supporting evidence is still insufficient, abstain (return NOT FOUND) rather than inventing or inferring unsupported facts.\n- Preserve canonical repo paths, headings, version labels, and cite the exact page and section used as evidence.\n",
+  "target_user_prompt": "GITHUB DOCS DSH RETRIEVAL EVAL 180308 (hybrid). Load and follow the installed GitHub Docs retrieval skill before searching. Use only the pinned local documentation corpus and the tools available in this profile. Return exactly one JSON object and no Markdown, with this schema: {\"answer\":\"concise evidence-grounded answer or NOT FOUND\",\"sources\":[\"ordered canonical doc ID or repository .md path\"]}. List at most 10 distinct sources in decreasing evidence relevance. Do not invent a source.\nQuestion:\nDoes a Rest API endpoint exist for enabling the dependency graph on a per repo basis?\nSelect Topic Area\nQuestion\nI'm trying to enable the dependency graph on a per repo basis, rather then at a global org or enterprise level. I can't seem to see it in the repo settings when I call is this not possible via the rest API? Thanks!",
+  "reference_text": "Hidden deterministic retrieval score (document identities withheld): Hit@10=0.000, Recall@10=0.000, nDCG@10=0.000; evidence_category=single_page_section; graph_opportunity=False.",
+  "n_turns": 7,
+  "latency_seconds": 21.87507429200923,
+  "usage": {
+    "input_fresh": 7460,
+    "input_cached": 21888,
+    "input_total": 29348,
+    "output": 1254,
+    "total": 30602
+  },
+  "tool_sequence": [
+    "skill",
+    "techdocs_search",
+    "techdocs_fetch",
+    "techdocs_fetch",
+    "techdocs_fetch",
+    "techdocs_fetch"
+  ],
+  "actual_models": [
+    "gpt-5-mini"
+  ],
+  "session_file": ".dsh-trial/sessions/--Users-oliverxu-Study-kb_retrieval_benchmark-data-evaluation_raw-github-docs-corpus-content--/session-cc30181a-3929-45b4-9f6c-76118f1a810c/session.jsonl.zstd",
+  "recall_at_1": 0.0,
+  "hit_at_1": 0.0,
+  "recall_at_5": 0.0,
+  "hit_at_5": 0.0,
+  "recall_at_10": 0.0,
+  "hit_at_10": 0.0,
+  "recall_at_20": 0.0,
+  "hit_at_20": 0.0,
+  "ndcg_at_10": 0.0,
+  "all_support_at_10": 0.0
+}

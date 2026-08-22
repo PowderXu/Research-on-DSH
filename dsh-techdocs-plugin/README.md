@@ -27,26 +27,42 @@ The legacy bundle entry point exposes two model-facing tools:
 
 The bundle does not implement retrieval algorithms in Node. A local KB service owns OpenViking resource navigation, disk-backed dense+BM25 retrieval, optional Neo4j structural expansion, local reranking, and benchmark traces. Repository Markdown links and linked code are first-class, commit-pinned evidence rather than LLM-generated relationships. Graph expansion is disabled by default because it must earn its use on relation-matched evaluation rather than being assumed beneficial. See `SERVICE_CONTRACT.md` and `GRAPH_SCHEMA.md`.
 
+## GitHub Docs arm-specific skills
+
+The GitHub Docs three-arm evaluation uses external Markdown skills rather than
+embedding trainable instructions in JavaScript:
+
+| Arm | Plugin | Default artifact |
+|---|---|---|
+| Filesystem | `@kbbench/dsh-techdocs/skill-fs` | `skills/fs/initial_skill.md` |
+| BM25 + HNSW | `@kbbench/dsh-techdocs/skill-hybrid` | `skills/hybrid/initial_skill.md` |
+| Neo4j GraphRAG | `@kbbench/dsh-techdocs/skill-neo4j` | `skills/neo4j/initial_skill.md` |
+
+Each entry accepts an administrator-provided `skillPath`. This is the isolated
+candidate overlay used by SkillOpt; the plugin validates the arm, stable tool
+names, required sections, and size before registering it. Corpus routes,
+frontmatter, and `index.md` children remain retrieval evidence and are not copied
+into the skill prompt.
+
 The D3 automatic route and the paired Codex `UserPromptSubmit` hook consume the same `routing-rules.json`. This prevents the harnesses from silently using different task classifiers.
 
 ## Development
 
 ```sh
-cd ..
-npm run test:plugin
-DSH_HOME=./dsh_home node_modules/.bin/dsh --profile headless --help
+npm test
+DSH_HOME=../.dsh-trial node_modules/.bin/dsh --profile headless \
+  --patch ../evaluation/harness/dsh_d3_mount_smoke.patch.yml --help
 ```
 
-The pure contract tests need Node.js and the dependencies installed by the
-standalone package's `npm install`. A live DSH trial additionally requires the
-headless profile installation and reachable task-local KB service described in
-the top-level `README.md`.
+The pure contract tests need only Node.js. A live DSH test additionally requires the exact `0.1.0-rc.6` package family and a reachable KB service.
+
+For a scored KB-only turn, apply `trial-kb-minimal.patch.yml` after the model-provider patch. It disables unrelated coding-agent tools and prompt sections while preserving `techdocs_search` and `techdocs_fetch`. The held-out stress ablation is recorded in `../results/dsh_kubernetes_stress_v1/report.json`.
 
 ## Install after the live runtime is available
 
 ```sh
-node_modules/.bin/dsh plugin --profile default add ./dsh-techdocs-plugin
-node_modules/.bin/dsh --profile default --dump-config
+dsh plugin --profile default add ./dsh-techdocs-plugin
+dsh --profile default --dump-config
 ```
 
 Do not run this treatment alongside the official OpenViking auto-recall bundle during a scored turn: both would inject overlapping retrieval context. The official bundle is a separate baseline under the same corpus, model, context budget, and machine.

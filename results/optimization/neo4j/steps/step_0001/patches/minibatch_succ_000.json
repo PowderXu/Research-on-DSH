@@ -1,0 +1,23 @@
+{
+  "batch_size": 2,
+  "success_patterns": [
+    "Return a single, structured JSON response containing exactly the required fields (\"answer\" and \"sources\"), with sources listed in decreasing relevance and at most 10 entries",
+    "Avoid graph expansion when a single seed document or a single section provides the required evidence; prefer fetching and verifying that seed rather than performing bounded Neo4j traversal"
+  ],
+  "patch": {
+    "reasoning": "Both trajectories enforced a strict final-output schema (single JSON with ordered sources) and favored answering from a single high-quality seed/section when available rather than performing additional graph expansion. Encoding these as explicit, small clarifications reduces output-format errors and unnecessary graph traversals and aligns the retrieval skill with how callers expect responses.",
+    "edits": [
+      {
+        "op": "insert_after",
+        "target": "## Contract",
+        "content": "## Output format constraint\n\n- When producing the final answer for the caller, return exactly one structured JSON object with the fields \"answer\" and \"sources\". List sources in decreasing evidence relevance and include at most 10 distinct canonical doc IDs or repository paths. Do not invent or hallucinate sources; omit any claim that cannot be directly supported by fetched passages."
+      },
+      {
+        "op": "insert_after",
+        "target": "## Strategy",
+        "content": "## Preferring single-seed verification\n\n- If the top-ranked seed (or a single section within a canonical page) contains the needed evidence, prefer fetching and verifying that seed instead of performing Neo4j expansion. Only use techdocs_expand when a relationship-bearing need (see Strategy item 3) requires linked content. This reduces unnecessary graph traversal and preserves provenance."
+      }
+    ]
+  },
+  "source_type": "success"
+}

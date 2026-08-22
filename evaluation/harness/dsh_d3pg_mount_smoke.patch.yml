@@ -1,0 +1,34 @@
+- id: kbbench-techdocs-runtime
+  disabled: true
+- id: kbbench-techdocs-capability
+  disabled: false
+  config:
+    provider: repo-generalized
+- id: kbbench-techdocs-provider-repo
+  disabled: true
+- id: kbbench-techdocs-provider-repo-generalized
+  disabled: false
+  config:
+    endpoint: http://127.0.0.1:1934
+    evidenceTokenBudget: 600
+    generalizedPolicy: true
+- id: kbbench-techdocs-intent-capability
+  disabled: false
+  config:
+    provider: llm-intent
+- id: kbbench-techdocs-intent-provider-llm
+  disabled: false
+  config:
+    provider: openai
+    model: gpt-5.4-mini
+    reasoningEffort: low
+- id: kbbench-techdocs-observation-state
+  disabled: false
+- id: kbbench-techdocs-generalized-consumer
+  disabled: false
+- id: kbbench-tool-techdocs
+  disabled: true
+- id: kbbench-tool-techdocs-policy
+  disabled: true
+- id: kbbench-techdocs-policy-consumer
+  disabled: true

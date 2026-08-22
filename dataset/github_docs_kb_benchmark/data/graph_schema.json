@@ -1,0 +1,35 @@
+{
+  "version": "v2",
+  "frozen_within_iteration": true,
+  "nodes": {
+    "Page": [
+      "doc_id",
+      "title",
+      "content_type",
+      "versions",
+      "route"
+    ],
+    "Section": [
+      "section_id",
+      "heading",
+      "anchor",
+      "variant_conditioned"
+    ],
+    "Reusable": [
+      "reusable_id"
+    ],
+    "Route": [
+      "route_id"
+    ]
+  },
+  "edges": {
+    "CONTAINS": "Page -> Section",
+    "NEXT_SECTION": "Section -> Section",
+    "LINKS_TO": "Page or Section -> Page, with anchor_text, source_section, target_anchor, and local_context properties",
+    "INCLUDES": "Page or Section -> Reusable",
+    "IN_ROUTE": "Page -> Route",
+    "PARENT_ROUTE": "Route -> Route"
+  },
+  "retrieval_policy": "Use BM25+HNSW RRF as a non-destructive base. Rank explicit neighbors with query-to-edge-context relevance and seed rank; graph scores can only add a residual boost. Do not use the generic MS MARCO reranker.",
+  "change_from_v1": "Promote Markdown link text, source section, local sentence context, and target anchor from untyped extraction details into first-class edge properties."
+}

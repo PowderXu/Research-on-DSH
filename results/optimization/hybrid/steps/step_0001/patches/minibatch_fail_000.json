@@ -1,0 +1,30 @@
+{
+  "batch_size": 1,
+  "failure_summary": [
+    {
+      "failure_type": "tool_misuse_or_omission",
+      "count": 1,
+      "description": "Agent did not perform the required techdocs_search call (limit:10) or otherwise failed to use the retrieval tool chain before answering."
+    },
+    {
+      "failure_type": "insufficient_reformulation_and_evidence_checks",
+      "count": 1,
+      "description": "Agent did not perform the allowed single reformulation when initial results were weak and did not fetch/inspect returned URIs before concluding; resulted in zero evidence hits."
+    }
+  ],
+  "patch": {
+    "reasoning": "The failures show the agent skipped or misused the documented retrieval steps (no search call, no validated fetch) and failed to perform the single permitted reformulation. Strengthening the skill with explicit, operational instructions (enforce calling techdocs_search(limit:10) as the first step, mandatory inspection of returned signals, one allowed reformulation, and strict use of techdocs_fetch only for URIs returned by search) will close these gaps without adding task-specific rules. An appended short checklist reduces omission errors at runtime.",
+    "edits": [
+      {
+        "op": "replace",
+        "target": "2. Request `limit: 10` so the evidence package matches the benchmark's Recall/Hit/nDCG@10 contract. Let the provider combine BM25, HNSW, and reciprocal-rank fusion; do not manually imitate those algorithms.",
+        "content": "2. Always begin by calling the retrieval tool: perform techdocs_search with limit: 10 and the concise query described below. Do not skip or simulate search locally; use the provider's combined BM25/HNSW/reciprocal-rank fusion results. Treat the returned ranked passages and their metadata as candidate evidence that must be inspected before fetching. If the initial search yields weak or irrelevant results, perform at most one materially different reformulation (see Failure recovery) and repeat techdocs_search once; if the second attempt is still insufficient, abstain."
+      },
+      {
+        "op": "append",
+        "content": "Operational checklist (must follow during each retrieval attempt):\n\n- Compose a concise query that preserves exact identifiers, product/version cues, and any user material constraints.\n- Call techdocs_search(query, limit=10) as the first action. Record and inspect top results, their titles, routes, versions, and relevance signals.\n- Only call techdocs_fetch for URIs returned by techdocs_search and fetch the smallest passage needed to verify a claim.\n- If top results are irrelevant or point to the wrong product/version, perform one reformulation that adds the missing explicit constraint (do not add generic words), then call techdocs_search(limit=10) again.\n- After the second search, if supporting evidence is still insufficient, abstain (return NOT FOUND) rather than inventing or inferring unsupported facts.\n- Preserve canonical repo paths, headings, version labels, and cite the exact page and section used as evidence."
+      }
+    ]
+  },
+  "source_type": "failure"
+}

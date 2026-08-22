@@ -1,0 +1,16 @@
+[
+  {
+    "op": "insert_after",
+    "target": "## Strategy",
+    "content_preview": "### Search and fallback procedure\n\n- Always prefer one exact, discriminative token or quoted phrase per grep call (for example: an exact error message, CLI flag, config key, API name, or quoted headin",
+    "status": "applied_insert_after",
+    "index": 1
+  },
+  {
+    "op": "replace",
+    "target": "- If an index route is wrong, broaden once to repository-wide exact search instead of repeatedly exploring that subtree.",
+    "content_preview": "- If an index route is wrong, broaden exactly once to a repository-wide exact search for the same discriminative token. If the repository-wide exact search yields no results, try exactly one concise s",
+    "status": "applied_replace",
+    "index": 2
+  }
+]

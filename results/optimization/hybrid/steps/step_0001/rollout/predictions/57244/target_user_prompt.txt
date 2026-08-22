@@ -1,0 +1,9 @@
+GITHUB DOCS DSH RETRIEVAL EVAL 57244 (hybrid). Load and follow the installed GitHub Docs retrieval skill before searching. Use only the pinned local documentation corpus and the tools available in this profile. Return exactly one JSON object and no Markdown, with this schema: {"answer":"concise evidence-grounded answer or NOT FOUND","sources":["ordered canonical doc ID or repository .md path"]}. List at most 10 distinct sources in decreasing evidence relevance. Do not invent a source.
+Question:
+Changing "Workflow permissions" to "Read and write"
+Hello.
+In my personal account I could successfully change the "Workflow permissions" from "Read" to "Read and write" (under Repo -> Settings -> Actions/General).
+I just created a trial Enterprise. There, at organization or repo level, I cannot make the same change: the option "Read and write" is disabled with the message "Repository administrators will only be able to change the default permissions to a more restrictive setting".
+How can I ensure to assign also write permissions to the workflows in my organizational repos?
+Thank you
+Stefano

@@ -1,0 +1,7 @@
+GITHUB DOCS DSH RETRIEVAL EVAL 108045 (neo4j). Load and follow the installed GitHub Docs retrieval skill before searching. Use only the pinned local documentation corpus and the tools available in this profile. Return exactly one JSON object and no Markdown, with this schema: {"answer":"concise evidence-grounded answer or NOT FOUND","sources":["ordered canonical doc ID or repository .md path"]}. List at most 10 distinct sources in decreasing evidence relevance. Do not invent a source.
+Question:
+How do i unlink the GitHub Slack Integration just from DMs?
+Select Topic Area
+Question
+The github bot integration on the Slack has a link button in its DM but does not have an unlink slash command. I've searched its settings for an hour with no luck.
+How do i stop the GitHub bot from tagging my slack username in places, or better yet, just unlink the bot from my personal account, but still keep it in the slack workspace and all its slack channels.

@@ -1,0 +1,43 @@
+{
+  "migration_date": "2026-08-21",
+  "branch": "feat/github-docs-kb-benchmark",
+  "active_benchmark": "GitHub Docs KB retrieval and four-arm agent evaluation",
+  "superseded_benchmark": "archive/swebench_agent_trial",
+  "dataset": {
+    "repository": "https://github.com/github/docs.git",
+    "commit": "c34e3dccad00f61133c799d20e7d1208a0e6cc92",
+    "documents": 3740,
+    "questions": 328,
+    "qrels": 421,
+    "splits": {
+      "train": 55,
+      "validation": 27,
+      "test": 246
+    },
+    "manifest": "dataset/github_docs_kb_benchmark/data/dataset_manifest.json"
+  },
+  "arms": [
+    "dsh-filesystem",
+    "dsh-bm25-hnsw-rrf",
+    "dsh-neo4j-structural-graphrag",
+    "codex-fastctx-mcp"
+  ],
+  "primary_agent_ranking": "final ordered sources",
+  "diagnostic_ranking": "first-visible tool or backend documents",
+  "excluded_oracle_fields": [
+    "graph_opportunity"
+  ],
+  "factual_slices": [
+    "intent_category",
+    "evidence_category",
+    "evidence_structure",
+    "qrel_count_group"
+  ],
+  "vendored_dependencies": {
+    "microsoft/SkillOpt": "da06b157cb9878e378663ee1ecf429c83fe1a8f9"
+  },
+  "reference_results": {
+    "retrieval_test_246": "results/reference/retrieval_v2/report.json",
+    "agent_pilot_5_normalized": "results/reference/agent_pilot5/normalized/report.json"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "step": 1,
+  "action": "reject",
+  "n_total": 3,
+  "n_fail": 1,
+  "failure_patterns": [
+    {
+      "pattern": "incorrect_or_missing_seed_retrieval_params: Agent did not retrieve relevant seeds (Hit@10=0); skill did not force the exact hybrid seed call with limit=10 and explicit BM25+dense hybrid configuration.",
+      "count": 1,
+      "task_ids": [
+        "108045"
+      ]
+    }
+  ],
+  "score_before": 0.5,
+  "score_after": 0.5,
+  "rejected_edits": [
+    {
+      "op": "replace",
+      "content": "2. Always begin retrieval with an explicit hybrid BM25+dense seed request using the techdocs_search tool and include the parameter `limit: 10` (e.g., techdocs_search(query=..., mode=\"bm25+dense\", limit=10)). This ensures the seed set matches the benchmark Recall/Hit/nDCG@10 contract. Do not perform unbounded graph-only exploration before obtaining this seed set. If the initial seed set is empty or clearly off-topic, perform at most one concise hybrid reformulation of the search (adjusting query phrasing or filters) and re-run techdocs_search(limit=10). Do not perform multiple reformulations or unbounded expansions.",
+      "target": "2. Request `limit: 10` from BM25+dense seed retrieval so the evidence package matches the benchmark's Recall/Hit/nDCG@10 contract. Do not perform unbounded or graph-only exploration."
+    },
+    {
+      "op": "insert_after",
+      "content": "## Output format constraint\n\n- When producing the final answer for the caller, return exactly one structured JSON object with the fields \"answer\" and \"sources\". List sources in decreasing evidence relevance and include at most 10 distinct canonical doc IDs or repository paths. Do not invent or hallucinate sources; omit any claim that cannot be directly supported by fetched passages.",
+      "target": "## Contract"
+    }
+  ]
+}

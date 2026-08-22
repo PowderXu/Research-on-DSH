@@ -1,0 +1,76 @@
+{
+  "id": "108045",
+  "hard": 0.0,
+  "soft": 0.0,
+  "question": "How do i unlink the GitHub Slack Integration just from DMs?\nSelect Topic Area\nQuestion\nThe github bot integration on the Slack has a link button in its DM but does not have an unlink slash command. I've searched its settings for an hour with no luck.\nHow do i stop the GitHub bot from tagging my slack username in places, or better yet, just unlink the bot from my personal account, but still keep it in the slack workspace and all its slack channels.",
+  "task_description": "How do i unlink the GitHub Slack Integration just from DMs?\nSelect Topic Area\nQuestion\nThe github bot integration on the Slack has a link button in its DM but does not have an unlink slash command. I've searched its settings for an hour with no luck.\nHow do i stop the GitHub bot from tagging my slack username in places, or better yet, just unlink the bot from my personal account, but still keep it in the slack workspace and all its slack channels.",
+  "task_type": "single_page_composed_anchor",
+  "intent_category": "policy_billing_account",
+  "graph_opportunity": true,
+  "predicted_answer": "In Slack, run the slash command “/github signout” (for example in the DM with the GitHub app). That disconnects your GitHub account from your Slack user—mentions require you to be signed in, so signing out will stop the GitHub app from tagging your Slack username while leaving the app installed in the workspace.",
+  "ranked_ids": [
+    "/account-and-profile/how-tos/account-management/unlinking-your-email-address-from-a-locked-account",
+    "/integrations/how-tos/slack/use-github-in-slack",
+    "/integrations/how-tos/slack/integrate-github-with-slack",
+    "/integrations/reference/slack-permissions",
+    "/sponsors/sponsoring-open-source-contributors/unlinking-your-patreon-account-from-github",
+    "/sponsors/receiving-sponsorships-through-github-sponsors/unlinking-your-patreon-account-from-your-github-sponsors-profile",
+    "/integrations/how-tos/slack",
+    "/account-and-profile/concepts/account-management",
+    "/account-and-profile/how-tos/account-management/deleting-your-personal-account",
+    "/copilot/how-tos/copilot-integrations/integrate-cloud-agent-with-slack"
+  ],
+  "citation_ranked_ids": [
+    "/integrations/how-tos/slack/use-github-in-slack"
+  ],
+  "visible_sources": [
+    "/account-and-profile/how-tos/account-management/unlinking-your-email-address-from-a-locked-account",
+    "/integrations/how-tos/slack/use-github-in-slack",
+    "/integrations/how-tos/slack/integrate-github-with-slack",
+    "/integrations/reference/slack-permissions",
+    "/sponsors/sponsoring-open-source-contributors/unlinking-your-patreon-account-from-github",
+    "/sponsors/receiving-sponsorships-through-github-sponsors/unlinking-your-patreon-account-from-your-github-sponsors-profile",
+    "/integrations/how-tos/slack",
+    "/account-and-profile/concepts/account-management",
+    "/account-and-profile/how-tos/account-management/deleting-your-personal-account",
+    "/copilot/how-tos/copilot-integrations/integrate-cloud-agent-with-slack",
+    "/integrations/how-tos/slack/use-github-in-slack"
+  ],
+  "agent_sources": [
+    "integrations/how-tos/slack/use-github-in-slack.md"
+  ],
+  "agent_ok": true,
+  "fail_reason": "",
+  "target_system_prompt": "---\nname: github-docs-neo4j\ndescription: Use GitHub Docs hybrid retrieval with bounded Neo4j traversal and explicit path verification.\narm: neo4j\nversion: 1\n---\n\n# GitHub Docs Neo4j GraphRAG retrieval\n\n## Contract\n\n- Begin with `techdocs_search`; use `techdocs_expand` only from returned seed URIs and `techdocs_fetch` only for returned URIs.\n- Every expanded result must preserve its seed, typed edge, target, and evidence context.\n- A graph path is a discovery reason, not proof. Verify the target passage before citing it.\n- Cite canonical pages and headings. Abstain when the evidence does not support the claim.\n\n## Strategy\n\n1. Preserve exact identifiers, product/version cues, and the relationship requested by the user.\n2. Request `limit: 10` from BM25+dense seed retrieval so the evidence package matches the benchmark's Recall/Hit/nDCG@10 contract. Do not perform unbounded or graph-only exploration.\n3. Expand only for a relationship-bearing need: linked prerequisites, procedure-to-configuration, version or variant dependencies, shared reusable content, redirect resolution, or multi-page evidence.\n4. Prefer contextual Markdown-link edges whose anchor text, source section, local context, and target anchor match the question.\n5. Use route, reusable, and shared-code relationships only when degree is bounded and provenance is visible.\n6. Treat high-degree route or category nodes as weak hints rather than strong relevance evidence.\n7. Fetch and verify any graph-added page that will support the answer.\n\n## Failure recovery\n\n- If expansion adds no query-relevant evidence, return to the strongest seed instead of traversing farther.\n- If the seed set is wrong, make one concise hybrid reformulation before another bounded expansion.\n- Reject a graph neighbor whose passage does not support the inferred relationship.\n- Stop after the bounded expansion or second seed attempt and abstain if the required evidence remains missing.\n",
+  "target_user_prompt": "GITHUB DOCS DSH RETRIEVAL EVAL 108045 (neo4j). Load and follow the installed GitHub Docs retrieval skill before searching. Use only the pinned local documentation corpus and the tools available in this profile. Return exactly one JSON object and no Markdown, with this schema: {\"answer\":\"concise evidence-grounded answer or NOT FOUND\",\"sources\":[\"ordered canonical doc ID or repository .md path\"]}. List at most 10 distinct sources in decreasing evidence relevance. Do not invent a source.\nQuestion:\nHow do i unlink the GitHub Slack Integration just from DMs?\nSelect Topic Area\nQuestion\nThe github bot integration on the Slack has a link button in its DM but does not have an unlink slash command. I've searched its settings for an hour with no luck.\nHow do i stop the GitHub bot from tagging my slack username in places, or better yet, just unlink the bot from my personal account, but still keep it in the slack workspace and all its slack channels.",
+  "reference_text": "Hidden deterministic retrieval score (document identities withheld): Hit@10=0.000, Recall@10=0.000, nDCG@10=0.000; evidence_category=single_page_composed_anchor; graph_opportunity=True.",
+  "n_turns": 5,
+  "latency_seconds": 15.67775204096688,
+  "usage": {
+    "input_fresh": 6389,
+    "input_cached": 10624,
+    "input_total": 17013,
+    "output": 1325,
+    "total": 18338
+  },
+  "tool_sequence": [
+    "skill",
+    "techdocs_search",
+    "techdocs_fetch",
+    "techdocs_fetch"
+  ],
+  "actual_models": [
+    "gpt-5-mini"
+  ],
+  "session_file": ".dsh-trial/sessions/--Users-oliverxu-Study-kb_retrieval_benchmark-data-evaluation_raw-github-docs-corpus-content--/session-63d8fb4e-5584-4f31-b36b-7768867d2dfb/session.jsonl.zstd",
+  "recall_at_1": 0.0,
+  "hit_at_1": 0.0,
+  "recall_at_5": 0.0,
+  "hit_at_5": 0.0,
+  "recall_at_10": 0.0,
+  "hit_at_10": 0.0,
+  "recall_at_20": 0.0,
+  "hit_at_20": 0.0,
+  "ndcg_at_10": 0.0,
+  "all_support_at_10": 0.0
+}

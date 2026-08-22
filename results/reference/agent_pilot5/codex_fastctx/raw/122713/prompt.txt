@@ -1,0 +1,8 @@
+Use $github-docs-fastctx.
+
+GITHUB DOCS CODEX FASTCTX RETRIEVAL EVAL 122713. Load and follow the installed GitHub Docs retrieval skill before searching. Use only the pinned local documentation corpus. Use FastCtx MCP grep, glob, and read for every filesystem discovery and document read; do not use shell commands. Return exactly one JSON object and no Markdown, with this schema: {"answer":"concise evidence-grounded answer or NOT FOUND","sources":["ordered canonical content/... .md path"]}. List at most 10 distinct sources in decreasing evidence relevance. Do not invent a source.
+Question:
+Cancel annual subscription
+Select Topic Area
+Question
+I have enrolled to the copilot annual subscription. Can I cancel the subscription while it is available, and will I get back the remaining payment?

@@ -1,0 +1,6 @@
+GITHUB DOCS DSH RETRIEVAL EVAL 180308 (fs). Load and follow the installed GitHub Docs retrieval skill before searching. Use only the pinned local documentation corpus and the tools available in this profile. Return exactly one JSON object and no Markdown, with this schema: {"answer":"concise evidence-grounded answer or NOT FOUND","sources":["ordered canonical doc ID or repository .md path"]}. List at most 10 distinct sources in decreasing evidence relevance. Do not invent a source.
+Question:
+Does a Rest API endpoint exist for enabling the dependency graph on a per repo basis?
+Select Topic Area
+Question
+I'm trying to enable the dependency graph on a per repo basis, rather then at a global org or enterprise level. I can't seem to see it in the repo settings when I call is this not possible via the rest API? Thanks!

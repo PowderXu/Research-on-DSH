@@ -1,0 +1,79 @@
+{
+  "id": "26749",
+  "hard": 1.0,
+  "soft": 0.8154648767857287,
+  "question": "Invalid secret, github-token is not defined in the referenced workflow\nI have the following GitHub Action setup for reuse:\n <a href=\" target=\"_blank\" rel=\"noopener nofollow ugc\">github.com</a>\nmdn/workflows/blob/d971cc3696bf46ae32617e058393e45cec55ff85/.github/workflows/auto-merge.yml\n<pre><code class=\"lang-yml\">name: auto-merge\non: [workflow_call]\njobs:\nauto-merge:\nruns-on: ubuntu-latest\nsteps:\n- uses: actions/checkout@v2\n- uses: ahmadnassri/action-dependabot-auto-merge@v2\nwith:\ntarget: minor\ngithub-token: ${{ secrets.GH_TOKEN }}\nI am reusing it here: mdn-minimalist/auto-merge.yml at 4c2fd5a9fe02c844788001064d72d98dc2ef801b · mdn/mdn-minimalist · GitHub\nWhen the action on mdn-minimalist is run, I get the following error:\nInvalid secret, github-token is not defined in the referenced workflow\nI am kinda stumped as it definitely looks to be defined in the referenced workflow. Any ideas? Is there a naming convention that I am missing? Thing is, the auto-merge action expects a github-token property so, I cannot simply name it token. Thank you in advance.",
+  "task_description": "Invalid secret, github-token is not defined in the referenced workflow\nI have the following GitHub Action setup for reuse:\n <a href=\" target=\"_blank\" rel=\"noopener nofollow ugc\">github.com</a>\nmdn/workflows/blob/d971cc3696bf46ae32617e058393e45cec55ff85/.github/workflows/auto-merge.yml\n<pre><code class=\"lang-yml\">name: auto-merge\non: [workflow_call]\njobs:\nauto-merge:\nruns-on: ubuntu-latest\nsteps:\n- uses: actions/checkout@v2\n- uses: ahmadnassri/action-dependabot-auto-merge@v2\nwith:\ntarget: minor\ngithub-token: ${{ secrets.GH_TOKEN }}\nI am reusing it here: mdn-minimalist/auto-merge.yml at 4c2fd5a9fe02c844788001064d72d98dc2ef801b · mdn/mdn-minimalist · GitHub\nWhen the action on mdn-minimalist is run, I get the following error:\nInvalid secret, github-token is not defined in the referenced workflow\nI am kinda stumped as it definitely looks to be defined in the referenced workflow. Any ideas? Is there a naming convention that I am missing? Thing is, the auto-merge action expects a github-token property so, I cannot simply name it token. Thank you in advance.",
+  "task_type": "single_page_composed_anchor",
+  "intent_category": "troubleshooting",
+  "graph_opportunity": true,
+  "predicted_answer": "The error means the reusable workflow you’re calling does not declare a secret named github-token under its on.workflow_call.secrets. When a caller passes a secret name that isn’t defined in the called workflow, the run errors. Fix by declaring the secret id in the called workflow’s on.workflow_call.secrets (or change the caller to pass the name the called workflow expects, or use secrets: inherit).",
+  "ranked_ids": [
+    "/actions/reference/workflows-and-actions/events-that-trigger-workflows",
+    "/actions/reference/workflows-and-actions/workflow-syntax",
+    "/actions/reference/workflows-and-actions/contexts",
+    "/actions/how-tos/reuse-automations/reuse-workflows"
+  ],
+  "citation_ranked_ids": [
+    "/actions/reference/workflows-and-actions/workflow-syntax",
+    "/actions/how-tos/reuse-automations/reuse-workflows"
+  ],
+  "visible_sources": [
+    "n./actions/reference/workflows-and-actions/events-that-trigger-workflows.md",
+    "n./actions/reference/workflows-and-actions/workflow-syntax.md",
+    "n./actions/reference/workflows-and-actions/contexts.md",
+    "n./actions/how-tos/reuse-automations/reuse-workflows.md",
+    "./actions/reference/workflows-and-actions/events-that-trigger-workflows.md",
+    "./actions/reference/workflows-and-actions/workflow-syntax.md",
+    "./actions/reference/workflows-and-actions/contexts.md",
+    "./actions/how-tos/reuse-automations/reuse-workflows.md",
+    "Users/oliverxu/Study/kb_retrieval_benchmark/data/evaluation_raw/github-docs-corpus/content/actions/reference/workflows-and-actions/workflow-syntax.md",
+    "all/the/files.md",
+    "docs/README.md",
+    "docs/mona/hello-world.md",
+    "docs/a/markdown/file.md",
+    "docs/hello.md",
+    "js/README.md",
+    "path/their-post.md",
+    "Users/oliverxu/Study/kb_retrieval_benchmark/data/evaluation_raw/github-docs-corpus/content/actions/how-tos/reuse-automations/reuse-workflows.md"
+  ],
+  "agent_sources": [
+    "actions/reference/workflows-and-actions/workflow-syntax.md",
+    "actions/how-tos/reuse-automations/reuse-workflows.md"
+  ],
+  "agent_ok": true,
+  "fail_reason": "",
+  "target_system_prompt": "---\nname: github-docs-fs\ndescription: Navigate GitHub Docs Markdown with filesystem search, index-page routing, and evidence verification.\narm: fs\nversion: 1\n---\n\n# GitHub Docs filesystem retrieval\n\n## Contract\n\n- Work only inside the pinned GitHub Docs repository.\n- Use the official `glob` and `grep` discovery tools and the bounded `read` tool.\n- Treat visible Markdown passages as evidence; never claim that a filename or search hit proves an answer.\n- Cite the canonical documentation path and relevant heading when evidence is sufficient. Say that the answer was not found when it is not.\n\n## Strategy\n\n1. Preserve exact signals from the question: quoted errors, CLI flags, environment variables, API names, paths, configuration keys, and product/version words.\n2. If the product area is reasonably clear, inspect its top-level `index.md`, then follow frontmatter `children` or `introLinks` through progressively narrower index pages.\n3. Use frontmatter title, short title, intro, category, content type, versions, and redirect aliases only as routing clues.\n4. Search the smallest promising subtree with `grep`. Prefer one exact identifier or discriminative phrase per call over a broad expression that floods the context.\n5. Open the best candidate with `read` and verify the relevant heading and surrounding conditions before citing it.\n6. Treat `index.md` as a router unless its own body contains the answer.\n7. Cite the canonical page, not an obsolete `redirect_from` alias.\n\n## Failure recovery\n\n- If an index route is wrong, broaden once to repository-wide exact search instead of repeatedly exploring that subtree.\n- If an exact search is empty, try one concise semantic synonym or documentation term while preserving the main constraint.\n- If results conflict by version or product, read the relevant frontmatter and conditional passage before choosing.\n- Stop when further searches repeat the same files or no passage supports the requested claim.\n",
+  "target_user_prompt": "GITHUB DOCS DSH RETRIEVAL EVAL 26749 (fs). Load and follow the installed GitHub Docs retrieval skill before searching. Use only the pinned local documentation corpus and the tools available in this profile. Return exactly one JSON object and no Markdown, with this schema: {\"answer\":\"concise evidence-grounded answer or NOT FOUND\",\"sources\":[\"ordered canonical doc ID or repository .md path\"]}. List at most 10 distinct sources in decreasing evidence relevance. Do not invent a source.\nQuestion:\nInvalid secret, github-token is not defined in the referenced workflow\nI have the following GitHub Action setup for reuse:\n <a href=\" target=\"_blank\" rel=\"noopener nofollow ugc\">github.com</a>\nmdn/workflows/blob/d971cc3696bf46ae32617e058393e45cec55ff85/.github/workflows/auto-merge.yml\n<pre><code class=\"lang-yml\">name: auto-merge\non: [workflow_call]\njobs:\nauto-merge:\nruns-on: ubuntu-latest\nsteps:\n- uses: actions/checkout@v2\n- uses: ahmadnassri/action-dependabot-auto-merge@v2\nwith:\ntarget: minor\ngithub-token: ${{ secrets.GH_TOKEN }}\nI am reusing it here: mdn-minimalist/auto-merge.yml at 4c2fd5a9fe02c844788001064d72d98dc2ef801b · mdn/mdn-minimalist · GitHub\nWhen the action on mdn-minimalist is run, I get the following error:\nInvalid secret, github-token is not defined in the referenced workflow\nI am kinda stumped as it definitely looks to be defined in the referenced workflow. Any ideas? Is there a naming convention that I am missing? Thing is, the auto-merge action expects a github-token property so, I cannot simply name it token. Thank you in advance.",
+  "reference_text": "Hidden deterministic retrieval score (document identities withheld): Hit@10=1.000, Recall@10=1.000, nDCG@10=0.631; evidence_category=single_page_composed_anchor; graph_opportunity=True.",
+  "n_turns": 6,
+  "latency_seconds": 21.47254729201086,
+  "usage": {
+    "input_fresh": 27160,
+    "input_cached": 50304,
+    "input_total": 77464,
+    "output": 1154,
+    "total": 78618
+  },
+  "tool_sequence": [
+    "skill",
+    "grep",
+    "read",
+    "read",
+    "read"
+  ],
+  "actual_models": [
+    "gpt-5-mini"
+  ],
+  "session_file": ".dsh-trial/sessions/--Users-oliverxu-Study-kb_retrieval_benchmark-data-evaluation_raw-github-docs-corpus-content--/session-2e97727d-1616-4191-ba71-fcdffc83b389/session.jsonl.zstd",
+  "recall_at_1": 0.0,
+  "hit_at_1": 0.0,
+  "recall_at_5": 1.0,
+  "hit_at_5": 1.0,
+  "recall_at_10": 1.0,
+  "hit_at_10": 1.0,
+  "recall_at_20": 1.0,
+  "hit_at_20": 1.0,
+  "ndcg_at_10": 0.6309297535714575,
+  "all_support_at_10": 1.0
+}

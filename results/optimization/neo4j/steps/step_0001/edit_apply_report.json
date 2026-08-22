@@ -1,0 +1,16 @@
+[
+  {
+    "op": "replace",
+    "target": "2. Request `limit: 10` from BM25+dense seed retrieval so the evidence package matches the benchmark's Recall/Hit/nDCG@10 contract. Do not perform unbounded or graph-only exploration.",
+    "content_preview": "2. Always begin retrieval with an explicit hybrid BM25+dense seed request using the techdocs_search tool and include the parameter `limit: 10` (e.g., techdocs_search(query=..., mode=\"bm25+dense\", limi",
+    "status": "applied_replace",
+    "index": 1
+  },
+  {
+    "op": "insert_after",
+    "target": "## Contract",
+    "content_preview": "## Output format constraint\n\n- When producing the final answer for the caller, return exactly one structured JSON object with the fields \"answer\" and \"sources\". List sources in decreasing evidence rel",
+    "status": "applied_insert_after",
+    "index": 2
+  }
+]
