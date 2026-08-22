@@ -1,0 +1,23 @@
+{
+  "name": "github-docs-kb-benchmark-runtime",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Pinned DSH and FastCtx runtime for the GitHub Docs KB benchmark",
+  "packageManager": "npm@10.9.4",
+  "engines": {
+    "node": "^22.19.0 || >=24"
+  },
+  "scripts": {
+    "setup:dsh-profile": "npm ci --prefix dsh_home/profiles/headless",
+    "check:dsh-dependencies": "node scripts/check_dsh_dependencies.mjs",
+    "test:plugin": "node --test dsh-techdocs-plugin/*.test.mjs",
+    "verify:dsh": "npm run check:dsh-dependencies && npm run test:plugin"
+  },
+  "dependencies": {
+    "@deepseek-ai/cordis": "4.0.1",
+    "@deepseek-ai/dsh": "0.1.1-rc.2",
+    "@deepseek-ai/dsh-llm": "0.1.1-rc.2",
+    "@deepseek-ai/dsh-tools": "0.1.1-rc.2",
+    "fastctx": "0.2.5"
+  }
+}

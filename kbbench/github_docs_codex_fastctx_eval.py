@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -157,29 +158,27 @@ def _install_skill(workspace: Path, skill_path: Path) -> Path:
     return installed
 
 
-def run_case(
-    item: dict[str, Any],
+def _codex_invocation(
     *,
-    workspace: Path,
-    corpus_jsonl: Path,
-    skill_path: Path,
     codex_bin: Path,
+    workspace: Path,
     fastctx_bin: Path,
     schema: Path,
-    output_root: Path,
+    last_message: Path,
+    prompt: str,
+    skill_content: str,
     model: str,
     reasoning_effort: str,
-    timeout_seconds: int,
-) -> dict[str, Any]:
-    case_dir = output_root / "raw" / str(item["id"])
-    case_dir.mkdir(parents=True, exist_ok=True)
-    events_path = case_dir / "events.jsonl"
-    stderr_path = case_dir / "stderr.txt"
-    last_message = case_dir / "last_message.json"
-    prompt_path = case_dir / "prompt.txt"
-    prompt = _prompt(item)
-    skill_content = skill_path.read_text(encoding="utf-8")
-    prompt_path.write_text(prompt, encoding="utf-8")
+    codex_home: Path | None,
+) -> tuple[list[str], dict[str, str], bool]:
+    """Build one isolated Codex command, optionally loading a provider-only home."""
+
+    use_codex_home = bool(
+        codex_home is not None and (codex_home / "config.toml").is_file()
+    )
+    environment = dict(os.environ)
+    if use_codex_home and codex_home is not None:
+        environment["CODEX_HOME"] = str(codex_home.resolve())
     command = [
         str(codex_bin),
         "exec",
@@ -192,7 +191,7 @@ def run_case(
         "--color",
         "never",
         "--json",
-        "--ignore-user-config",
+        *([] if use_codex_home else ["--ignore-user-config"]),
         "--ignore-rules",
         "--config",
         'approval_policy="never"',
@@ -228,11 +227,51 @@ def run_case(
         "mcp_servers.fastctx.tool_timeout_sec=60",
         prompt,
     ]
+    return command, environment, use_codex_home
+
+
+def run_case(
+    item: dict[str, Any],
+    *,
+    workspace: Path,
+    corpus_jsonl: Path,
+    skill_path: Path,
+    codex_bin: Path,
+    fastctx_bin: Path,
+    schema: Path,
+    output_root: Path,
+    model: str,
+    reasoning_effort: str,
+    timeout_seconds: int,
+    codex_home: Path | None = None,
+) -> dict[str, Any]:
+    case_dir = output_root / "raw" / str(item["id"])
+    case_dir.mkdir(parents=True, exist_ok=True)
+    events_path = case_dir / "events.jsonl"
+    stderr_path = case_dir / "stderr.txt"
+    last_message = case_dir / "last_message.json"
+    prompt_path = case_dir / "prompt.txt"
+    prompt = _prompt(item)
+    skill_content = skill_path.read_text(encoding="utf-8")
+    prompt_path.write_text(prompt, encoding="utf-8")
+    command, environment, custom_provider = _codex_invocation(
+        codex_bin=codex_bin,
+        workspace=workspace,
+        fastctx_bin=fastctx_bin,
+        schema=schema,
+        last_message=last_message,
+        prompt=prompt,
+        skill_content=skill_content,
+        model=model,
+        reasoning_effort=reasoning_effort,
+        codex_home=codex_home,
+    )
     started = time.perf_counter()
     try:
         completed = subprocess.run(
             command,
             cwd=workspace,
+            env=environment,
             capture_output=True,
             text=True,
             timeout=timeout_seconds,
@@ -298,6 +337,7 @@ def run_case(
         "fastctx_calls": trace["fastctx_calls"],
         "shell_calls": trace["shell_calls"],
         "return_code": return_code,
+        "provider_mode": "custom_codex_home" if custom_provider else "default",
         **{key: float(value) for key, value in metrics.items()},
         **{
             f"citation_{key}": float(value)
@@ -326,7 +366,16 @@ def main() -> None:
     )
     parser.add_argument("--codex-bin", type=Path, default=Path("codex"))
     parser.add_argument(
-        "--fastctx-bin", type=Path, default=root / ".fastctx-runtime/node_modules/.bin/fastctx"
+        "--fastctx-bin", type=Path, default=root / "node_modules/.bin/fastctx"
+    )
+    parser.add_argument(
+        "--codex-home",
+        type=Path,
+        default=Path(
+            os.environ.get("CODEX_HOME")
+            or (root / "config/codex_opencode_home")
+        ),
+        help="Optional isolated Codex home containing a provider-only config.toml",
     )
     parser.add_argument(
         "--schema", type=Path, default=root / "evaluation/harness/answer_schema.json"
@@ -367,6 +416,7 @@ def main() -> None:
             model=args.model,
             reasoning_effort=args.reasoning_effort,
             timeout_seconds=args.timeout_seconds,
+            codex_home=args.codex_home,
         )
         rows.append(row)
         (args.output / "partial_rollouts.json").write_text(
@@ -403,6 +453,16 @@ def main() -> None:
         "skill_sha256": hashlib.sha256(args.skill.read_bytes()).hexdigest(),
         "corpus": str(args.workspace.resolve()),
         "corpus_jsonl": str(args.corpus_jsonl.resolve()),
+        "provider_mode": (
+            "custom_codex_home"
+            if (args.codex_home / "config.toml").is_file()
+            else "default"
+        ),
+        "codex_home": (
+            str(args.codex_home.resolve())
+            if (args.codex_home / "config.toml").is_file()
+            else None
+        ),
     }
     (args.output / "manifest.json").write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"

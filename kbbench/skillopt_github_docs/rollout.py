@@ -10,7 +10,9 @@ import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Iterable
+from typing import Any, Callable, Iterable, Mapping
+
+import yaml
 
 from kbbench.dsh_hotpot_eval import parse_agent_json
 
@@ -136,6 +138,68 @@ def build_prompt(item: dict[str, Any], arm: str) -> str:
     )
 
 
+def _dsh_gateway_url(environment: Mapping[str, str]) -> str:
+    return str(
+        environment.get("DSH_OPENAI_BASE_URL")
+        or environment.get("OPENAI_BASE_URL")
+        or ""
+    ).strip()
+
+
+def _write_dsh_gateway_patch(
+    case_dir: Path,
+    base_url: str,
+    model_patch: Path,
+) -> Path | None:
+    """Derive a complete provider patch so DSH's replace semantics keep the model."""
+
+    if not base_url:
+        return None
+    document = yaml.safe_load(model_patch.read_text(encoding="utf-8"))
+    if not isinstance(document, list):
+        raise ValueError(f"DSH model patch must be a list: {model_patch}")
+    provider = next(
+        (
+            entry
+            for entry in document
+            if isinstance(entry, dict) and entry.get("id") == "llm-pi-ai"
+        ),
+        None,
+    )
+    if not isinstance(provider, dict):
+        raise ValueError(f"DSH model patch has no llm-pi-ai entry: {model_patch}")
+    providers = provider.get("config", {}).get("providers", {})
+    openai = providers.get("openai") if isinstance(providers, dict) else None
+    if not isinstance(openai, dict):
+        raise ValueError(f"DSH model patch has no OpenAI provider: {model_patch}")
+    openai["baseURL"] = base_url
+    patch = case_dir / "provider-model.patch.yml"
+    patch.write_text(yaml.safe_dump(document, sort_keys=False), encoding="utf-8")
+    return patch
+
+
+def _dsh_invocation(
+    config: "DshCommandConfig",
+    item: dict[str, Any],
+    candidate_patch: Path,
+    gateway_patch: Path | None,
+) -> list[str]:
+    return [
+        str(config.dsh_binary.resolve()),
+        "--profile",
+        config.profile,
+        "--patch",
+        str((gateway_patch or config.model_patch).resolve()),
+        "--patch",
+        str(config.common_patch.resolve()),
+        "--patch",
+        str(config.arm_patch.resolve()),
+        "--patch",
+        str(candidate_patch.resolve()),
+        build_prompt(item, config.arm),
+    ]
+
+
 @dataclass(frozen=True)
 class DshCommandConfig:
     arm: str
@@ -195,23 +259,17 @@ class DshCommandRunner:
             ),
             encoding="utf-8",
         )
-        command = [
-            str(self.config.dsh_binary.resolve()),
-            "--profile",
-            self.config.profile,
-            "--patch",
-            str(self.config.model_patch.resolve()),
-            "--patch",
-            str(self.config.common_patch.resolve()),
-            "--patch",
-            str(self.config.arm_patch.resolve()),
-            "--patch",
-            str(candidate_patch.resolve()),
-            build_prompt(item, self.config.arm),
-        ]
         environment = dict(os.environ)
         environment["DSH_HOME"] = str(self.config.dsh_home.resolve())
         environment["DSH_PERMISSION_MODE"] = "read-only"
+        gateway_patch = _write_dsh_gateway_patch(
+            case_dir,
+            _dsh_gateway_url(environment),
+            self.config.model_patch,
+        )
+        command = _dsh_invocation(
+            self.config, item, candidate_patch, gateway_patch
+        )
         before = _session_files(self.config.dsh_home)
         backend_before = len(self.trace_provider()) if self.trace_provider else 0
         started = time.perf_counter()
@@ -269,6 +327,7 @@ class DshCommandRunner:
             "conversation": _compact_conversation(session_events),
             "visible_sources": _visible_sources(session_events),
             "backend_events": backend_events,
+            "provider_mode": "custom_gateway" if gateway_patch else "default",
             **trace,
         }
 

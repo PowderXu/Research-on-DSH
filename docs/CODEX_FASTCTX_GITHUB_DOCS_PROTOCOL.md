@@ -50,10 +50,17 @@ Run the arm:
 PYTHONPATH=. ../.venv/bin/python -m kbbench.github_docs_codex_fastctx_eval \
   --output results/github_docs_codex_fastctx_paired5_v1 \
   --codex-bin "$(command -v codex)" \
-  --fastctx-bin .fastctx-runtime/node_modules/.bin/fastctx \
+  --fastctx-bin node_modules/.bin/fastctx \
   --model gpt-5.4-mini \
   --reasoning-effort low
 ```
+
+The default invocation passes `--ignore-user-config` for isolation. To use an
+optional OpenAI-compatible gateway, pass `--codex-home /path/to/isolated-home`;
+the runner activates it only when that directory contains `config.toml`, then
+records `provider_mode=custom_codex_home` without copying the configuration.
+The supplied home should contain provider configuration only so the benchmark
+does not inherit unrelated tools or instructions.
 
 Generate the four-arm report:
 

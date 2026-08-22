@@ -589,6 +589,12 @@ KBBENCH_OPENAI_ENV_FILE=/path/to/profile-agent/.env \
   --cfg-options test_env_num=1 out_root=results/hybrid_real
 ```
 
+The maintained runtime uses the root `node_modules/.bin/dsh` and the locked
+`dsh_home` headless profile. Run `npm ci`, `npm run setup:dsh-profile`, and
+`npm run verify:dsh` before a live evaluation. To opt into an OpenAI-compatible
+gateway, set `DSH_OPENAI_BASE_URL`; without it, the provider patch retains the
+official OpenAI endpoint.
+
 Run the bounded SkillOpt integration pilot:
 
 ```bash

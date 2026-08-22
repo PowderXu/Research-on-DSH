@@ -235,7 +235,7 @@ class DshFilesystemSearch:
             "fs_terms": terms,
             "fs_calls": calls,
             "fs_matches_visible": total_matches,
-            "fs_backend": "@deepseek-ai/dsh-tool-fs-search@0.1.0-rc.6",
+            "fs_backend": "@deepseek-ai/dsh-tool-fs-search@0.1.1-rc.2",
             "graph_applied": False,
             "graph_candidates_added": 0,
             "selected_routes": [],

@@ -3,7 +3,11 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from kbbench.github_docs_codex_fastctx_eval import _load_items, _trace
+from kbbench.github_docs_codex_fastctx_eval import (
+    _codex_invocation,
+    _load_items,
+    _trace,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -69,3 +73,45 @@ def test_frozen_paired_items_span_train_and_validation() -> None:
         ["108045", "26749"],
     )
     assert [item["id"] for item in items] == ["108045", "26749"]
+
+
+def test_codex_invocation_isolated_by_default_and_opt_in_provider_home(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.delenv("CODEX_HOME", raising=False)
+    common = {
+        "codex_bin": tmp_path / "codex",
+        "workspace": tmp_path / "workspace",
+        "fastctx_bin": tmp_path / "fastctx",
+        "schema": tmp_path / "schema.json",
+        "last_message": tmp_path / "last-message.json",
+        "prompt": "question",
+        "skill_content": "instructions",
+        "model": "gpt-test",
+        "reasoning_effort": "low",
+    }
+
+    default_command, default_environment, default_custom = _codex_invocation(
+        **common,
+        codex_home=tmp_path / "missing-home",
+    )
+    assert not default_custom
+    assert "--ignore-user-config" in default_command
+    assert "CODEX_HOME" not in default_environment
+
+    custom_home = tmp_path / "provider-home"
+    custom_home.mkdir()
+    (custom_home / "config.toml").write_text(
+        '[model_providers.gateway]\nname = "gateway"\n', encoding="utf-8"
+    )
+    custom_command, custom_environment, custom_enabled = _codex_invocation(
+        **common,
+        codex_home=custom_home,
+    )
+    assert custom_enabled
+    assert "--ignore-user-config" not in custom_command
+    assert custom_environment["CODEX_HOME"] == str(custom_home.resolve())
+    assert any(
+        value.startswith("mcp_servers.fastctx.command=")
+        for value in custom_command
+    )

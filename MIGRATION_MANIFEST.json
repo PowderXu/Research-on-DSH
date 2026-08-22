@@ -36,6 +36,12 @@
   "vendored_dependencies": {
     "microsoft/SkillOpt": "da06b157cb9878e378663ee1ecf429c83fe1a8f9"
   },
+  "runtime_dependencies": {
+    "@deepseek-ai/dsh": "0.1.1-rc.2",
+    "fastctx": "0.2.5",
+    "npm": "10.9.4"
+  },
+  "provider_forwarding": "opt-in isolated Codex home or DSH_OPENAI_BASE_URL",
   "reference_results": {
     "retrieval_test_246": "results/reference/retrieval_v2/report.json",
     "agent_pilot_5_normalized": "results/reference/agent_pilot5/normalized/report.json"

@@ -44,10 +44,17 @@ experiments are reported separately.
 ```bash
 python -m venv .venv
 .venv/bin/pip install -r requirements.txt
+npm ci
+npm run setup:dsh-profile
+npm run verify:dsh
 .venv/bin/python scripts/verify_package.py
 PYTHONPATH=. .venv/bin/python -m pytest
-cd dsh-techdocs-plugin && npm test
 ```
+
+The root and headless-profile lockfiles pin FastCtx `0.2.5` and the complete
+DSH package family at `0.1.1-rc.2`. `npm run verify:dsh` rejects mismatches
+between the root runtime, plugin manifest/lockfile, installed packages, and
+headless profile.
 
 The normalized corpus is bundled, so retrieval evaluation does not require a
 second repository checkout. The filesystem and Codex/FastCtx arms need raw
@@ -61,6 +68,15 @@ Install `requirements-graph.txt` and run Neo4j Community locally for the graph
 arm. Neo4j Community is free; `neo4j-graphrag` is the existing retrieval
 library, while this project defines the technical-document schema and bounded
 expansion policy.
+
+Custom OpenAI-compatible gateways are optional and are not shipped in this
+repository. Codex uses its isolated default configuration unless
+`github-docs-codex-fastctx` receives `--codex-home <dir>` and that directory
+contains a provider-only `config.toml` (for example, an OpenCode gateway
+configuration). DSH uses the official OpenAI endpoint unless
+`DSH_OPENAI_BASE_URL` is set; `OPENAI_BASE_URL` is accepted as a fallback
+alias. Keep provider credentials in environment variables, never in the
+benchmark configuration or result files.
 
 ## Layout
 

@@ -50,11 +50,11 @@ The D3 automatic route and the paired Codex `UserPromptSubmit` hook consume the 
 
 ```sh
 npm test
-DSH_HOME=../.dsh-trial node_modules/.bin/dsh --profile headless \
+DSH_HOME=../dsh_home ../node_modules/.bin/dsh --profile headless \
   --patch ../evaluation/harness/dsh_d3_mount_smoke.patch.yml --help
 ```
 
-The pure contract tests need only Node.js. A live DSH test additionally requires the exact `0.1.0-rc.6` package family and a reachable KB service.
+The pure contract tests need only Node.js. A live DSH test additionally requires the exact `0.1.1-rc.2` package family and a reachable KB service.
 
 For a scored KB-only turn, apply `trial-kb-minimal.patch.yml` after the model-provider patch. It disables unrelated coding-agent tools and prompt sections while preserving `techdocs_search` and `techdocs_fetch`. The held-out stress ablation is recorded in `../results/dsh_kubernetes_stress_v1/report.json`.
 

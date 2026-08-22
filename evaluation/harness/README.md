@@ -16,6 +16,12 @@ Codex uses `answer_schema.json` with
 `codex-techdocs-plugin/skills/github-docs-fastctx/SKILL.md`; its runner is
 `kbbench.github_docs_codex_fastctx_eval`.
 
+Provider forwarding is opt-in. Codex accepts an isolated provider-only home
+through `--codex-home`; otherwise it passes `--ignore-user-config`. DSH creates
+a per-run `llm-pi-ai` overlay only when `DSH_OPENAI_BASE_URL` (or the fallback
+`OPENAI_BASE_URL`) is set. Provider mode is logged for every run, but API keys
+remain environment-only.
+
 Before a paired agent comparison, verify that every arm uses the same question
 IDs, requested and actual model, answer schema, timeout, non-KB plugin
 inventory, and machine. The primary ranking is the final ordered `sources`

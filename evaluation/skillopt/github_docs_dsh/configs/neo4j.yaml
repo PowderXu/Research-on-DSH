@@ -38,8 +38,8 @@ split_mode: split_dir
 split_dir: evaluation/skillopt/github_docs_v2_split
 arm: neo4j
 corpus_path: evaluation/github_docs_v2/corpus.jsonl
-dsh_binary: dsh-techdocs-plugin/node_modules/.bin/dsh
-dsh_home: .dsh-trial
+dsh_binary: node_modules/.bin/dsh
+dsh_home: dsh_home
 workspace: data/github-docs/content
 model_patch: dsh-techdocs-plugin/trial-openai.patch.yml
 common_patch: evaluation/harness/github_docs_dsh_common.patch.yml

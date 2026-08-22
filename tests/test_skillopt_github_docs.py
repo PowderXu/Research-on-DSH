@@ -19,7 +19,13 @@ if str(PROJECT_ROOT / "scripts") not in sys.path:
 from kbbench.skillopt_github_docs.dataloader import GitHubDocsDshDataLoader
 from kbbench.skillopt_github_docs.adapter import GitHubDocsDshAdapter
 from kbbench.skillopt_github_docs.credentials import load_openai_key_from_configured_env
-from kbbench.skillopt_github_docs.rollout import run_batch
+from kbbench.skillopt_github_docs.rollout import (
+    DshCommandConfig,
+    _dsh_gateway_url,
+    _dsh_invocation,
+    _write_dsh_gateway_patch,
+    run_batch,
+)
 from kbbench.skillopt_github_docs.scorer import (
     GitHubDocsSourceResolver,
     score_ranked_sources,
@@ -207,3 +213,68 @@ def test_credential_bridge_parses_env_as_data(tmp_path: Path, monkeypatch) -> No
     assert load_openai_key_from_configured_env()
     assert __import__("os").environ["OPENAI_API_KEY"] == "test-secret"
     assert __import__("os").environ["AZURE_OPENAI_API_KEY"] == "test-secret"
+
+
+def test_dsh_invocation_uses_default_provider_unless_gateway_is_configured(
+    tmp_path: Path,
+) -> None:
+    config = DshCommandConfig(
+        arm="hybrid",
+        dsh_binary=tmp_path / "dsh",
+        dsh_home=tmp_path / "dsh-home",
+        workspace=tmp_path / "workspace",
+        model_patch=tmp_path / "model.patch.yml",
+        common_patch=tmp_path / "common.patch.yml",
+        arm_patch=tmp_path / "arm.patch.yml",
+    )
+    item = {"id": "q1", "question": "question"}
+    candidate = tmp_path / "candidate.patch.yml"
+    config.model_patch.write_text(
+        """- id: agent-default-model
+  config:
+    provider: openai
+    model: gpt-test
+- id: llm-pi-ai
+  config:
+    providers:
+      openai:
+        apiKeyEnv: OPENAI_API_KEY
+        models:
+          - id: gpt-test
+            contextWindow: 1000
+            maxTokens: 100
+""",
+        encoding="utf-8",
+    )
+
+    assert _dsh_gateway_url({}) == ""
+    assert _write_dsh_gateway_patch(tmp_path, "", config.model_patch) is None
+    default_command = _dsh_invocation(config, item, candidate, None)
+    assert "provider-model.patch.yml" not in " ".join(default_command)
+
+    gateway_url = "https://gateway.example/v1"
+    assert _dsh_gateway_url({"OPENAI_BASE_URL": gateway_url}) == gateway_url
+    assert (
+        _dsh_gateway_url(
+            {
+                "OPENAI_BASE_URL": "https://fallback.example/v1",
+                "DSH_OPENAI_BASE_URL": gateway_url,
+            }
+        )
+        == gateway_url
+    )
+    gateway_patch = _write_dsh_gateway_patch(
+        tmp_path, gateway_url, config.model_patch
+    )
+    assert gateway_patch is not None
+    gateway_document = __import__("yaml").safe_load(
+        gateway_patch.read_text(encoding="utf-8")
+    )
+    provider = next(row for row in gateway_document if row["id"] == "llm-pi-ai")
+    openai = provider["config"]["providers"]["openai"]
+    assert openai["baseURL"] == gateway_url
+    assert openai["apiKeyEnv"] == "OPENAI_API_KEY"
+    assert openai["models"][0]["id"] == "gpt-test"
+    custom_command = _dsh_invocation(config, item, candidate, gateway_patch)
+    assert str(gateway_patch.resolve()) in custom_command
+    assert str(config.model_patch.resolve()) not in custom_command
