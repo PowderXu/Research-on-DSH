@@ -8,11 +8,8 @@ import pytest
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-SKILLOPT_ROOT = PROJECT_ROOT / "vendor" / "SkillOpt"
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
-if str(SKILLOPT_ROOT) not in sys.path:
-    sys.path.insert(0, str(SKILLOPT_ROOT))
 if str(PROJECT_ROOT / "scripts") not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT / "scripts"))
 
@@ -30,6 +27,11 @@ from kbbench.skillopt_github_docs.scorer import (
     GitHubDocsSourceResolver,
     score_ranked_sources,
 )
+from kbbench.skillopt_github_docs.upstream import (
+    SKILLOPT_VERSION,
+    load_skillopt_cli,
+    register_environment,
+)
 from kbbench.skillopt_github_docs.validation import (
     SkillCandidateError,
     load_leakage_markers,
@@ -40,6 +42,22 @@ from materialize_github_docs_skillopt_split import build_split
 
 SPLIT_DIR = PROJECT_ROOT / "evaluation" / "skillopt" / "github_docs_v2_split"
 CORPUS = PROJECT_ROOT / "evaluation" / "github_docs_v2" / "corpus.jsonl"
+
+
+@pytest.mark.parametrize("command", ["train", "eval_only"])
+def test_installed_skillopt_cli_accepts_local_adapter(command: str) -> None:
+    module = load_skillopt_cli(command)
+    registry = module._ENV_REGISTRY
+    previous = registry.get("github_docs_dsh")
+    try:
+        register_environment(module, "github_docs_dsh", GitHubDocsDshAdapter)
+        assert registry["github_docs_dsh"] is GitHubDocsDshAdapter
+        assert SKILLOPT_VERSION == "0.2.0"
+    finally:
+        if previous is None:
+            registry.pop("github_docs_dsh", None)
+        else:
+            registry["github_docs_dsh"] = previous
 
 
 def test_frozen_split_preserves_original_test_and_category_coverage() -> None:

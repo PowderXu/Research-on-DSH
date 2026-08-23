@@ -31,8 +31,8 @@ The plugin-level system path and SkillOpt adapter are now implemented. This is n
 | Hybrid plugin service | Complete | BM25 + HNSW + RRF at `/v1/search` and evidence fetch at `/v1/fetch` |
 | Neo4j plugin service | Complete | the same hybrid seed search plus explicit `/v1/expand` over typed, bounded relations |
 | SkillOpt adapter | Complete | real DSH subprocess rollout, candidate overlay, trace capture, external qrel scoring, and fail-closed validation |
-| Microsoft SkillOpt pin | Complete | vendored at commit `da06b157cb9878e378663ee1ecf429c83fe1a8f9` |
-| Unit/contract tests | Complete | 57 Node tests and 15 Python tests |
+| Microsoft SkillOpt pin | Complete | PyPI package `skillopt==0.2.0` |
+| Unit/contract tests | Complete | 57 Node tests and 34 Python tests |
 | Full frozen real-model test | Not run | requires completion of arm-specific optimization and a deliberate final budget allocation |
 
 The system evaluator now invokes DSH and its loaded tools. The older `kbbench/github_docs_three_arm_eval.py` remains a provider/direct-backend research runner and must not be used as evidence for the final DSH system comparison.
@@ -321,9 +321,9 @@ Community detection is not added to this skill or backend unless a separate benc
 
 ## SkillOpt integration
 
-Use the official [Microsoft SkillOpt](https://github.com/microsoft/SkillOpt) research workflow, pinned to an exact commit. SkillOpt treats the Markdown skill as trainable text, obtains target-agent trajectories, proposes bounded edits, and accepts candidates through held-out validation gating.
+Use the official [Microsoft SkillOpt](https://github.com/microsoft/SkillOpt) research workflow, pinned to `skillopt==0.2.0`. SkillOpt treats the Markdown skill as trainable text, obtains target-agent trajectories, proposes bounded edits, and accepts candidates through held-out validation gating.
 
-SkillOpt is vendored at the pinned commit above and is loaded by the two wrapper scripts. The project runtime is `../.venv/bin/python`; `.venv-skillopt` is not the active runtime. The wrappers register the local `github_docs_dsh` adapter without modifying the vendored SkillOpt source.
+The two wrapper scripts load SkillOpt's installed CLI entry points and register the local `github_docs_dsh` adapter through a version-checked compatibility boundary. The project runtime is `../.venv/bin/python`; `.venv-skillopt` is not the active runtime. No upstream source is copied or modified in this repository.
 
 SkillOpt 0.2.0 currently has a configuration-flattening conflict when an inherited structured YAML contains an `env:` mapping and the flattened configuration also expects `env` to be a scalar adapter name. The checked-in arm configurations are intentionally flat YAML files to avoid that upstream incompatibility.
 

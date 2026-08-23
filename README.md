@@ -89,6 +89,10 @@ DSH package family at `0.1.1-rc.2`. `npm run verify:dsh` rejects mismatches
 between the root runtime, plugin manifest/lockfile, installed packages, and
 headless profile.
 
+Microsoft SkillOpt is installed from PyPI as the exact `skillopt==0.2.0`
+dependency included by the `test`, `optimizer`, and `all` extras. Its source is
+not copied into this repository.
+
 The normalized corpus is bundled, so retrieval evaluation does not require a
 second repository checkout. The filesystem and Codex/FastCtx arms need raw
 Markdown; prepare the pinned source with:
@@ -121,7 +125,6 @@ codex-techdocs-plugin/              matched Codex + FastCtx skill
 evaluation/harness/                 arm-specific DSH patches and answer schema
 evaluation/skillopt/                frozen SkillOpt splits and configurations
 results/                            local generated-run contract; payloads ignored
-vendor/SkillOpt/                    pinned third-party optimizer source
 ```
 
 See [`docs/EVALUATION_PROTOCOL.md`](docs/EVALUATION_PROTOCOL.md) for the fair

@@ -36,12 +36,10 @@
     "evidence_structure",
     "qrel_count_group"
   ],
-  "vendored_dependencies": {
-    "microsoft/SkillOpt": "da06b157cb9878e378663ee1ecf429c83fe1a8f9"
-  },
   "runtime_dependencies": {
     "@deepseek-ai/dsh": "0.1.1-rc.2",
     "fastctx": "0.2.5",
+    "skillopt": "0.2.0",
     "npm": "10.9.4"
   },
   "provider_forwarding": "opt-in isolated Codex home or DSH_OPENAI_BASE_URL",
