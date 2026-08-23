@@ -1,9 +1,10 @@
-# DocsQA -- GitHub-Style Docs KB benchmark
+# GitHub Docs knowledge-base benchmark
 
 This repository is now the standalone benchmark for a knowledge base built from
 many small, linked Markdown files. It packages the GitHub Docs corpus, 328 real
 support questions, four agent configurations, retrieval/agent evaluators,
-SkillOpt overlays, and reproducible evaluation entry points.
+external retrieval skills, a PyPI-backed SkillOpt adapter, and reproducible
+evaluation entry points.
 
 ## Benchmark contract
 
@@ -21,7 +22,7 @@ SkillOpt overlays, and reproducible evaluation entry points.
 The qrels are sparse accepted-answer citations. A retrieved page without a qrel
 has zero measured gain, but is unjudged rather than proven irrelevant.
 
-## Four configurations
+## Evaluation arms
 
 | Arm | Harness | Retrieval capability | Instruction artifact |
 |---|---|---|---|
@@ -115,17 +116,31 @@ configuration). DSH uses the official OpenAI endpoint unless
 alias. Keep provider credentials in environment variables, never in the
 benchmark configuration or result files.
 
-## Layout
+## Repository structure
 
 ```text
-dataset/github_docs_kb_benchmark/   portable corpus, questions, qrels, evaluator
-kbbench/                            retrieval, plugin service, agent runners
-dsh-techdocs-plugin/                DSH service/provider/skill plugins
-codex-techdocs-plugin/              matched Codex + FastCtx skill
-evaluation/harness/                 arm-specific DSH patches and answer schema
-evaluation/skillopt/                frozen SkillOpt splits and configurations
-results/                            local generated-run contract; payloads ignored
+dataset/github_docs_kb_benchmark/   canonical portable corpus, qrels, splits, evaluator
+evaluation/github_docs_v2/          compatibility symlinks to the canonical dataset
+evaluation/harness/                 DSH/Codex patches, skills, and answer schema
+evaluation/skillopt/                frozen SkillOpt splits and arm configurations
+kbbench/                            retrievers, services, runners, scoring, SkillOpt adapter
+dsh-techdocs-plugin/                DSH service, provider, tool, and arm-specific skill plugins
+codex-techdocs-plugin/              matched Codex + FastCtx retrieval skill
+dsh_home/                           pinned headless DSH profile and lockfile
+scripts/                            setup, verification, training, evaluation, and analysis CLIs
+tests/                              Python contract and integration tests
+docs/                               evaluation protocol and implementation plans
+results/                            generated-run contract; only its README is tracked
 ```
 
-See [`docs/EVALUATION_PROTOCOL.md`](docs/EVALUATION_PROTOCOL.md) for the fair
-comparison boundary.
+The normalized corpus and frozen question/split files are tracked under
+`dataset/github_docs_kb_benchmark/`. The raw `github/docs` checkout is created
+on demand under the ignored `data/github-docs/` path. Retrieval indexes,
+Neo4j state, model trajectories, optimization checkpoints, and reports are
+also generated locally and are not committed. There is no archived benchmark
+or copied third-party source tree in the current repository.
+
+See [`dataset/github_docs_kb_benchmark/README.md`](dataset/github_docs_kb_benchmark/README.md)
+for the portable dataset contract, [`docs/EVALUATION_PROTOCOL.md`](docs/EVALUATION_PROTOCOL.md)
+for the fair-comparison boundary, and [`results/README.md`](results/README.md)
+for the generated-output layout.
