@@ -1,4 +1,0 @@
-- id: kbbench-skill-github-docs-fs
-  disabled: false
-  config:
-    skillPath: "/Users/oliverxu/Study/kb_retrieval_benchmark/results/skillopt_github_docs_fs_microopt1/steps/step_0001/selection_eval/candidate_skills/396261571e40b415be69cbf645db5671c13dab241ebe15d260c3813aa934ec55/skill.md"

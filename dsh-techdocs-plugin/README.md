@@ -56,7 +56,7 @@ DSH_HOME=../dsh_home ../node_modules/.bin/dsh --profile headless \
 
 The pure contract tests need only Node.js. A live DSH test additionally requires the exact `0.1.1-rc.2` package family and a reachable KB service.
 
-For a scored KB-only turn, apply `trial-kb-minimal.patch.yml` after the model-provider patch. It disables unrelated coding-agent tools and prompt sections while preserving `techdocs_search` and `techdocs_fetch`. The held-out stress ablation is recorded in `../results/dsh_kubernetes_stress_v1/report.json`.
+For a scored KB-only turn, apply `trial-kb-minimal.patch.yml` after the model-provider patch. It disables unrelated coding-agent tools and prompt sections while preserving `techdocs_search` and `techdocs_fetch`. Write generated reports beneath `../results/runs/`; they are intentionally ignored by Git.
 
 ## Install after the live runtime is available
 

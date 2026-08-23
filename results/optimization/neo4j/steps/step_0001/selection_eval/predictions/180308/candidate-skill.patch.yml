@@ -1,4 +1,0 @@
-- id: kbbench-skill-github-docs-neo4j
-  disabled: false
-  config:
-    skillPath: "/Users/oliverxu/Study/kb_retrieval_benchmark/results/skillopt_github_docs_neo4j_microopt1/steps/step_0001/selection_eval/candidate_skills/8212decd6af5b607d59b4ac264e37b4d4a3df80d67c05dd6f021c6a5ca147cf8/skill.md"

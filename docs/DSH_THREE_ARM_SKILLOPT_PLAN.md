@@ -518,48 +518,6 @@ Before training, run one real, unscored cost-calibration question per profile an
 
 If the budget is too small, reduce the number of optimization steps or use a smaller frozen train subset. Do not inspect or tune on the frozen test set.
 
-## Real-agent pilot results
-
-These are engineering validation runs, not the final benchmark. They used `gpt-5-mini` with low reasoning and real DSH sessions.
-
-The matched system-performance artifact is `results/github_docs_dsh_system_paired5_v1/report.md`, with machine-readable `report.json` and `per_query.jsonl` beside it. It aggregates only the initial-skill train rollouts and baseline-selection rollouts; candidate-selection trajectories are excluded.
-
-| Run | Result | DSH tool path | Total agent tokens | End-to-end latency |
-|---|---:|---|---:|---:|
-| Filesystem, question `122713` | Hit@10 `0` | `skill → grep → read → read → read` | 53,080 | 22.46 s |
-| Hybrid, question `122713` | Hit@10 `0` | `skill → techdocs_search` | 6,083 | 18.65 s |
-| Neo4j, linked question `26686` | Hit@10 `1`, Recall@10 `0.5`, nDCG@10 `0.2641` | `skill → techdocs_search → techdocs_fetch` | 13,777 | 28.13 s |
-
-The first hybrid trial asked for only six results even though the tool supported ten; the qrel appeared at backend rank eight. The initial hybrid and Neo4j skills now explicitly request `limit: 10`, matching the metric contract.
-
-The graph profile did not invoke `techdocs_expand` on question `26686` because the answer was already supported by its seed results. This is intended conditional behavior. A later graph-opportunity trial exposed and fixed the misleading no-op `allow_graph` search argument described above. The model still declined explicit traversal because the retrieved JWT/private-key pages directly answered the question; forcing traversal only to improve a citation-derived qrel would make the operational policy worse.
-
-The official SkillOpt micro-pilots used the same bounded view of three training and two validation questions for every arm. Because SkillOpt evaluates both the baseline and candidate on validation, each job ran seven DSH episodes: three train, two baseline-selection, and two candidate-selection episodes.
-
-| Arm | Train hard / soft | Baseline validation soft | Candidate validation soft | Gate | DSH-agent tokens | Optimizer tokens | Wall time |
-|---|---:|---:|---:|---|---:|---:|---:|
-| Filesystem | `0.0000 / 0.0000` | `0.4077` | `0.0000` | Reject | 1,453,822 | 4,599 | 212.3 s |
-| Hybrid | `0.6667 / 0.4722` | `0.5000` | `0.5000` | Reject tie | 239,294 | 10,132 | 194.6 s |
-| Neo4j | `0.6667 / 0.5526` | `0.5000` | `0.5000` | Reject tie | 139,289 | 9,853 | 124.0 s |
-
-All three `best_skill.md` files are byte-identical to their corresponding initial skills. The filesystem candidate materially regressed validation. The hybrid candidate mostly duplicated the existing search/fetch checklist. The Neo4j candidate did not improve the registered validation score. Retaining the initial skills is the correct evidence-based result; these micro-pilots validate independent optimization and gating but do not establish a skill lift.
-
-The filesystem token total is dominated by 1,238,784 cached input tokens from repeated broad repository-tool context. That large difference is a system-level observation, not a provider-retrieval result. The Neo4j micro-pilot made no `techdocs_expand` calls on this five-question view, so it cannot be used to estimate graph-expansion lift; the final link-specific evaluation must contain discriminative traversal cases.
-
-### Existing-qrel limitation
-
-The public questions are real GitHub Community questions, and their qrels are resolved from documentation links in accepted answers. They are not exhaustive human relevance judgments against the current pinned corpus. Documentation can move or change after the discussion was answered.
-
-For example, question `122713` links to historical cancellation anchors that now resolve to a general “get started” page, while the current cancellation/refund evidence lives on different pages. Question `49521` asks about a JWT signature failure, but its single accepted-answer qrel is an installation-access-token page; the agent answered from the current JWT and private-key pages and therefore scored zero.
-
-Consequences:
-
-- qrel Hit/Recall/nDCG remain valid measures of reproducing accepted-answer citations;
-- they are not, by themselves, complete measures of current answer correctness;
-- SkillOpt must not be encouraged to memorize individual qrels;
-- final reporting must separate retrieval score from answer/citation validity and disclose qrel drift;
-- a graph claim should be based on the frozen `linked_multi_page`/relationship subsets plus inspected graph paths, not only the overall mean.
-
 ## Reproducible commands
 
 Materialize the frozen split:
@@ -586,7 +544,7 @@ KBBENCH_OPENAI_ENV_FILE=/path/to/profile-agent/.env \
   --config evaluation/skillopt/github_docs_dsh/configs/hybrid.yaml \
   --skill dsh-techdocs-plugin/skills/hybrid/initial_skill.md \
   --split train \
-  --cfg-options test_env_num=1 out_root=results/hybrid_real
+  --cfg-options test_env_num=1 out_root=results/runs/hybrid_real
 ```
 
 The maintained runtime uses the root `node_modules/.bin/dsh` and the locked
@@ -603,7 +561,7 @@ KBBENCH_OPENAI_ENV_FILE=/path/to/profile-agent/.env \
   --config evaluation/skillopt/github_docs_dsh/configs/hybrid.yaml \
   --train_size 3 --batch_size 3 --minibatch_size 3 \
   --merge_batch_size 3 --sel_env_num 2 --num_epochs 1 --limit 3 \
-  --out_root results/skillopt_github_docs_hybrid_microopt
+  --out_root results/runs/skillopt_github_docs_hybrid_microopt
 ```
 
 `--limit 3` is necessary for a micro-pilot because SkillOpt requires `train_size` to match the loaded training-pool size. It creates an in-memory bounded view and does not rewrite the frozen JSON files. Remove both `--limit 3` and the `train_size=3` override for the configured full training split.

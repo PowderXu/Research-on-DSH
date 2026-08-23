@@ -2,7 +2,10 @@
   "migration_date": "2026-08-21",
   "branch": "feat/github-docs-kb-benchmark",
   "active_benchmark": "GitHub Docs KB retrieval and four-arm agent evaluation",
-  "superseded_benchmark": "archive/swebench_agent_trial",
+  "removed_payloads": [
+    "superseded SWE-bench benchmark",
+    "raw benchmark, diagnostic, and optimization results"
+  ],
   "dataset": {
     "repository": "https://github.com/github/docs.git",
     "commit": "c34e3dccad00f61133c799d20e7d1208a0e6cc92",
@@ -42,8 +45,8 @@
     "npm": "10.9.4"
   },
   "provider_forwarding": "opt-in isolated Codex home or DSH_OPENAI_BASE_URL",
-  "reference_results": {
-    "retrieval_test_246": "results/reference/retrieval_v2/report.json",
-    "agent_pilot_5_normalized": "results/reference/agent_pilot5/normalized/report.json"
+  "results": {
+    "historical_summary": "README.md#reference-result-tables",
+    "generated_output_root": "results/runs"
   }
 }

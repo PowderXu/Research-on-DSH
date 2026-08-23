@@ -3,11 +3,7 @@
 This repository is now the standalone benchmark for a knowledge base built from
 many small, linked Markdown files. It packages the GitHub Docs corpus, 328 real
 support questions, four agent configurations, retrieval/agent evaluators,
-SkillOpt overlays, and the existing result evidence.
-
-The previous SWE-bench coding-agent experiment is preserved under
-[`archive/swebench_agent_trial`](archive/swebench_agent_trial/README.md); it is
-not part of the default commands.
+SkillOpt overlays, and reproducible evaluation entry points.
 
 ## Benchmark contract
 
@@ -38,6 +34,43 @@ For an agent-level comparison, keep the model, question order, non-KB tools,
 answer schema, token limit, and machine fixed. Only the KB plugin and its
 retrieval-specific skill may vary. Retrieval-only experiments and agent-level
 experiments are reported separately.
+
+## Reference result tables
+
+The deterministic retrieval run evaluated all 246 held-out test questions.
+These scores compare KB architectures, not DSH and Codex as agents.
+
+| Method | Recall@10 | Hit@10 | nDCG@10 | p50 retrieval |
+|---|---:|---:|---:|---:|
+| BM25 | 0.381 | 0.415 | 0.243 | 3.80 ms |
+| HNSW | 0.470 | 0.524 | 0.306 | 17.33 ms |
+| BM25 + HNSW RRF | 0.493 | 0.537 | 0.337 | 17.34 ms |
+| Hybrid + conditional explicit-link expansion | 0.503 | 0.545 | 0.349 | 19.42 ms |
+| Hybrid + always-on explicit-link expansion | 0.518 | 0.561 | 0.355 | 19.49 ms |
+| Pure routing + BM25 | 0.288 | 0.321 | 0.196 | 3.83 ms |
+
+Hybrid retrieval is the strongest foundation in this run. Explicit Markdown-
+link expansion adds a small measured lift at about two milliseconds of median
+local retrieval time. Sparse accepted-answer qrels mean an unjudged retrieved
+page is not necessarily irrelevant, and this result alone does not justify
+always-on graph traversal in production.
+
+The real-agent integration pilot used five single-qrel questions. Its primary
+metrics score each agent's final ordered sources.
+
+| Arm | Hit@10 | nDCG@10 | p50 end-to-end | Tokens / QA |
+|---|---:|---:|---:|---:|
+| DSH filesystem | 0.600 | 0.377 | 35.01 s | 193,230 |
+| DSH hybrid | 0.600 | 0.312 | 29.82 s | 36,793 |
+| DSH Neo4j | 0.200 | 0.126 | 18.41 s | 15,367 |
+| Codex + FastCtx | 0.200 | 0.200 | 34.95 s | 146,444 |
+
+Do not rank the systems from this pilot. Five questions are insufficient, none
+requires linked multi-page traversal, the Neo4j agent made no expansion call,
+and Codex used `gpt-5.4-mini` while DSH used `gpt-5-mini`. The table verifies
+the four execution paths; it is not evidence of a general harness ranking.
+Raw trajectories, predictions, optimization checkpoints, and diagnostics are
+intentionally not committed. New runs write beneath `results/runs/`.
 
 ## Quick verification
 
@@ -87,12 +120,9 @@ dsh-techdocs-plugin/                DSH service/provider/skill plugins
 codex-techdocs-plugin/              matched Codex + FastCtx skill
 evaluation/harness/                 arm-specific DSH patches and answer schema
 evaluation/skillopt/                frozen SkillOpt splits and configurations
-results/reference/                  imported retrieval and real-agent evidence
-results/optimization/               SkillOpt trajectories and selected skills
-results/diagnostics/                failed gates and development-only evidence
-archive/swebench_agent_trial/       superseded standalone benchmark
+results/                            local generated-run contract; payloads ignored
+vendor/SkillOpt/                    pinned third-party optimizer source
 ```
 
 See [`docs/EVALUATION_PROTOCOL.md`](docs/EVALUATION_PROTOCOL.md) for the fair
-comparison boundary and [`docs/RESULTS.md`](docs/RESULTS.md) for what the
-existing results do—and do not—show.
+comparison boundary.

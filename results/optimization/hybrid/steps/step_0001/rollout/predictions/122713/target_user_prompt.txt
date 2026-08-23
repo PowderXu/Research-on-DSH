@@ -1,6 +1,0 @@
-GITHUB DOCS DSH RETRIEVAL EVAL 122713 (hybrid). Load and follow the installed GitHub Docs retrieval skill before searching. Use only the pinned local documentation corpus and the tools available in this profile. Return exactly one JSON object and no Markdown, with this schema: {"answer":"concise evidence-grounded answer or NOT FOUND","sources":["ordered canonical doc ID or repository .md path"]}. List at most 10 distinct sources in decreasing evidence relevance. Do not invent a source.
-Question:
-Cancel annual subscription
-Select Topic Area
-Question
-I have enrolled to the copilot annual subscription. Can I cancel the subscription while it is available, and will I get back the remaining payment?

@@ -46,4 +46,4 @@ common_patch: evaluation/harness/github_docs_dsh_common.patch.yml
 arm_patch: evaluation/harness/github_docs_fs_system.patch.yml
 exec_timeout: 180
 workers: 1
-out_root: results/skillopt_github_docs_fs
+out_root: results/runs/skillopt_github_docs_fs

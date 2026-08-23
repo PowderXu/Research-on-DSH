@@ -48,7 +48,7 @@ Run the arm:
 
 ```bash
 PYTHONPATH=. ../.venv/bin/python -m kbbench.github_docs_codex_fastctx_eval \
-  --output results/github_docs_codex_fastctx_paired5_v1 \
+  --output results/runs/github_docs_codex_fastctx_paired5_v1 \
   --codex-bin "$(command -v codex)" \
   --fastctx-bin node_modules/.bin/fastctx \
   --model gpt-5.4-mini \
@@ -66,11 +66,11 @@ Generate the four-arm report:
 
 ```bash
 PYTHONPATH=. ../.venv/bin/python -m kbbench.github_docs_dsh_system_report \
-  --fs results/skillopt_github_docs_fs_microopt1 \
-  --hybrid results/skillopt_github_docs_hybrid_microopt2 \
-  --neo4j results/skillopt_github_docs_neo4j_microopt1 \
-  --codex-fastctx results/github_docs_codex_fastctx_paired5_v1 \
-  --out-dir results/github_docs_four_arm_paired5_v1
+  --fs results/runs/skillopt_github_docs_fs_microopt1 \
+  --hybrid results/runs/skillopt_github_docs_hybrid_microopt2 \
+  --neo4j results/runs/skillopt_github_docs_neo4j_microopt1 \
+  --codex-fastctx results/runs/github_docs_codex_fastctx_paired5_v1 \
+  --out-dir results/runs/github_docs_four_arm_paired5_v1
 ```
 
 ## Metrics
@@ -86,20 +86,10 @@ Latency is end-to-end agent p50. Tokens include fresh input, cached input, and
 output. Tool-call counts are trace-derived. Every official Codex episode must
 have at least one FastCtx call, no FastCtx errors, and zero shell commands.
 
-## Five-question result
+## Reference result location
 
-| Arm | Visible Hit@10 | Visible nDCG@10 | Citation Hit@10 | Citation nDCG@10 | p50 latency | Tokens / QA |
-|---|---:|---:|---:|---:|---:|---:|
-| DSH filesystem | 0.200 | 0.126 | 0.600 | 0.377 | 35.01 s | 193,230 |
-| DSH hybrid | 0.600 | 0.367 | 0.600 | 0.312 | 29.82 s | 36,793 |
-| DSH Neo4j profile | 0.600 | 0.463 | 0.200 | 0.126 | 18.41 s | 15,367 |
-| Codex + FastCtx | 0.000 | 0.000 | 0.200 | 0.200 | 34.95 s | 146,444 |
-
-All five Codex episodes completed, used FastCtx, and made zero shell calls.
-FastCtx therefore worked as the intended MCP filesystem backend, but it did not
-improve retrieval accuracy in this pilot. It reduced tokens relative to the
-DSH filesystem arm while remaining far more expensive than the indexed DSH
-arms.
+The consolidated historical table is in the repository root `README.md`. Raw
+pilot outputs are intentionally not bundled.
 
 ## Interpretation boundary
 
