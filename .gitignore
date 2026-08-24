@@ -1,6 +1,7 @@
 .env
 .venv/
 node_modules/
+dsh_plugin/plugin/lib/
 /data/
 evaluation/dataset/raw/
 results/runs/

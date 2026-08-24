@@ -17,6 +17,27 @@ versioned Markdown artifacts so instructions can be reviewed or edited without
 changing tool schemas or retrieval code. No optimizer-generated skill copies are
 created.
 
+## Source, build, and profile boundary
+
+The DSH package is implemented in `dsh_plugin/plugin/src/*.ts`. It does not ask
+the profile loader to execute TypeScript or repository-source paths:
+
+```text
+typed source
+  -> strict no-emit check and TypeScript tests
+  -> tsc emission in lib/types (JS + declarations)
+  -> tsdown public bundles in lib
+  -> package exports
+  -> headless DSH profile
+  -> common patch + exactly one arm patch
+```
+
+This separation keeps authoring types, package declarations, runtime code, and
+evaluation activation independently inspectable. The main plugin injects only
+`tools`; each skill entry injects only `skills`. Search/fetch/expand are defined
+with DSH's typed `defineTool` contract, including mandatory structured output
+rendering and forwarding the DSH cancellation signal to the backend request.
+
 ## Tool boundary
 
 The hybrid and Neo4j arms use a thin native DSH adapter:

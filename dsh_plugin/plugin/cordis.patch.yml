@@ -2,8 +2,6 @@
     - id: kbbench-techdocs
       name: '@deepseek-ai/cordis-plugin-group'
       group: true
-      isolate:
-        techdocsKb: true
       config:
         - id: kbbench-techdocs-runtime
           name: '@kbbench/dsh-techdocs'

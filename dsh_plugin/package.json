@@ -2,15 +2,18 @@
   "name": "github-docs-kb-benchmark-runtime",
   "version": "0.2.0",
   "private": true,
+  "type": "module",
   "description": "Pinned DeepSeek Harness runtime for the GitHub Docs KB benchmark",
   "packageManager": "npm@10.9.4",
   "engines": {
     "node": "^22.19.0 || >=24"
   },
   "scripts": {
-    "setup:dsh-profile": "npm ci --prefix dsh_home/profiles/headless",
-    "check:dsh-dependencies": "node scripts/check_dependencies.mjs",
-    "test:plugin": "node --test plugin/*.test.mjs",
+    "install:plugin": "npm ci --prefix plugin --ignore-scripts --legacy-peer-deps",
+    "build:plugin": "npm run --prefix plugin build",
+    "setup:dsh-profile": "npm run install:plugin && npm run build:plugin && npm ci --prefix dsh_home/profiles/headless",
+    "check:dsh-dependencies": "node --experimental-strip-types scripts/check_dependencies.ts",
+    "test:plugin": "npm test --prefix plugin",
     "verify:dsh": "npm run check:dsh-dependencies && npm run test:plugin"
   },
   "dependencies": {

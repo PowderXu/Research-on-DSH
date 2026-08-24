@@ -1,22 +1,45 @@
-export function normalizeSearchResponse(value, resourceRoot) {
-  if (!value || typeof value !== "object" || !Array.isArray(value.results)) {
+export interface SearchResult {
+  readonly sourceId: string;
+  readonly uri: string;
+  readonly title: string;
+  readonly section: string;
+  readonly snippet: string;
+  readonly score: number;
+  readonly signals: readonly string[];
+  readonly expandedFrom: readonly string[];
+  readonly repoPath: string;
+  readonly commit: string;
+  readonly lineStart: number | null;
+  readonly lineEnd: number | null;
+  readonly targetKind: string;
+}
+
+export interface SearchResponse {
+  readonly queryId: string;
+  readonly results: readonly SearchResult[];
+  readonly trace: Readonly<Record<string, unknown>>;
+  readonly evidenceText: string;
+}
+
+export function normalizeSearchResponse(value: unknown, resourceRoot: string): SearchResponse {
+  if (!isRecord(value) || !Array.isArray(value.results)) {
     throw new Error("KB service returned an invalid search response");
   }
   const results = value.results
     .map(normalizeResult)
     .filter(result => result.uri === resourceRoot || result.uri.startsWith(`${resourceRoot}/`));
-  return {
+  return Object.freeze({
     queryId: String(value.queryId || ""),
-    results,
-    trace: value.trace && typeof value.trace === "object" ? value.trace : {},
+    results: Object.freeze(results),
+    trace: isRecord(value.trace) ? Object.freeze({ ...value.trace }) : Object.freeze({}),
     evidenceText: typeof value.evidenceText === "string" ? value.evidenceText : "",
-  };
+  });
 }
 
-export function renderEvidence(response, tokenBudget) {
+export function renderEvidence(response: SearchResponse, tokenBudget: number): string {
   if (response.evidenceText) return response.evidenceText;
   const characterBudget = Math.max(400, Number(tokenBudget || 0) * 4);
-  const blocks = [];
+  const blocks: string[] = [];
   let used = 0;
   for (const [index, result] of response.results.entries()) {
     let block = [
@@ -48,42 +71,50 @@ export function renderEvidence(response, tokenBudget) {
   ].join("\n\n");
 }
 
-function normalizeResult(item) {
-  if (!item || typeof item !== "object") throw new Error("Invalid result item");
+function normalizeResult(item: unknown): SearchResult {
+  if (!isRecord(item)) throw new Error("Invalid result item");
   const uri = String(item.uri || "");
   if (!uri.startsWith("viking://")) throw new Error("Result URI must use viking://");
-  return {
+  return Object.freeze({
     sourceId: String(item.sourceId || uri),
     uri,
     title: String(item.title || ""),
     section: String(item.section || ""),
     snippet: String(item.snippet || ""),
     score: finiteScore(item.score),
-    signals: Array.isArray(item.signals) ? item.signals.map(String) : [],
-    expandedFrom: Array.isArray(item.expandedFrom) ? item.expandedFrom.map(String) : [],
+    signals: stringArray(item.signals),
+    expandedFrom: stringArray(item.expandedFrom),
     repoPath: String(item.repoPath || ""),
     commit: String(item.commit || ""),
     lineStart: positiveInteger(item.lineStart),
     lineEnd: positiveInteger(item.lineEnd),
     targetKind: String(item.targetKind || "document"),
-  };
+  });
 }
 
-function finiteScore(value) {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function stringArray(value: unknown): readonly string[] {
+  return Object.freeze(Array.isArray(value) ? value.map(String) : []);
+}
+
+function finiteScore(value: unknown): number {
   const score = Number(value);
   return Number.isFinite(score) ? score : 0;
 }
 
-function escapeAttribute(value) {
-  return String(value).replaceAll("&", "&amp;").replaceAll('"', "&quot;");
+function escapeAttribute(value: string): string {
+  return value.replaceAll("&", "&amp;").replaceAll('"', "&quot;");
 }
 
-function positiveInteger(value) {
+function positiveInteger(value: unknown): number | null {
   const parsed = Math.round(Number(value));
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
-function lineSuffix(start, end) {
+function lineSuffix(start: number | null, end: number | null): string {
   if (!start) return "";
   return end && end !== start ? `:${start}-${end}` : `:${start}`;
 }

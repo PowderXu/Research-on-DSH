@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { resolveConfig } from "./config.mjs";
+import { resolveConfig } from "../src/config.ts";
 
 test("configuration enforces a technical-resource root and bounded evidence", () => {
   const config = resolveConfig({ resultLimit: 99, evidenceTokenBudget: 1 });

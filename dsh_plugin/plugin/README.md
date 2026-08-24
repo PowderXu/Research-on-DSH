@@ -19,8 +19,34 @@ the local Python backend, while DSH owns tool registration, skill selection,
 context exposure, session traces, and agent execution.
 
 ```bash
-npm test
+npm ci --prefix dsh_plugin
+npm run --prefix dsh_plugin setup:dsh-profile
+npm run --prefix dsh_plugin verify:dsh
 ```
+
+Run these commands from the repository root. The outer DSH install provides the
+host-side peer graph; `setup:dsh-profile` installs this package's build tools,
+builds it, and connects it to the pinned profile.
+
+## TypeScript package layout
+
+```text
+src/index.ts            runtime plugin entry and Cordis configuration
+src/tools.ts            typed DSH tool definitions
+src/service.ts          abortable HTTP boundary
+src/evidence.ts         scoped evidence normalization and rendering
+src/skill-loader.ts     validated Markdown-skill registration
+src/skill-*.ts          one public plugin entry per evaluation arm
+test/*.test.ts          strict TypeScript tests
+skills/*/*.md           authored model instructions
+lib/*.js                generated DSH runtime entries and shared chunks
+lib/types/*.d.ts        generated consumer declarations
+```
+
+The build is deliberately two-stage. `tsc -b` is the only TypeScript
+transformer and owns declarations in `lib/types/`; `tsdown` reads that emitted
+JavaScript and creates the published ESM entries in `lib/`. The package's
+`main`, `types`, and conditional `exports` never point at `src/`.
 
 See `SERVICE_CONTRACT.md`, `GRAPH_SCHEMA.md`, and
 `../../docs/PLUGIN_DESIGN.md`.

@@ -3,23 +3,30 @@
   "version": "0.1.0",
   "description": "Native DeepSeek Harness retrieval tools and skills for linked technical documentation",
   "type": "module",
-  "main": "index.mjs",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
   "exports": {
-    ".": "./index.mjs",
-    "./skill-fs": "./skill-fs.mjs",
-    "./skill-hybrid": "./skill-hybrid.mjs",
-    "./skill-neo4j": "./skill-neo4j.mjs"
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./skill-fs": {
+      "types": "./lib/types/skill-fs.d.ts",
+      "default": "./lib/skill-fs.js"
+    },
+    "./skill-hybrid": {
+      "types": "./lib/types/skill-hybrid.d.ts",
+      "default": "./lib/skill-hybrid.js"
+    },
+    "./skill-neo4j": {
+      "types": "./lib/types/skill-neo4j.d.ts",
+      "default": "./lib/skill-neo4j.js"
+    },
+    "./package.json": "./package.json"
   },
   "files": [
-    "index.mjs",
-    "config.mjs",
-    "service.mjs",
-    "tools.mjs",
-    "evidence.mjs",
-    "skill-loader.mjs",
-    "skill-fs.mjs",
-    "skill-hybrid.mjs",
-    "skill-neo4j.mjs",
+    "lib/*.js",
+    "lib/types/**/*.d.ts",
     "skills",
     "cordis.patch.yml",
     "README.md",
@@ -32,20 +39,29 @@
     }
   },
   "scripts": {
-    "test": "node --test *.test.mjs"
+    "build": "tsc -b && tsdown",
+    "typecheck": "tsc -p tsconfig.test.json",
+    "test": "npm run typecheck && node --experimental-strip-types --test test/*.test.ts",
+    "prepare": "npm run build"
+  },
+  "dependencies": {
+    "@deepseek-ai/schemastery": "3.18.1"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
-    "@deepseek-ai/dsh-llm": "0.1.1-rc.2",
+    "@deepseek-ai/dsh-skill": "0.1.1-rc.2",
     "@deepseek-ai/dsh-tools": "0.1.1-rc.2"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
-    "@deepseek-ai/dsh-llm": "0.1.1-rc.2",
-    "@deepseek-ai/dsh-tools": "0.1.1-rc.2"
+    "@deepseek-ai/dsh-skill": "0.1.1-rc.2",
+    "@deepseek-ai/dsh-tools": "0.1.1-rc.2",
+    "@types/node": "^22.20.0",
+    "tsdown": "^0.22.2",
+    "typescript": "^6.0.3"
   },
   "engines": {
-    "node": "^22.19.0 || >=24"
+    "node": "^22.19.0 || >=24.0.0"
   },
   "license": "Apache-2.0"
 }

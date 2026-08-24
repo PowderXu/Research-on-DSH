@@ -11,6 +11,23 @@ evaluation/   dataset construction plus KB/retrieval evaluation
 dsh_plugin/   DSH package, skills, profile, backend, and agent evaluation
 ```
 
+The native DSH code is TypeScript source, not directly loaded source files. Its
+build and load path is:
+
+```text
+dsh_plugin/plugin/src/*.ts
+  -> strict TypeScript check + TypeScript tests
+  -> tsc emits JavaScript and declarations to plugin/lib/types/
+  -> tsdown bundles four public ESM entries to plugin/lib/*.js
+  -> the headless DSH profile loads only the compiled lib entries
+  -> an arm patch enables one skill and the matching tool inventory
+```
+
+`plugin/lib/` is generated and ignored. `setup:dsh-profile` installs the plugin
+toolchain, builds those artifacts, and only then refreshes the local DSH
+profile, so a clean checkout follows the same path as the installed package.
+See [dsh_plugin/README.md](dsh_plugin/README.md) for the full source tree.
+
 The reference dataset contains 3,740 canonical GitHub Docs pages pinned at
 commit `c34e3dccad00f61133c799d20e7d1208a0e6cc92`, 328 real GitHub Community
 questions, and 421 accepted-answer page citations. The fixed split is 55 train,

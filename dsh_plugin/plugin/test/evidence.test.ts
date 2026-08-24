@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { normalizeSearchResponse, renderEvidence } from "./evidence.mjs";
+import { normalizeSearchResponse, renderEvidence } from "../src/evidence.ts";
 
 test("out-of-scope hits never enter technical evidence", () => {
   const response = normalizeSearchResponse({
