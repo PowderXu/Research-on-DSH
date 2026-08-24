@@ -51,5 +51,8 @@ transformer and owns declarations in `lib/types/`; `tsdown` reads that emitted
 JavaScript and creates the published ESM entries in `lib/`. The package's
 `main`, `types`, and conditional `exports` never point at `src/`.
 
-See `SERVICE_CONTRACT.md`, `GRAPH_SCHEMA.md`, and
-`../../docs/PLUGIN_DESIGN.md`.
+Continue with the [service contract](SERVICE_CONTRACT.md), the
+[Neo4j graph schema](GRAPH_SCHEMA.md), and the
+[system-level plugin design](../../docs/PLUGIN_DESIGN.md). The parent
+[DSH README](../README.md#documentation-map) explains how their responsibilities
+differ and which one to read first.

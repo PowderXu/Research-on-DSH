@@ -24,6 +24,38 @@ dsh_plugin/
 └── scripts/                     typed build/dependency verification
 ```
 
+## Documentation map
+
+The following files describe different boundaries of DocsQA. They are
+human-facing design documents: DSH does not load them and changing their prose
+does not change runtime behavior.
+
+| Document | What it explains | Read it when |
+|---|---|---|
+| [`plugin/SERVICE_CONTRACT.md`](plugin/SERVICE_CONTRACT.md) | The wire contract between the TypeScript DSH adapter and the local Python backend: health, search, graph expansion, and evidence fetch endpoints; request fields; response envelope; URI scope; evidence budget; and error shape. | Implementing a new backend, changing a tool payload, or debugging an adapter/backend mismatch. |
+| [`plugin/GRAPH_SCHEMA.md`](plugin/GRAPH_SCHEMA.md) | The Neo4j representation: page, chunk, route, reusable-content, and code-entity nodes; allowed relationship types; stored Markdown-link context; degree bounds; one-hop expansion; scoring; and provenance. | Changing graph ingestion or expansion while keeping graph behavior query-blind and evidence-backed. |
+| [`../docs/PLUGIN_DESIGN.md`](../docs/PLUGIN_DESIGN.md) | The system-level architecture: DocsQA as the stable capability, filesystem/hybrid/Neo4j as candidate implementations, DSH plugin and skill roles, build/profile boundaries, tool flow, and evaluation invariants. | Understanding how the entire DSH package is composed or introducing another retrieval candidate. |
+
+These documents deliberately do not duplicate one another:
+
+```text
+PLUGIN_DESIGN.md       selects components and defines their responsibilities
+        |
+        +-- SERVICE_CONTRACT.md defines the DSH <-> backend boundary
+        |
+        +-- GRAPH_SCHEMA.md     defines the Neo4j-only data/traversal boundary
+```
+
+For a first read, start with `PLUGIN_DESIGN.md`, then read
+`SERVICE_CONTRACT.md`. Read `GRAPH_SCHEMA.md` only when working on the Neo4j
+candidate. The `../../docs/PLUGIN_DESIGN.md` spelling seen inside
+`plugin/README.md` is just a relative path: from `dsh_plugin/plugin/`, go up to
+`dsh_plugin/`, go up again to the repository root, and then enter `docs/`.
+
+The actual runtime inputs are `plugin/package.json`, compiled `plugin/lib/*.js`
+exports, `plugin/cordis.patch.yml`, the selected Markdown skill, and the matching
+patch under `harness/`.
+
 The authored skills are `plugin/skills/{fs,hybrid,neo4j}/initial_skill.md`.
 They are loaded directly during integrated evaluation. No SkillOpt optimizer,
 training script, candidate-skill directory, or duplicated optimizer split is
