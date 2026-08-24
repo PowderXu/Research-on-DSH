@@ -82,4 +82,6 @@ evaluation/dataset/prepare_raw.sh
 
 Design details are in [docs/DATASET_DESIGN.md](docs/DATASET_DESIGN.md),
 [docs/PLUGIN_DESIGN.md](docs/PLUGIN_DESIGN.md), and
-[docs/EVALUATION_PROTOCOL.md](docs/EVALUATION_PROTOCOL.md).
+[docs/EVALUATION_PROTOCOL.md](docs/EVALUATION_PROTOCOL.md). Personal research
+thoughts and unresolved questions about the dataset, graph, retrieval, and DSH
+harness are recorded in [TODO.md](TODO.md).
