@@ -42,7 +42,7 @@ def test_direct_rollout_scores_and_persists_one_result(tmp_path: Path) -> None:
             "model_steps": 1,
             "latency_seconds": 0.01,
             "usage": {"total": 10},
-            "tool_sequence": ["skill", "techdocs_search"],
+            "tool_sequence": ["skill", "docsqa_search"],
             "actual_models": ["fake"],
             "conversation": [],
         }

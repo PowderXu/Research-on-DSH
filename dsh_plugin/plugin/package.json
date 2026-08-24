@@ -1,7 +1,7 @@
 {
-  "name": "@kbbench/dsh-techdocs",
+  "name": "@kbbench/dsh-docsqa",
   "version": "0.1.0",
-  "description": "Native DeepSeek Harness retrieval tools and skills for linked technical documentation",
+  "description": "Native DeepSeek Harness DocsQA tools and candidate retrieval skills for linked Markdown documentation",
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
@@ -39,7 +39,7 @@
     }
   },
   "scripts": {
-    "build": "tsc -b && tsdown",
+    "build": "tsc -b && node --experimental-strip-types scripts/clean-runtime.ts && tsdown",
     "typecheck": "tsc -p tsconfig.test.json",
     "test": "npm run typecheck && node --experimental-strip-types --test test/*.test.ts",
     "prepare": "npm run build"

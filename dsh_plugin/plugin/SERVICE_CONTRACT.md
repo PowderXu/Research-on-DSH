@@ -19,7 +19,7 @@ span, snippet, score, and retrieval signals.
 
 Neo4j only. Request fields: `query`, `seed_uris`, `result_limit`, and evidence
 budget. Every seed URI must have been returned under
-`viking://resources/techdocs`. Results preserve `expandedFrom` seed provenance
+`viking://resources/docsqa`. Results preserve `expandedFrom` seed provenance
 and typed path signals.
 
 ## `POST /v1/fetch`

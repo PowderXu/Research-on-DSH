@@ -8,7 +8,7 @@ from typing import Any, Protocol
 from urllib.parse import unquote, urlsplit
 
 
-RESOURCE_ROOT = "viking://resources/techdocs"
+RESOURCE_ROOT = "viking://resources/docsqa"
 
 
 class PluginService(Protocol):
@@ -18,7 +18,7 @@ class PluginService(Protocol):
     def fetch(self, request: dict[str, Any]) -> dict[str, Any]: ...
 
 
-class TechdocsRequestHandler(BaseHTTPRequestHandler):
+class DocsQARequestHandler(BaseHTTPRequestHandler):
     service: PluginService
 
     def do_GET(self) -> None:  # noqa: N802 - stdlib handler API
@@ -114,7 +114,7 @@ def render_evidence_text(
     if not blocks:
         return "No technical-document evidence found."
     return "\n\n".join(
-        [f'<techdocs-evidence query-id="{query_id}">', *blocks, "</techdocs-evidence>"]
+        [f'<docsqa-evidence query-id="{query_id}">', *blocks, "</docsqa-evidence>"]
     )
 
 
@@ -132,5 +132,5 @@ def document_id_from_uri(uri: str) -> str:
         raise ValueError(f"URI must be below {RESOURCE_ROOT}")
     doc_id = unquote(value[len(prefix) :])
     if not doc_id or doc_id.startswith("../") or "/../" in f"/{doc_id}":
-        raise ValueError("invalid technical-document URI")
+        raise ValueError("invalid DocsQA document URI")
     return doc_id

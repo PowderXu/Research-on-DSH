@@ -9,7 +9,7 @@ version: 1
 
 ## Contract
 
-- Use `techdocs_search` for retrieval and `techdocs_fetch` only for URIs returned by search.
+- Use `docsqa_search` for retrieval and `docsqa_fetch` only for URIs returned by search.
 - Treat returned passages as candidate evidence, not automatic truth.
 - Preserve canonical repository paths, headings, versions, and citations. Abstain when evidence is insufficient.
 

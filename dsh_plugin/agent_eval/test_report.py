@@ -12,9 +12,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _row(item_id: str, score: float, *, expand: bool = False) -> dict:
-    tools = ["skill", "techdocs_search"]
+    tools = ["skill", "docsqa_search"]
     if expand:
-        tools.append("techdocs_expand")
+        tools.append("docsqa_expand")
     return {
         "id": item_id,
         "task_type": "multi_page_linked",

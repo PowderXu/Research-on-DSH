@@ -9,6 +9,7 @@ dsh_plugin/
 ├── plugin/
 │   ├── src/                     typed Cordis plugins, tools, client, evidence
 │   ├── test/                    TypeScript contract and registration tests
+│   ├── scripts/                 typed runtime-bundle cleanup
 │   ├── skills/{fs,hybrid,neo4j}/ authored Markdown instructions
 │   ├── lib/                     generated JS, declarations, shared chunks
 │   ├── tsconfig.json            tsc-owned production emission
@@ -52,6 +53,10 @@ src/*.ts --tsc--> lib/types/*.js + lib/types/*.d.ts
   output schema/renderer, cooperative cancellation, and a declared timeout.
 - DSH loads `lib/*.js`; consumers receive declarations from `lib/types/*.d.ts`.
   Source files and generated build metadata are not package entrypoints.
+- Before bundling, a typed cleanup step removes only tsdown-owned top-level
+  `lib/*.js` artifacts. It preserves `lib/types` and TypeScript's incremental
+  state, while preventing an obsolete hashed shared chunk from entering a
+  later package.
 
 This matches the official DSH guidance for
 [plugin structure](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/index.md),

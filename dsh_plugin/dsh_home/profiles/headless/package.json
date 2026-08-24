@@ -3,14 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@kbbench/dsh-techdocs": "file:../../../plugin"
+    "@kbbench/dsh-docsqa": "file:../../../plugin"
   },
   "dsh": {
     "profile": {
       "bundles": [
         "@deepseek-ai/dsh-base",
         "@deepseek-ai/dsh-headless",
-        "@kbbench/dsh-techdocs"
+        "@kbbench/dsh-docsqa"
       ]
     }
   }

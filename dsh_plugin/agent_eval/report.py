@@ -131,7 +131,7 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
         0.0 if row.get("agent_ok") else 1.0 for row in rows
     )
     result["graph_application_rate"] = statistics.fmean(
-        1.0 if "techdocs_expand" in (row.get("tool_sequence") or []) else 0.0
+        1.0 if "docsqa_expand" in (row.get("tool_sequence") or []) else 0.0
         for row in rows
     )
     result["models"] = sorted(
@@ -237,10 +237,10 @@ def build_report(
         )
     neo4j_rows = by_arm.get("neo4j") or []
     if neo4j_rows and not any(
-        "techdocs_expand" in (row.get("tool_sequence") or []) for row in neo4j_rows
+        "docsqa_expand" in (row.get("tool_sequence") or []) for row in neo4j_rows
     ):
         limitations.append(
-            "The Neo4j arm made no techdocs_expand calls, so its result does not test graph traversal."
+            "The Neo4j arm made no docsqa_expand calls, so its result does not test graph traversal."
         )
     if model_mismatch:
         limitations.append(

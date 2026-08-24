@@ -35,6 +35,10 @@ questions, and 421 accepted-answer page citations. The fixed split is 55 train,
 
 ## Three DSH arms
 
+**DocsQA** is the proposed system and evaluation umbrella, not one retrieval
+algorithm. The filesystem, hybrid, and Neo4j arms below are candidate DocsQA
+implementations evaluated behind the same DSH agent contract.
+
 | Arm | Retrieval capability | Authored skill |
 |---|---|---|
 | Filesystem | bounded DSH filesystem search and read | `skills/fs/initial_skill.md` |
@@ -42,7 +46,7 @@ questions, and 421 accepted-answer page citations. The fixed split is 55 train,
 | Neo4j | hybrid seeds plus bounded typed graph expansion | `skills/neo4j/initial_skill.md` |
 
 The filesystem arm uses official DSH filesystem tools. Hybrid and Neo4j expose
-native `techdocs_search`, `techdocs_fetch`, and optional `techdocs_expand` tools
+native `docsqa_search`, `docsqa_fetch`, and optional `docsqa_expand` tools
 through a local backend. The three authored skill files are versioned directly;
 there is no SkillOpt training or optimization layer.
 

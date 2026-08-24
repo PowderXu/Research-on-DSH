@@ -22,7 +22,7 @@ export type FetchImplementation = (
   init?: RequestInit,
 ) => Promise<HttpResponse>;
 
-export class TechdocsService {
+export class DocsQAService {
   readonly config: ResolvedConfig;
   private readonly fetchImplementation: FetchImplementation;
 

@@ -9,7 +9,7 @@ version: 1
 
 ## Contract
 
-- Begin with `techdocs_search`; use `techdocs_expand` only from returned seed URIs and `techdocs_fetch` only for returned URIs.
+- Begin with `docsqa_search`; use `docsqa_expand` only from returned seed URIs and `docsqa_fetch` only for returned URIs.
 - Every expanded result must preserve its seed, typed edge, target, and evidence context.
 - A graph path is a discovery reason, not proof. Verify the target passage before citing it.
 - Cite canonical pages and headings. Abstain when the evidence does not support the claim.

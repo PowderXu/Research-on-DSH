@@ -46,8 +46,8 @@ const DEFAULT_SKILL_URLS: Readonly<Record<SkillArm, URL>> = Object.freeze({
 
 const REQUIRED_TOOL_NAMES: Readonly<Record<SkillArm, readonly string[]>> = Object.freeze({
   fs: Object.freeze(["grep", "read"]),
-  hybrid: Object.freeze(["techdocs_search", "techdocs_fetch"]),
-  neo4j: Object.freeze(["techdocs_search", "techdocs_expand", "techdocs_fetch"]),
+  hybrid: Object.freeze(["docsqa_search", "docsqa_fetch"]),
+  neo4j: Object.freeze(["docsqa_search", "docsqa_expand", "docsqa_fetch"]),
 });
 
 const WHEN_TO_USE: Readonly<Record<SkillArm, string>> = Object.freeze({

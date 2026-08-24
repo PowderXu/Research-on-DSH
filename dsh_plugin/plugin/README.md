@@ -1,15 +1,17 @@
-# DSH technical-docs plugin
+# DSH DocsQA plugin
 
-This package provides the native DeepSeek Harness side of the benchmark:
+DocsQA is the public documentation-question-answering capability; it is not the
+name of one retrieval algorithm. This package exposes that stable capability
+while filesystem, hybrid, and Neo4j remain candidate implementations:
 
-- `@kbbench/dsh-techdocs`: `techdocs_search`, `techdocs_fetch`, and optional
-  `techdocs_expand` tools over the local GitHub Docs backend;
-- `@kbbench/dsh-techdocs/skill-fs`: filesystem retrieval skill;
-- `@kbbench/dsh-techdocs/skill-hybrid`: BM25 + HNSW retrieval skill;
-- `@kbbench/dsh-techdocs/skill-neo4j`: hybrid plus explicit graph-expansion
+- `@kbbench/dsh-docsqa`: `docsqa_search`, `docsqa_fetch`, and optional
+  `docsqa_expand` tools over the local GitHub Docs backend;
+- `@kbbench/dsh-docsqa/skill-fs`: filesystem retrieval skill;
+- `@kbbench/dsh-docsqa/skill-hybrid`: BM25 + HNSW retrieval skill;
+- `@kbbench/dsh-docsqa/skill-neo4j`: hybrid plus explicit graph-expansion
   skill.
 
-`cordis.patch.yml` installs one isolated plugin group. Evaluation patches enable
+`cordis.patch.yml` installs one plugin group. Evaluation patches enable
 the matching tool inventory and exactly one skill per arm. An administrator may
 supply `skillPath`; the loader validates frontmatter, arm identity, required
 tool names, required sections, and size before registration.
@@ -38,6 +40,7 @@ src/evidence.ts         scoped evidence normalization and rendering
 src/skill-loader.ts     validated Markdown-skill registration
 src/skill-*.ts          one public plugin entry per evaluation arm
 test/*.test.ts          strict TypeScript tests
+scripts/clean-runtime.ts remove only obsolete top-level runtime bundles
 skills/*/*.md           authored model instructions
 lib/*.js                generated DSH runtime entries and shared chunks
 lib/types/*.d.ts        generated consumer declarations

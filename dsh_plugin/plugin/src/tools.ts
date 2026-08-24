@@ -3,26 +3,26 @@ import { defineTool } from "@deepseek-ai/dsh-tools";
 
 import type { ResolvedConfig } from "./config.ts";
 import { renderEvidence } from "./evidence.ts";
-import type { TechdocsService } from "./service.ts";
+import type { DocsQAService } from "./service.ts";
 
 type ToolContext = Pick<Context, "tools">;
-type ToolService = Pick<TechdocsService, "search" | "expand" | "fetchEvidence">;
+type ToolService = Pick<DocsQAService, "search" | "expand" | "fetchEvidence">;
 
 const textOutput = {
   schema: { type: "string" } as const,
   render: (_args: unknown, value: string) => [{ type: "text" as const, text: value }],
 };
 
-export function registerTechdocsTools(
+export function registerDocsQATools(
   ctx: ToolContext,
   service: ToolService,
   config: ResolvedConfig,
 ): void {
   ctx.tools.register(defineTool({
-    name: "techdocs_search",
+    name: "docsqa_search",
     description: config.exposeExpand
-      ? "Retrieve lexical and dense seed evidence from the technical-document knowledge base. Use techdocs_expand explicitly when relationship traversal is needed."
-      : "Search the technical-document knowledge base with lexical, dense, and metadata signals. Returns a citation-ready evidence pack.",
+      ? "Retrieve lexical and dense seed evidence from the DocsQA knowledge base. Use docsqa_expand explicitly when relationship traversal is needed."
+      : "Search the DocsQA knowledge base for linked Markdown documentation using lexical, dense, and metadata signals. Returns a citation-ready evidence pack.",
     parameters: {
       query: {
         type: "string",
@@ -52,14 +52,14 @@ export function registerTechdocsTools(
     presentCall: args => ({
       card: "generic",
       kind: "read",
-      title: `Technical docs: ${args.query}`,
+      title: `DocsQA search: ${args.query}`,
       rawInput: args,
     }),
   }));
 
   if (config.exposeExpand) {
     ctx.tools.register(defineTool({
-      name: "techdocs_expand",
+      name: "docsqa_expand",
       description: "Expand previously returned technical-document seed URIs through bounded, provenance-preserving graph relationships.",
       parameters: {
         query: {
@@ -71,7 +71,7 @@ export function registerTechdocsTools(
           type: "array",
           required: true,
           items: { type: "string" },
-          description: `One or more seed URIs below ${config.resourceRoot} returned by techdocs_search.`,
+          description: `One or more seed URIs below ${config.resourceRoot} returned by docsqa_search.`,
         },
       },
       output: textOutput,
@@ -86,14 +86,14 @@ export function registerTechdocsTools(
       presentCall: args => ({
         card: "generic",
         kind: "read",
-        title: `Technical docs graph: ${args.query}`,
+        title: `DocsQA graph expansion: ${args.query}`,
         rawInput: args,
       }),
     }));
   }
 
   ctx.tools.register(defineTool({
-    name: "techdocs_fetch",
+    name: "docsqa_fetch",
     description: "Fetch citation-ready passages from previously returned technical-document URIs.",
     parameters: {
       uris: {
@@ -113,7 +113,7 @@ export function registerTechdocsTools(
     presentCall: args => ({
       card: "generic",
       kind: "read",
-      title: "Technical docs: fetch evidence",
+      title: "DocsQA: fetch evidence",
       rawInput: args,
     }),
   }));

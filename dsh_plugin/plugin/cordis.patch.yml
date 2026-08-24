@@ -1,16 +1,16 @@
 - insert:
-    - id: kbbench-techdocs
+    - id: kbbench-docsqa
       name: '@deepseek-ai/cordis-plugin-group'
       group: true
       config:
-        - id: kbbench-techdocs-runtime
-          name: '@kbbench/dsh-techdocs'
+        - id: kbbench-docsqa-runtime
+          name: '@kbbench/dsh-docsqa'
         - id: kbbench-skill-github-docs-fs
-          name: '@kbbench/dsh-techdocs/skill-fs'
+          name: '@kbbench/dsh-docsqa/skill-fs'
           disabled: true
         - id: kbbench-skill-github-docs-hybrid
-          name: '@kbbench/dsh-techdocs/skill-hybrid'
+          name: '@kbbench/dsh-docsqa/skill-hybrid'
           disabled: true
         - id: kbbench-skill-github-docs-neo4j
-          name: '@kbbench/dsh-techdocs/skill-neo4j'
+          name: '@kbbench/dsh-docsqa/skill-neo4j'
           disabled: true

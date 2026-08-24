@@ -60,7 +60,7 @@ class GitHubDocsSourceResolver:
             return None
         if raw.startswith("viking://"):
             raw = urlsplit(raw).path
-            marker = "/techdocs/"
+            marker = "/docsqa/"
             raw = raw.split(marker, 1)[-1] if marker in raw else raw
         elif "://" in raw:
             raw = urlsplit(raw).path

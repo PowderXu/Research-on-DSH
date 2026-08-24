@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { resolveConfig } from "../src/config.ts";
-import { TechdocsService, type FetchImplementation } from "../src/service.ts";
+import { DocsQAService, type FetchImplementation } from "../src/service.ts";
 
 test("search sends one bounded composite request", async () => {
   let observed: Record<string, unknown> | undefined;
@@ -17,7 +17,7 @@ test("search sends one bounded composite request", async () => {
     };
   };
   const config = resolveConfig({ resultLimit: 7 });
-  const service = new TechdocsService(config, fakeFetch);
+  const service = new DocsQAService(config, fakeFetch);
   await service.search("billing retention", { limit: 99 });
   assert.ok(observed);
   assert.equal(observed.scope, config.resourceRoot);
@@ -34,7 +34,7 @@ test("fetch refuses URIs outside the technical resource root", async () => {
   const fakeFetch: FetchImplementation = async () => {
     throw new Error("fetch should not run");
   };
-  const service = new TechdocsService(resolveConfig(), fakeFetch);
+  const service = new DocsQAService(resolveConfig(), fakeFetch);
   await assert.rejects(
     service.fetchEvidence(["viking://user/memories/private"]),
     /in-scope/,

@@ -75,10 +75,10 @@ test("candidate validation rejects arm mismatch and protected tool deletion", ()
     /does not match configured arm/,
   );
   assert.throws(
-    () => parseSkillDocument(hybrid.replaceAll("`techdocs_fetch`", "fetch evidence"), {
+    () => parseSkillDocument(hybrid.replaceAll("`docsqa_fetch`", "fetch evidence"), {
       expectedArm: "hybrid",
     }),
-    /must preserve tool name techdocs_fetch/,
+    /must preserve tool name docsqa_fetch/,
   );
 });
 

@@ -20,7 +20,7 @@ export interface ResolvedConfig {
 
 const DEFAULTS: Readonly<ResolvedConfig> = Object.freeze({
   endpoint: "http://127.0.0.1:1934",
-  resourceRoot: "viking://resources/techdocs",
+  resourceRoot: "viking://resources/docsqa",
   requestTimeoutMs: 15_000,
   resultLimit: 8,
   evidenceTokenBudget: 2_200,

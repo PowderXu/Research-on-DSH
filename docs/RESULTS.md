@@ -102,7 +102,7 @@ sources.
 | Neo4j | 0.200 | 0.200 | 0.126 | 18.41 s | 15,367 |
 
 Do not rank the arms from this pilot. Five cases are insufficient, none is a
-linked multi-page question, and the Neo4j agent made no `techdocs_expand` call.
+linked multi-page question, and the Neo4j agent made no `docsqa_expand` call.
 
 ## Validation, not benchmark performance
 

@@ -1,8 +1,8 @@
-- id: kbbench-techdocs-runtime
+- id: kbbench-docsqa-runtime
   disabled: false
   config:
     endpoint: http://127.0.0.1:1935
-    resourceRoot: viking://resources/techdocs
+    resourceRoot: viking://resources/docsqa
     requestTimeoutMs: 30000
     resultLimit: 10
     evidenceTokenBudget: 2600

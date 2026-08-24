@@ -80,7 +80,7 @@ function assertLockedFamily(lock: PackageLock, expected: string, label: string):
 
 function exportTarget(manifest: PackageManifest, key: string): ExportTarget {
   const target = manifest.exports?.[key];
-  assert(target && typeof target !== "string", `TechDocs plugin exports.${key} is not conditional`);
+  assert(target && typeof target !== "string", `DocsQA plugin exports.${key} is not conditional`);
   return target;
 }
 
@@ -100,13 +100,13 @@ for (const name of [dshPrefix, `${dshPrefix}-llm`, `${dshPrefix}-tools`]) {
 
 for (const section of ["peerDependencies", "devDependencies"] as const) {
   for (const name of pluginDshPeers) {
-    assertManifestVersion(pluginManifest, section, name, expected, "TechDocs plugin");
+    assertManifestVersion(pluginManifest, section, name, expected, "DocsQA plugin");
     assertManifestVersion(
       pluginLock.packages?.[""],
       section,
       name,
       expected,
-      "TechDocs plugin lockfile",
+      "DocsQA plugin lockfile",
     );
   }
   assertManifestVersion(
@@ -114,24 +114,24 @@ for (const section of ["peerDependencies", "devDependencies"] as const) {
     section,
     "@deepseek-ai/cordis",
     "^4.0.1",
-    "TechDocs plugin",
+    "DocsQA plugin",
   );
   assertManifestVersion(
     pluginLock.packages?.[""],
     section,
     "@deepseek-ai/cordis",
     "^4.0.1",
-    "TechDocs plugin lockfile",
+    "DocsQA plugin lockfile",
   );
 }
 
 assertLockedFamily(rootLock, expected, "root lockfile");
-assertLockedFamily(pluginLock, expected, "TechDocs plugin lockfile");
+assertLockedFamily(pluginLock, expected, "DocsQA plugin lockfile");
 
-assert(pluginManifest.main === "lib/index.js", "TechDocs plugin main must load compiled lib/index.js");
+assert(pluginManifest.main === "lib/index.js", "DocsQA plugin main must load compiled lib/index.js");
 assert(
   pluginManifest.types === "lib/types/index.d.ts",
-  "TechDocs plugin types must load tsc declarations",
+  "DocsQA plugin types must load tsc declarations",
 );
 for (const [key, stem] of [
   [".", "index"],
@@ -152,7 +152,7 @@ for (const [key, stem] of [
 const lockedProfilePlugin = Object.values(profileLock.packages || {}).find(
   metadata => metadata.name === pluginManifest.name,
 );
-assert(lockedProfilePlugin, "headless-profile lockfile does not contain the local TechDocs plugin");
+assert(lockedProfilePlugin, "headless-profile lockfile does not contain the local DocsQA plugin");
 for (const section of ["peerDependencies", "devDependencies"] as const) {
   for (const name of pluginDshPeers) {
     assertManifestVersion(
@@ -182,7 +182,7 @@ const installedProfileRoot = path.join(
   profileRoot,
   "node_modules",
   "@kbbench",
-  "dsh-techdocs",
+  "dsh-docsqa",
 );
 const installedProfilePlugin = await readJson<PackageManifest>(
   path.join(installedProfileRoot, "package.json"),

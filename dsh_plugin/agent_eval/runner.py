@@ -131,7 +131,7 @@ def _compact_conversation(events: Iterable[dict[str, Any]]) -> list[dict[str, An
 def _visible_sources(events: Iterable[dict[str, Any]]) -> list[str]:
     """Extract source identifiers in the order they were visible to the model."""
 
-    uri_pattern = re.compile(r"viking://resources/techdocs(?:/[A-Za-z0-9_./-]+)?")
+    uri_pattern = re.compile(r"viking://resources/docsqa(?:/[A-Za-z0-9_./-]+)?")
     path_pattern = re.compile(r"(?:[A-Za-z0-9_.-]+/)+[A-Za-z0-9_.-]+\.md")
     sources: list[str] = []
     seen: set[str] = set()

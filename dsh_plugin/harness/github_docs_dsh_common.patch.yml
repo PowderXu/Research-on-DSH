@@ -62,7 +62,7 @@
   disabled: true
 - id: tool-fs-search
   disabled: true
-- id: kbbench-techdocs-runtime
+- id: kbbench-docsqa-runtime
   disabled: true
 - id: kbbench-skill-github-docs-fs
   disabled: true

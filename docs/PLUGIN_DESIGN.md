@@ -1,15 +1,20 @@
 # DSH plugin design
 
+DocsQA names the proposed documentation-question-answering system. It does not
+name a specific retriever: filesystem search, BM25 + HNSW, and Neo4j graph
+expansion are replaceable candidate implementations behind the same public
+DocsQA capability and evaluation contract.
+
 ## Composition
 
 The benchmark uses four native DSH plugin roles:
 
 | Role | DSH component | Responsibility |
 |---|---|---|
-| Runtime tool plugin | `@kbbench/dsh-techdocs` | register bounded search/fetch/expand tools over a local backend |
-| Filesystem skill plugin | `@kbbench/dsh-techdocs/skill-fs` | teach routing through Markdown, frontmatter, and index pages |
-| Hybrid skill plugin | `@kbbench/dsh-techdocs/skill-hybrid` | teach query formation, evidence checking, and bounded retry |
-| Neo4j skill plugin | `@kbbench/dsh-techdocs/skill-neo4j` | teach when to expand and how to verify graph-added evidence |
+| Runtime tool plugin | `@kbbench/dsh-docsqa` | register bounded search/fetch/expand tools over a local backend |
+| Filesystem skill plugin | `@kbbench/dsh-docsqa/skill-fs` | teach routing through Markdown, frontmatter, and index pages |
+| Hybrid skill plugin | `@kbbench/dsh-docsqa/skill-hybrid` | teach query formation, evidence checking, and bounded retry |
+| Neo4j skill plugin | `@kbbench/dsh-docsqa/skill-neo4j` | teach when to expand and how to verify graph-added evidence |
 
 The DSH profile loads the runtime and all three skill plugins, then an arm patch
 enables exactly the required tools and one skill. The skills remain external,
@@ -44,7 +49,7 @@ The hybrid and Neo4j arms use a thin native DSH adapter:
 
 ```text
 DSH model
-  -> techdocs_search / techdocs_fetch / techdocs_expand
+  -> docsqa_search / docsqa_fetch / docsqa_expand
   -> native DSH tool registration
   -> local HTTP contract
   -> GitHub Docs retrieval backend
@@ -52,10 +57,10 @@ DSH model
 
 The backend returns canonical page IDs, repository paths, line spans, commit
 identity, retrieval signals, and an evidence package with a fixed token budget.
-The plugin rejects results outside `viking://resources/techdocs` before they can
+The plugin rejects results outside `viking://resources/docsqa` before they can
 enter model context.
 
-`techdocs_expand` is explicit rather than hidden inside search. This lets the
+`docsqa_expand` is explicit rather than hidden inside search. This lets the
 agent decide whether a relationship-bearing question warrants traversal and
 lets the evaluation measure whether expansion was actually called.
 

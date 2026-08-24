@@ -23,7 +23,7 @@ from kbbench.retrieval import (
 from kbbench.plugin_eval import Neo4jGitHubDocsGraphRAG
 from .http_contract import (
     RESOURCE_ROOT,
-    TechdocsRequestHandler,
+    DocsQARequestHandler,
     document_id_from_uri,
     document_uri,
     render_evidence_text,
@@ -377,7 +377,7 @@ class GitHubDocsServiceHost:
     def __init__(self, service: GitHubDocsPluginService, host: str, port: int) -> None:
         handler = type(
             "BoundGitHubDocsRequestHandler",
-            (TechdocsRequestHandler,),
+            (DocsQARequestHandler,),
             {"service": service},
         )
         self.service = service

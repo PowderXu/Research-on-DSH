@@ -65,9 +65,9 @@ export function renderEvidence(response: SearchResponse, tokenBudget: number): s
   }
   if (blocks.length === 0) return "No technical-document evidence found.";
   return [
-    `<techdocs-evidence query-id="${escapeAttribute(response.queryId)}">`,
+    `<docsqa-evidence query-id="${escapeAttribute(response.queryId)}">`,
     ...blocks,
-    "</techdocs-evidence>",
+    "</docsqa-evidence>",
   ].join("\n\n");
 }
 
