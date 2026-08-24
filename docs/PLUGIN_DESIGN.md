@@ -12,9 +12,10 @@ The benchmark uses four native DSH plugin roles:
 | Neo4j skill plugin | `@kbbench/dsh-techdocs/skill-neo4j` | teach when to expand and how to verify graph-added evidence |
 
 The DSH profile loads the runtime and all three skill plugins, then an arm patch
-enables exactly the required tools and one skill. The skills remain external
-Markdown artifacts so SkillOpt can improve instructions without changing tool
-schemas or retrieval code.
+enables exactly the required tools and one skill. The skills remain external,
+versioned Markdown artifacts so instructions can be reviewed or edited without
+changing tool schemas or retrieval code. No optimizer-generated skill copies are
+created.
 
 ## Tool boundary
 

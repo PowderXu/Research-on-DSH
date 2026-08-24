@@ -2,8 +2,10 @@
 .venv/
 node_modules/
 /data/
+evaluation/dataset/raw/
 results/runs/
 results/tmp/
+results/cache/
 cache/
 __pycache__/
 *.pyc

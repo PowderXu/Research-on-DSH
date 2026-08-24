@@ -7,7 +7,6 @@ results/runs/
   retrieval/<run-id>/
   agents/<arm>/
   agents/report/
-  optimization/<arm>/<run-id>/
 ```
 
 Raw events, indexes, predictions, checkpoints, and generated reports are ignored

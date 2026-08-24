@@ -9,9 +9,10 @@ title, short title, rendered text, route, content type, versions, outgoing page
 IDs, contextual Markdown-link records, reusable-content identifiers, and
 variant metadata where available.
 
-The normalized corpus is under `dataset/github_docs_kb_benchmark/data/`.
-Raw Markdown is deliberately not duplicated in Git; prepare it under the ignored
-`data/github-docs/` directory with `scripts/prepare_raw_github_docs.sh`.
+The normalized corpus is under `evaluation/dataset/data/`. Raw Markdown is
+deliberately not duplicated in Git; prepare it under the ignored
+`evaluation/dataset/raw/github-docs/` directory with
+`evaluation/dataset/prepare_raw.sh`.
 
 ## Questions and relevance judgments
 
@@ -31,7 +32,7 @@ has zero measured gain but is **unjudged**, not proven irrelevant.
 
 | Split | Questions | Purpose |
 |---|---:|---|
-| Train | 55 | skill or retrieval-policy optimization |
+| Train | 55 | retrieval-policy or skill authoring |
 | Validation | 27 | parameter and architecture selection |
 | Test | 246 | final reporting only |
 
@@ -50,5 +51,6 @@ Every result is grouped by:
   corpus links and qrels;
 - qrel count (`1` or `2+`).
 
-The complete portable schema, hashes, and standalone evaluator are documented
-in `dataset/github_docs_kb_benchmark/README.md`.
+Construction, provenance, hashes, and verification are documented in
+`evaluation/dataset/README.md`. Evaluation code and the standalone prediction
+contract are documented separately in `evaluation/kbbench/README.md`.
