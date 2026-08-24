@@ -1,0 +1,5 @@
+- id: kbbench-techdocs-runtime
+  config:
+    graphExpansion: false
+    resultLimit: 10
+    evidenceTokenBudget: 4000

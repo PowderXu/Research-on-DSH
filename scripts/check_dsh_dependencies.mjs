@@ -52,6 +52,7 @@ function assertLockedFamily(lock, expected, label) {
 const rootManifest = await readJson(path.join(root, "package.json"));
 const pluginManifest = await readJson(path.join(pluginRoot, "package.json"));
 const rootLock = await readJson(path.join(root, "package-lock.json"));
+const pluginLock = await readJson(path.join(pluginRoot, "package-lock.json"));
 const profileLock = await readJson(path.join(profileRoot, "package-lock.json"));
 const expected = rootManifest.dependencies?.[dshPrefix];
 
@@ -65,10 +66,18 @@ for (const name of [dshPrefix, `${dshPrefix}-llm`, `${dshPrefix}-tools`]) {
 for (const section of ["peerDependencies", "devDependencies"]) {
   for (const name of [`${dshPrefix}-llm`, `${dshPrefix}-tools`]) {
     assertManifestVersion(pluginManifest, section, name, expected, "TechDocs plugin");
+    assertManifestVersion(
+      pluginLock.packages?.[""],
+      section,
+      name,
+      expected,
+      "TechDocs plugin lockfile",
+    );
   }
 }
 
 assertLockedFamily(rootLock, expected, "root lockfile");
+assertLockedFamily(pluginLock, expected, "TechDocs plugin lockfile");
 
 const lockedProfilePlugin = Object.values(profileLock.packages || {}).find(
   (metadata) => metadata?.name === pluginManifest.name,

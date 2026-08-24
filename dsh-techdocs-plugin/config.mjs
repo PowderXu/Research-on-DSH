@@ -8,6 +8,8 @@ const DEFAULTS = Object.freeze({
   resultLimit: 8,
   evidenceTokenBudget: 2200,
   graphExpansion: false,
+  searchGraphExpansion: null,
+  exposeExpand: false,
   graphSeedLimit: 8,
   graphNeighborLimit: 2,
   policyGuided: false,
@@ -53,6 +55,10 @@ export function resolveConfig(input = {}) {
   config.maxPaidUsd = number(config.maxPaidUsd, 0, 1000, DEFAULTS.maxPaidUsd);
   config.paidStopUsd = number(config.paidStopUsd, 0, config.maxPaidUsd, DEFAULTS.paidStopUsd);
   config.graphExpansion = config.graphExpansion !== false;
+  config.searchGraphExpansion = config.searchGraphExpansion === null
+    ? config.graphExpansion
+    : config.searchGraphExpansion === true;
+  config.exposeExpand = config.exposeExpand === true;
   config.policyGuided = config.policyGuided === true;
   config.generalizedPolicy = config.generalizedPolicy === true;
   return Object.freeze(config);

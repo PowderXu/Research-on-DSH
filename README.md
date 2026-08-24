@@ -1,416 +1,146 @@
-# Small Codex–DSH agent trial
+# GitHub Docs knowledge-base benchmark
 
-This directory packages the current small real-model comparison between Codex
-and DeepSeek Harness (DSH). It contains two related studies over the same five
-public coding tasks:
+This repository is now the standalone benchmark for a knowledge base built from
+many small, linked Markdown files. It packages the GitHub Docs corpus, 328 real
+support questions, four agent configurations, retrieval/agent evaluators,
+external retrieval skills, a PyPI-backed SkillOpt adapter, and reproducible
+evaluation entry points.
 
-1. a repository-search tool comparison; and
-2. a progress-narration policy comparison.
+## Benchmark contract
 
-The package is deliberately conservative. It records a persistent token and
-latency gap, but it does **not** claim to have identified the mechanism that
-causes that gap.
+- Corpus: 3,740 canonical `github/docs` pages at commit
+  `c34e3dccad00f61133c799d20e7d1208a0e6cc92`.
+- Questions: 328 public GitHub Community questions with accepted-answer Docs
+  links, yielding 421 canonical page qrels.
+- Splits: 55 train, 27 validation, 246 untouched test.
+- Primary metrics: Recall@10, Hit@10, nDCG@10, and p50 latency.
+- Primary agent ranking: the final ordered `sources` returned by the agent.
+  First-visible tool/backend documents are diagnostics only.
+- Factual slices: intent, evidence category, explicit-link evidence structure,
+  and qrel count. The heuristic `graph_opportunity` label is excluded.
 
-This directory is standalone: copy or clone it as its own repository and run
-all commands below from this directory. It includes the Python runner and
-official-score wrapper, the DSH technical-document plugin, the frozen five-task
-manifest, registered protocols, and compact observed-result artifacts. It does
-not depend on files elsewhere in the original development repository.
+The qrels are sparse accepted-answer citations. A retrieved page without a qrel
+has zero measured gain, but is unjudged rather than proven irrelevant.
 
-## Read the arm names first
+## Evaluation arms
 
-An **arm** is one benchmark configuration applied to every selected task. Arm
-IDs use this pattern:
+| Arm | Harness | Retrieval capability | Instruction artifact |
+|---|---|---|---|
+| DSH filesystem | DeepSeek Harness | bounded repository/index-page filesystem search | `dsh-techdocs-plugin/skills/fs/initial_skill.md` |
+| DSH hybrid | DeepSeek Harness | BM25 + HNSW + reciprocal-rank fusion | `dsh-techdocs-plugin/skills/hybrid/initial_skill.md` |
+| DSH Neo4j | DeepSeek Harness | the same hybrid seeds plus deterministic Neo4j structural expansion | `dsh-techdocs-plugin/skills/neo4j/initial_skill.md` |
+| Codex + FastCtx | Codex | FastCtx MCP `grep`, `glob`, and `read` over the same raw Markdown | `codex-techdocs-plugin/skills/github-docs-fastctx/SKILL.md` |
 
-```text
-<harness><integration-design>-<activation/search treatment>-<optional narration treatment>
-```
+For an agent-level comparison, keep the model, question order, non-KB tools,
+answer schema, token limit, and machine fixed. Only the KB plugin and its
+retrieval-specific skill may vary. Retrieval-only experiments and agent-level
+experiments are reported separately.
 
-| Symbol | Meaning |
-|---|---|
-| `C` | Codex harness |
-| `D` | DeepSeek Harness (DSH) |
-| `3` | The third registered KB-integration design, called the **D3 revision**. It keeps a full coding agent and adds the optional technical-document KB composition. It does not mean three tools or three model calls. |
-| `S` | **Skill-selected**: the model sees a skill and may choose the one composite KB tool. KB retrieval is optional. |
-| `F` | **FastCtx** repository search is added to the Codex `S` arm; only FastCtx `grep` and `glob` are exposed for repository discovery. |
-| `Q` | **Quiet** Codex narration treatment: suppress intermediate user-facing prose. |
-| `N` | **Narrated** DSH treatment: require one short progress sentence before tool calls. |
+## Reference result tables
 
-Therefore, the arms in this package expand as follows:
+The deterministic retrieval run evaluated all 246 held-out test questions.
+These scores compare KB architectures, not DSH and Codex as agents.
 
-| Arm | Plain-English meaning |
-|---|---|
-| `C3-S` | Codex, D3 integration design, skill-selected optional KB, normal shell-led repository search, default narration. |
-| `C3-SF` | `C3-S` with FastCtx replacing shell `rg`/`grep`/`find` for repository discovery. |
-| `C3-SF-Q` | `C3-SF` with quiet intermediate narration. |
-| `D3-S` | DSH, D3 integration design, matched skill-selected optional KB, native DSH filesystem-search plugin, default narration. |
-| `D3-S-N` | `D3-S` with the forced short-narration treatment. |
+| Method | Recall@10 | Hit@10 | nDCG@10 | p50 retrieval |
+|---|---:|---:|---:|---:|
+| BM25 | 0.381 | 0.415 | 0.243 | 3.80 ms |
+| HNSW | 0.470 | 0.524 | 0.306 | 17.33 ms |
+| BM25 + HNSW RRF | 0.493 | 0.537 | 0.337 | 17.34 ms |
+| Hybrid + conditional explicit-link expansion | 0.503 | 0.545 | 0.349 | 19.42 ms |
+| Hybrid + always-on explicit-link expansion | 0.518 | 0.561 | 0.355 | 19.49 ms |
+| Pure routing + BM25 | 0.288 | 0.321 | 0.196 | 3.83 ms |
 
-Other recurring abbreviations are **KB** (knowledge base), **MCP** (Model
-Context Protocol, the tool interface used by Codex), and **FS** (filesystem).
-All arms retain normal coding abilities such as reading and editing files,
-running shell commands, and testing. `Resolved` means the generated patch
-passed the official SWE-bench evaluator for that task.
+Hybrid retrieval is the strongest foundation in this run. Explicit Markdown-
+link expansion adds a small measured lift at about two milliseconds of median
+local retrieval time. Sparse accepted-answer qrels mean an unjudged retrieved
+page is not necessarily irrelevant, and this result alone does not justify
+always-on graph traversal in production.
 
-## Headline result
+The real-agent integration pilot used five single-qrel questions. Its primary
+metrics score each agent's final ordered sources.
 
-In the original five-task tool pilot, all three agents resolved the same four
-tasks:
+| Arm | Hit@10 | nDCG@10 | p50 end-to-end | Tokens / QA |
+|---|---:|---:|---:|---:|
+| DSH filesystem | 0.600 | 0.377 | 35.01 s | 193,230 |
+| DSH hybrid | 0.600 | 0.312 | 29.82 s | 36,793 |
+| DSH Neo4j | 0.200 | 0.126 | 18.41 s | 15,367 |
+| Codex + FastCtx | 0.200 | 0.200 | 34.95 s | 146,444 |
 
-| Arm | Resolved | Mean tokens/task | Mean agent latency | Repository search |
-|---|---:|---:|---:|---|
-| `C3-S` | 4/5 | 412,038 | 95.8 s | Codex shell search |
-| `C3-SF` | 4/5 | 373,847 | 90.4 s | FastCtx MCP `grep`/`glob` |
-| `D3-S` | 4/5 | 203,589 | 36.2 s | DSH filesystem-search plugin |
+Do not rank the systems from this pilot. Five questions are insufficient, none
+requires linked multi-page traversal, the Neo4j agent made no expansion call,
+and Codex used `gpt-5.4-mini` while DSH used `gpt-5-mini`. The table verifies
+the four execution paths; it is not evidence of a general harness ranking.
+Raw trajectories, predictions, optimization checkpoints, and diagnostics are
+intentionally not committed. New runs write beneath `results/runs/`.
 
-FastCtx reduced Codex tokens by 9.3%, but DSH still used 45.5% fewer tokens
-than FastCtx Codex. Therefore, replacing shell search with a structured search
-tool did not explain the remaining gap.
-
-The narration experiment also failed to explain it. Across five independent
-rollouts of the five tasks, suppressing Codex progress narration removed 98.6%
-of visible progress text but changed total tokens by **+1.0%**, not downward.
-
-The best-supported current statement is:
-
-> DSH accumulated substantially less input context than Codex in this pilot.
-> Search-tool output size and visible progress narration do not explain most of
-> the difference. The exact contribution of model-call count, context carried
-> per call, tool-result replay, prompt/tool-schema size, and batching remains
-> unresolved.
-
-See [TOKEN_GAP.md](TOKEN_GAP.md) for the evidence boundary and next required
-instrumentation.
-
-## Public benchmark provenance
-
-The tasks come from
-[SWE-bench Verified](https://www.swebench.com/SWE-bench/guides/datasets/), a
-public 500-instance subset of SWE-bench that was screened by software engineers.
-SWE-bench instances are real GitHub issue-resolution tasks. A prediction is a
-repository patch, and the official evaluator applies that patch and runs tests
-inside a Docker environment. See the
-[official evaluation guide](https://www.swebench.com/SWE-bench/guides/evaluation/)
-and the
-[SWE-bench harness reference](https://github.com/SWE-bench/SWE-bench/blob/main/docs/reference/harness.md).
-
-This trial is **not** the complete 500-task benchmark. It uses five Django tasks
-from the frozen manifest
-[`swebench_fastctx_pilot5_v1.json`](config/swebench_fastctx_pilot5_v1.json).
-The runnable standalone copy flattens each task's stratum and difficulty from
-the original parent manifest so no external file is required. The unmodified
-child registration is retained as
-[`swebench_fastctx_pilot5_v1.original.json`](config/swebench_fastctx_pilot5_v1.original.json).
-They are the first five tasks in the deterministic, stratum-balanced schedule
-of the repository's 27-task documentation-aware Django subset:
-
-| Instance | Selection stratum | Upstream difficulty |
-|---|---|---|
-| `django__django-11239` | code only | `<15 min fix` |
-| `django__django-12741` | latent documentation/code | `<15 min fix` |
-| `django__django-13741` | directly documentation-related | `<15 min fix` |
-| `django__django-12209` | code only | `<15 min fix` |
-| `django__django-13109` | latent documentation/code | `<15 min fix` |
-
-The sample was not randomly drawn and is too small for a general Codex-versus-
-DSH capability claim. Repeating these five tasks measures stochastic stability
-on these tasks, not generalization to 25 independent tasks.
-
-Gold patches were used offline when constructing the parent strata. Gold patch
-content, test patches, solution URLs, and gold-derived prose were not exposed
-to either agent.
-
-## Matched controls and remaining differences
-
-`C3-SF` and `D3-S` preserve full coding-agent capability: file editing, shell
-commands, testing, and the optional KB remain available. The comparison is not
-"Codex with coding tools" versus "DSH with only a KB."
-
-The requested model identifier was `gpt-5.4-mini` with low reasoning effort in
-every arm. Web access was disabled. Every task started from a clean detached
-worktree at the public SWE-bench base commit.
-
-The Codex and DSH harnesses still have different system prompts, agent loops,
-context policies, and account/API paths. Those are part of the harness
-treatment; they are not controlled away.
-
-## What this trial does and does not test
-
-The three-arm tool pilot made zero technical-doc KB calls in every arm. It tests
-repository search and harness orchestration, **not KB retrieval accuracy**.
-
-Across the later 25-rollout narration study, `D3-S` made four KB calls in total
-(`0.16` per task); the other three arms made none. This is too sparse to support
-a KB-performance claim.
-
-For the detailed studies, read:
-
-- [TOOL_COMPARISON.md](TOOL_COMPARISON.md)
-- [NARRATION_COMPARISON.md](NARRATION_COMPARISON.md)
-- [TOKEN_GAP.md](TOKEN_GAP.md)
-
-## Package contents
-
-- `kbbench/`: executable Python runner, retrieval service, trace parsers, and
-  official SWE-bench matrix scorer.
-- `codex/`: checked-in Codex skill, narration treatment, and an explicit map of
-  the Codex-side invocation policy.
-- `dsh-techdocs-plugin/`: the DSH plugin used by `D3-S` and `D3-S-N`, including
-  its unit tests.
-- `dsh_home/profiles/headless/`: reproducible headless DSH profile that loads
-  the local plugin.
-- `config/`: frozen task manifest and the registered tool/narration protocols.
-- `evidence/`: compact reports and machine-readable aggregate results from the
-  original run.
-- `scripts/prepare_data.py`: downloads and validates the public dataset and
-  Django mirror.
-- `scripts/check_setup.py`: checks the local runtime before paid model calls.
-
-Bundled evidence:
-
-- [tool protocol](config/full_agent_fastctx_d3s_protocol_v2.json)
-- [three-arm pilot registration](config/fastctx_pilot5_protocol_v1.json)
-- [narration protocol](config/full_agent_narration_ablation_protocol_v1.json)
-- [tool-pilot report](evidence/TOOL_PILOT_RESULTS.md)
-- [tool-pilot aggregate JSON](evidence/tool_pilot_results.json)
-- [five-trial narration report](evidence/NARRATION_5TRIAL_RESULTS.md)
-
-Full raw model trajectories from the original private run are intentionally not
-distributed. A reproduction creates `run_state.json`, prediction patches,
-per-task raw traces, and `score_matrix_state.json` under its own `results/`
-directory.
-
-## Prerequisites
-
-Run commands from the root of this standalone directory, `bench_small_trial/`.
-
-Required software:
-
-- Python 3.10 or later;
-- Node.js 22.19 or later (or Node 24);
-- Docker Desktop or Docker Engine;
-- an installed and authenticated Codex CLI;
-- an OpenAI API key for the DSH model-provider path;
-- `git`, `npm`, and `zstd`.
-
-Codex is intentionally not vendored. Install it and sign in following the
-[official Codex CLI guide](https://developers.openai.com/codex/cli/), then run
-`codex --version`. See [codex/README.md](codex/README.md) for the exact
-Codex-side treatment bundled here.
-
-The original trial environment used Python `3.10.15`, Codex CLI `0.147.0`,
-DSH `0.1.0-rc.6`, FastCtx `0.2.5`, Node.js `22.22.0`, and the
-`gpt-5.4-mini` model identifier with low reasoning effort. Direct Python
-packages and FastCtx are pinned by this package. The committed reference
-results retain the original DSH `0.1.0-rc.6` provenance; the maintained runtime
-now uses the coherent DSH `0.1.1-rc.2` package family. Codex and the model
-service are external, so record their versions in any reproduction and report
-deviations from the original environment.
-
-Create an isolated Python environment:
+## Quick verification
 
 ```bash
-python3 -m venv .venv
-.venv/bin/python -m pip install --upgrade pip
-.venv/bin/python -m pip install -e .
-```
-
-The direct Python dependencies used by the runner and official scorer are
-version-pinned in both `pyproject.toml` and `requirements.txt`.
-
-Install the pinned DSH and FastCtx dependencies:
-
-```bash
+python -m venv .venv
+.venv/bin/pip install -r requirements.txt
 npm ci
 npm run setup:dsh-profile
 npm run verify:dsh
+.venv/bin/python scripts/verify_package.py
+PYTHONPATH=. .venv/bin/python -m pytest
 ```
 
-The root and headless-profile lockfiles make transitive resolution
-reproducible. All direct DSH packages and the TechDocs plugin's DSH peer and
-development dependencies use `0.1.1-rc.2`; `npm run verify:dsh` rejects a
-mixed installed DSH family. FastCtx remains pinned at `0.2.5`. The DSH release
-has a large transitive dependency tree, so its first installation can take
-several minutes. This package does not vendor `node_modules`.
+The root and headless-profile lockfiles pin FastCtx `0.2.5` and the complete
+DSH package family at `0.1.1-rc.2`. `npm run verify:dsh` rejects mismatches
+between the root runtime, plugin manifest/lockfile, installed packages, and
+headless profile.
 
-The runner reads `OPENAI_API_KEY` from the environment or from `--env-file`.
-Do not commit an API key.
+Microsoft SkillOpt is installed from PyPI as the exact `skillopt==0.2.0`
+dependency included by the `test`, `optimizer`, and `all` extras. Its source is
+not copied into this repository.
 
-Forwarding providers are opt-in and **not shipped** here: to run Codex against
-a custom OpenAI-compatible gateway, pass `--codex-home <dir>` where `<dir>/
-config.toml` declares a `model_providers` block you provide yourself; to point
-DSH at a gateway export `DSH_OPENAI_BASE_URL` (alias `OPENAI_BASE_URL`).
-Without these, Codex uses its default configuration and DSH uses the official
-OpenAI API.
+The normalized corpus is bundled, so retrieval evaluation does not require a
+second repository checkout. The filesystem and Codex/FastCtx arms need raw
+Markdown; prepare the pinned source with:
 
-The expected local public-data paths are:
+```bash
+scripts/prepare_raw_github_docs.sh
+```
+
+Install `requirements-graph.txt` and run Neo4j Community locally for the graph
+arm. Neo4j Community is free; `neo4j-graphrag` is the existing retrieval
+library, while this project defines the technical-document schema and bounded
+expansion policy.
+
+Custom OpenAI-compatible gateways are optional and are not shipped in this
+repository. Codex uses its isolated default configuration unless
+`github-docs-codex-fastctx` receives `--codex-home <dir>` and that directory
+contains a provider-only `config.toml` (for example, an OpenCode gateway
+configuration). DSH uses the official OpenAI endpoint unless
+`DSH_OPENAI_BASE_URL` is set; `OPENAI_BASE_URL` is accepted as a fallback
+alias. Keep provider credentials in environment variables, never in the
+benchmark configuration or result files.
+
+## Repository structure
 
 ```text
-data/swebench_verified/test.parquet
-data/swebench_verified/repos/django.git
+dataset/github_docs_kb_benchmark/   canonical portable corpus, qrels, splits, evaluator
+evaluation/github_docs_v2/          compatibility symlinks to the canonical dataset
+evaluation/harness/                 DSH/Codex patches, skills, and answer schema
+evaluation/skillopt/                frozen SkillOpt splits and arm configurations
+kbbench/                            retrievers, services, runners, scoring, SkillOpt adapter
+dsh-techdocs-plugin/                DSH service, provider, tool, and arm-specific skill plugins
+codex-techdocs-plugin/              matched Codex + FastCtx retrieval skill
+dsh_home/                           pinned headless DSH profile and lockfile
+scripts/                            setup, verification, training, evaluation, and analysis CLIs
+tests/                              Python contract and integration tests
+docs/                               evaluation protocol and implementation plans
+results/                            generated-run contract; only its README is tracked
 ```
 
-Download the official test split, create a mirror containing the historical
-Django commits, and verify the five manifest IDs:
+The normalized corpus and frozen question/split files are tracked under
+`dataset/github_docs_kb_benchmark/`. The raw `github/docs` checkout is created
+on demand under the ignored `data/github-docs/` path. Retrieval indexes,
+Neo4j state, model trajectories, optimization checkpoints, and reports are
+also generated locally and are not committed. There is no archived benchmark
+or copied third-party source tree in the current repository.
 
-```bash
-.venv/bin/python scripts/prepare_data.py
-```
-
-The manifest fixes the five instance IDs. A newly serialized Parquet file may
-have a different byte hash across library versions even when its records are
-equivalent; preserve the checked-in manifest and verify that all five IDs are
-present.
-
-Export the API key used by the DSH OpenAI provider, confirm that Codex is
-authenticated, start Docker, and run the readiness check:
-
-```bash
-export OPENAI_API_KEY="your-key"
-codex --version
-docker --version
-.venv/bin/python scripts/check_setup.py
-```
-
-The setup checker is read-only. Without flags, it deliberately fails if the API
-key, data, Docker CLI, Codex CLI, DSH runtime, FastCtx runtime, or DSH profile
-is missing. Its `--dsh-only` mode, used below, omits the Codex and FastCtx
-requirements. Do not commit `.env`, credentials, downloaded data, generated
-runs, or `node_modules`; the included `.gitignore` excludes them.
-
-## Run the repository-search tool study
-
-First validate the complete DSH-only path. This runs the registered `D3-S` arm
-over all five tasks; it is a real benchmark run, not a one-task smoke test:
-
-```bash
-.venv/bin/python scripts/check_setup.py --dsh-only
-
-PYTHONPATH=. .venv/bin/python -m kbbench.full_agent_eval \
-  --arm-set d3s-only \
-  --output results/repro_small_d3s_only \
-  --max-paid-usd 20
-```
-
-Score that standalone run with the official SWE-bench evaluator:
-
-```bash
-PYTHONPATH=. .venv/bin/python -m kbbench.swebench_score_matrix \
-  --manifest config/swebench_fastctx_pilot5_v1.json \
-  --predictions-dir results/repro_small_d3s_only/predictions \
-  --output-dir results/repro_small_d3s_only/official_pilot5 \
-  --arms D3-S \
-  --run-prefix repro-small-d3s-only \
-  --arm-workers 1
-```
-
-Completion validates the DSH agent, plugin/profile, technical-doc service,
-five-task manifest, prediction export, and official scoring path without
-requiring Codex or FastCtx. Keep this validation output separate from the
-comparison results below.
-
-Next run the paired FastCtx Codex and DSH arms:
-
-```bash
-PYTHONPATH=. .venv/bin/python -m kbbench.full_agent_eval \
-  --arm-set fastctx-d3s \
-  --output results/repro_small_tool_pair \
-  --max-paid-usd 20
-```
-
-Then run the original shell-search Codex reference separately:
-
-```bash
-PYTHONPATH=. .venv/bin/python -m kbbench.full_agent_eval \
-  --arm-set c3s-pilot \
-  --output results/repro_small_codex_shell \
-  --max-paid-usd 20
-```
-
-The local paths shown in the prerequisites are runner defaults. If `codex` is
-not on `PATH`, add `--codex-bin /absolute/path/to/codex`. Other runtime and data
-paths can likewise be overridden with the corresponding CLI flags.
-
-The paired run intentionally executes `D3-S` again: only that run alternates
-`C3-SF` and `D3-S` by task, so the standalone validation must not be substituted
-into the comparison. The `C3-S` reference is separate because the original
-study added it after the alternating pair. That timing difference is a known
-limitation.
-
-## Score the tool study
-
-Start Docker, then score the pair:
-
-```bash
-PYTHONPATH=. .venv/bin/python -m kbbench.swebench_score_matrix \
-  --manifest config/swebench_fastctx_pilot5_v1.json \
-  --predictions-dir results/repro_small_tool_pair/predictions \
-  --output-dir results/repro_small_tool_pair/official_pilot5 \
-  --arms C3-SF,D3-S \
-  --run-prefix repro-small-tool-pair \
-  --arm-workers 2
-```
-
-Score the original Codex arm:
-
-```bash
-PYTHONPATH=. .venv/bin/python -m kbbench.swebench_score_matrix \
-  --manifest config/swebench_fastctx_pilot5_v1.json \
-  --predictions-dir results/repro_small_codex_shell/predictions \
-  --output-dir results/repro_small_codex_shell/official_pilot5 \
-  --arms C3-S \
-  --run-prefix repro-small-codex-shell \
-  --arm-workers 1
-```
-
-Official scoring pulls Linux images and can require substantial disk space.
-Agent wall-clock latency reported by this study excludes Docker scoring time.
-
-## Run the narration study
-
-One narration trial runs all four arms over the same five tasks:
-
-```bash
-PYTHONPATH=. .venv/bin/python -m kbbench.full_agent_eval \
-  --arm-set narration-ablation \
-  --output results/repro_small_narration_v1 \
-  --max-paid-usd 20
-```
-
-Score it with:
-
-```bash
-PYTHONPATH=. .venv/bin/python -m kbbench.swebench_score_matrix \
-  --manifest config/swebench_fastctx_pilot5_v1.json \
-  --predictions-dir results/repro_small_narration_v1/predictions \
-  --output-dir results/repro_small_narration_v1/official_pilot5 \
-  --arms C3-SF,C3-SF-Q,D3-S,D3-S-N \
-  --run-prefix repro-small-narration-v1 \
-  --arm-workers 2
-```
-
-To reproduce the five-trial stability study, repeat both commands with new
-output directories and run prefixes ending in `v2` through `v5`. Never reuse an
-output directory for a different arm set; the runner rejects incompatible
-state. Existing completed cases are resumable, and `--retry-failed` reruns only
-nonzero-return-code cases while preserving failed-attempt metadata.
-
-## Metrics
-
-- **Resolved:** official SWE-bench patch resolution after Docker tests.
-- **Fresh input:** non-cached input tokens reported by the model path.
-- **Cached input:** prompt-cache read tokens; these still count in aggregate
-  token throughput but are normally cheaper than fresh input.
-- **Output:** all model output tokens reported by the path, not merely the final
-  prose.
-- **Total tokens:** fresh input + cached input + output, summed over the complete
-  task trajectory.
-- **Latency:** agent wall time from invocation through patch completion,
-  excluding official Docker scoring.
-- **Progress characters:** visible non-final assistant text characters. This is
-  a character counter, not a token counter.
-
-Token totals are comparable arithmetic aggregates, but the fresh/cached
-decomposition comes from different telemetry surfaces: Codex's final
-`turn.completed` usage and DSH's per-message API usage. This distinction is one
-reason the token mechanism remains an open question.
+See [`dataset/github_docs_kb_benchmark/README.md`](dataset/github_docs_kb_benchmark/README.md)
+for the portable dataset contract, [`docs/EVALUATION_PROTOCOL.md`](docs/EVALUATION_PROTOCOL.md)
+for the fair-comparison boundary, and [`results/README.md`](results/README.md)
+for the generated-output layout.

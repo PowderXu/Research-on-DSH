@@ -29,7 +29,7 @@ export class TechdocsService {
           : "window",
       ...(options.intent ? { intent: options.intent } : {}),
       graph: {
-        enabled: options.allowGraph !== false && this.config.graphExpansion,
+        enabled: options.allowGraph !== false && this.config.searchGraphExpansion,
         seed_limit: this.config.graphSeedLimit,
         neighbor_limit: this.config.graphNeighborLimit,
         include_linked_code: false,

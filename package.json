@@ -1,8 +1,8 @@
 {
-  "name": "codex-dsh-small-trial-runtime",
-  "version": "0.1.0",
+  "name": "github-docs-kb-benchmark-runtime",
+  "version": "0.2.0",
   "private": true,
-  "description": "Pinned DSH and FastCtx runtime for the small agent trial",
+  "description": "Pinned DSH and FastCtx runtime for the GitHub Docs KB benchmark",
   "packageManager": "npm@10.9.4",
   "engines": {
     "node": "^22.19.0 || >=24"

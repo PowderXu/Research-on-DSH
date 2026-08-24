@@ -1,0 +1,43 @@
+{
+  "name": "github-docs-kb-retrieval-v2.1",
+  "task": "rank canonical GitHub Docs pages for real support questions",
+  "evaluation_unit": "canonical documentation page",
+  "default_split": "test",
+  "required_top_k": 20,
+  "primary_metrics": [
+    "Recall@10",
+    "Hit@10",
+    "nDCG@10",
+    "p50_latency_ms"
+  ],
+  "secondary_metrics": [
+    "Recall@1",
+    "Recall@5",
+    "Recall@20",
+    "Hit@1",
+    "Hit@5",
+    "Hit@20",
+    "AllSupport@10",
+    "p95_latency_ms"
+  ],
+  "macro_average": true,
+  "slices": [
+    "intent_category",
+    "evidence_category",
+    "evidence_structure",
+    "qrel_count_group"
+  ],
+  "qrel_provenance": "distinct docs.github.com pages linked in accepted GitHub Community answers",
+  "unjudged_policy": "zero measured gain; do not claim exhaustive irrelevance",
+  "oracle_features_excluded": [
+    "graph_opportunity"
+  ],
+  "fairness_controls": [
+    "same corpus revision",
+    "same frozen question split",
+    "same top-k",
+    "same agent and non-KB tools for plugin comparisons",
+    "retrieved canonical IDs logged before generation",
+    "all failures retained in denominator"
+  ]
+}

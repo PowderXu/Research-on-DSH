@@ -1,0 +1,14 @@
+- id: agent-default-model
+  config:
+    provider: openai
+    model: gpt-5-mini
+
+- id: llm-pi-ai
+  config:
+    providers:
+      openai:
+        apiKeyEnv: OPENAI_API_KEY
+        models:
+          - id: gpt-5-mini
+            contextWindow: 400000
+            maxTokens: 4096

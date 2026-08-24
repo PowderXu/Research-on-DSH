@@ -47,6 +47,15 @@
         - id: kbbench-skill-techdocs
           name: '@kbbench/dsh-techdocs/skill-techdocs'
           disabled: true
+        - id: kbbench-skill-github-docs-fs
+          name: '@kbbench/dsh-techdocs/skill-fs'
+          disabled: true
+        - id: kbbench-skill-github-docs-hybrid
+          name: '@kbbench/dsh-techdocs/skill-hybrid'
+          disabled: true
+        - id: kbbench-skill-github-docs-neo4j
+          name: '@kbbench/dsh-techdocs/skill-neo4j'
+          disabled: true
         - id: kbbench-techdocs-coding-consumer
           name: '@kbbench/dsh-techdocs/consumer-coding'
           disabled: true

@@ -1,0 +1,1637 @@
+[
+  {
+    "question_id": "122713",
+    "source_url": "https://github.com/orgs/community/discussions/122713",
+    "title": "Cancel annual subscription",
+    "query": "Cancel annual subscription\nSelect Topic Area\nQuestion\nI have enrolled to the copilot annual subscription. Can I cancel the subscription while it is available, and will I get back the remaining payment?",
+    "community_category": "Copilot Conversations",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/122713#discussioncomment-9341227",
+    "docs_urls": [
+      "https://docs.github.com/en/billing/managing-billing-for-github-copilot/managing-your-github-copilot-individual-subscription#canceling-your-copilot-individual-subscription",
+      "https://docs.github.com/en/billing/managing-billing-for-github-copilot/managing-your-github-copilot-individual-subscription#canceling-your-copilot-individual-trial"
+    ],
+    "qrel_ids": [
+      "/copilot/how-tos/manage-your-account/get-started-with-a-copilot-plan"
+    ],
+    "qrel_anchors": {
+      "/copilot/how-tos/manage-your-account/get-started-with-a-copilot-plan": [
+        "canceling-your-copilot-individual-subscription",
+        "canceling-your-copilot-individual-trial"
+      ]
+    },
+    "resolution_kinds": {
+      "https://docs.github.com/en/billing/managing-billing-for-github-copilot/managing-your-github-copilot-individual-subscription#canceling-your-copilot-individual-subscription": "frontmatter_redirect",
+      "https://docs.github.com/en/billing/managing-billing-for-github-copilot/managing-your-github-copilot-individual-subscription#canceling-your-copilot-individual-trial": "frontmatter_redirect"
+    },
+    "intent_category": "policy_billing_account",
+    "evidence_category": "single_page_section",
+    "evidence_flags": [],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "108045",
+    "source_url": "https://github.com/orgs/community/discussions/108045",
+    "title": "How do i unlink the GitHub Slack Integration just from DMs?",
+    "query": "How do i unlink the GitHub Slack Integration just from DMs?\nSelect Topic Area\nQuestion\nThe github bot integration on the Slack has a link button in its DM but does not have an unlink slash command. I've searched its settings for an hour with no luck.\nHow do i stop the GitHub bot from tagging my slack username in places, or better yet, just unlink the bot from my personal account, but still keep it in the slack workspace and all its slack channels.",
+    "community_category": "Other Feature Feedback, Questions, & Ideas",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/108045#discussioncomment-8452404",
+    "docs_urls": [
+      "https://docs.github.com/en/apps/using-github-apps/reviewing-and-revoking-authorization-of-github-apps#reviewing-your-authorized-github-apps"
+    ],
+    "qrel_ids": [
+      "/apps/using-github-apps/reviewing-and-revoking-authorization-of-github-apps"
+    ],
+    "qrel_anchors": {
+      "/apps/using-github-apps/reviewing-and-revoking-authorization-of-github-apps": [
+        "reviewing-your-authorized-github-apps"
+      ]
+    },
+    "resolution_kinds": {
+      "https://docs.github.com/en/apps/using-github-apps/reviewing-and-revoking-authorization-of-github-apps#reviewing-your-authorized-github-apps": "canonical"
+    },
+    "intent_category": "policy_billing_account",
+    "evidence_category": "single_page_composed_anchor",
+    "evidence_flags": [
+      "anchor_uses_reusable",
+      "query_has_variant_cue"
+    ],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "57244",
+    "source_url": "https://github.com/orgs/community/discussions/57244",
+    "title": "Changing \"Workflow permissions\" to \"Read and write\"",
+    "query": "Changing \"Workflow permissions\" to \"Read and write\"\nHello.\nIn my personal account I could successfully change the \"Workflow permissions\" from \"Read\" to \"Read and write\" (under Repo -> Settings -> Actions/General).\nI just created a trial Enterprise. There, at organization or repo level, I cannot make the same change: the option \"Read and write\" is disabled with the message \"Repository administrators will only be able to change the default permissions to a more restrictive setting\".\nHow can I ensure to assign also write permissions to the workflows in my organizational repos?\nThank you\nStefano",
+    "community_category": "Enterprise",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/57244#discussioncomment-7177474",
+    "docs_urls": [
+      "https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#permissions"
+    ],
+    "qrel_ids": [
+      "/actions/reference/workflows-and-actions/workflow-syntax"
+    ],
+    "qrel_anchors": {
+      "/actions/reference/workflows-and-actions/workflow-syntax": [
+        "permissions"
+      ]
+    },
+    "resolution_kinds": {
+      "https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#permissions": "frontmatter_redirect"
+    },
+    "intent_category": "policy_billing_account",
+    "evidence_category": "single_page_composed_anchor",
+    "evidence_flags": [
+      "anchor_uses_reusable",
+      "query_has_variant_cue"
+    ],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "49521",
+    "source_url": "https://github.com/orgs/community/discussions/49521",
+    "title": "JWT generation as a Github app",
+    "query": "JWT generation as a Github app\nHi there!\nI'm trying to create a JWT token from a private key generated in a .pem file for a Github app using the JWTS library in java.\nThough I can generate the token, it still shows an invalid signature; thus, Github returns 401 as expected.\nSample token : eyJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE2NzgyODg4OTcsImV4cCI6MTY3ODI4OTQ5NywiaXNzIjoiMjkzNjY3In0.a0xnRHblUPX0HbN2a__JFLdAkLT5IE7sfGoZK2BuWi0s-Q-k0KGwK5RUYKnWZuArmQ946bTfjiMz0TM8v_iv78Q7rxM45Cb7rC-iiJ4P7Io25mJ2QuoQ0ASDKJ5wtXh8LZQwCElP7nT2NmtB-Fe2pUfv5uR8W_yk-TqDrVTZTmIIjnrq0lpcS7YSkcPDj__yC3a5BRNcctnX_ot7rCfJcFd5WNy8h5tp_dt6dyzFIk4AwCfeSlClKBU0JE-SiH6UwWWE31Uy6EiAS6HBWlIPk5o3KvJ7cAcWub1kUJmmr8oDKhMjtUcAko1glS9fljYQ8IbuC-08GlSOBcd_C_caXA\npublic static String generateJwtToken(String appId) {\n LOGGER.debug(\"generateJwtToken : Entering the method\");\n String token = null;\n try {\n // setting bounty castle provider for private key encryption\n java.security.Security.addProvider(\n new org.bouncycastle.jce.provider.BouncyCastleProvider());\n // reading private key from resources directory\n String rsaPrivateKey = readPrivateKey(Path.of(\n System.getProperty(\"user.dir\")\n + \"/coder-gate/src/main/resources/private-key.pem\")\n .toFile());\n // base64 decoding and re-encoding private key using RSA\n PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(\n Base64.getDecoder().decode(rsaPrivateKey));\n KeyFactory kf = KeyFactory.getInstance(\"RSA\");\n PrivateKey privKey = kf.generatePrivate(keySpec);\n // building jwt token\n token = Jwts.builder()\n // issued at current timestamp\n .setIssuedAt(new Date())\n // expiring in 10 min\n .setExpiration(new Date(System.currentTimeMillis() + 600000))\n // issued b y coder gate app\n .setIssuer(appId)\n // signed using RS 256 algorithm as reequired by github\n .signWith(SignatureAlgorithm.RS256, privKey)\n .compact();\n } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException e) {\n LOGGER.error(\"JwtUtils :: generateJwtToken : Failed to generate jwt token {}\",\n Arrays.toString(e.getStackTrace()));\n LOGGER.info(\"JwtUtils :: generateJwtToken : Setting token as anonymous\");\n token = \"anonymous\";\n }\n LOGGER.debug(\"generateJwtToken : Exiting the method with token {}\", token);\n return token;\n}\nprivate static String readPrivateKey(File file) throws IOException {\n return new String(Files.readAllBytes(file.toPath()), Charset.defaultCharset())\n .replace(\"-----BEGIN RSA PRIVATE KEY-----\", \"\")\n .replaceAll(System.lineSeparator(), \"\")\n .replace(\"-----END RSA PRIVATE KEY-----\", \"\");\n}\nCan someone help me with this?\nThanks in advance :)",
+    "community_category": "Apps, API and Webhooks",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/49521#discussioncomment-5248786",
+    "docs_urls": [
+      "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app#generating-an-installation-access-token"
+    ],
+    "qrel_ids": [
+      "/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app"
+    ],
+    "qrel_anchors": {
+      "/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app": [
+        "generating-an-installation-access-token"
+      ]
+    },
+    "resolution_kinds": {
+      "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app#generating-an-installation-access-token": "canonical"
+    },
+    "intent_category": "troubleshooting",
+    "evidence_category": "single_page_composed_anchor",
+    "evidence_flags": [
+      "anchor_uses_reusable"
+    ],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "26664",
+    "source_url": "https://github.com/orgs/community/discussions/26664",
+    "title": "Job output cannot be using when triggering workflow from job",
+    "query": "Job output cannot be using when triggering workflow from job\nHi,\nSo I have this workflow that gathers the version from a website and then triggers a build (another workflow), via the workflow_call trigger. This is the code of the scheduler:\nname: Checks for new releases and deploys master\non:\n schedule:\n - cron: '15 */2 * * *'\n workflow_dispatch:\njobs:\nexternal_trigger:\nruns-on: ubuntu-latest\noutputs:\nversion: ${{ steps.version_getter.outputs.version }}\nsteps:\n- uses: actions/checkout@v2.3.3\n - name: Version diff\n run: |\n chmod u+x ./scripts/isUpdated.sh\n ./scripts/isUpdated.sh\n - id: version_getter\n name: Trigger build check\n if: ${{ hashFiles('DOCKER_VERSION.txt') != '' }}\n run: |\n version=$(cat DOCKER_VERSION.txt)\n echo \"Triggering because there is the new version $version\"\n echo \"::set-output name=version::$version\"\ntrigger:\nneeds: external_trigger\nuses: ./.github/workflows/docker_build_master.yml\nwith:\nversion: ${{ needs.external_trigger.outputs.version }}\nThe problem is that the version variable is being set as empty string. I have tried using a step in the last job and it works, its just when I use the uses to trigger the other workflow that the output does not work. Like this:\ntrigger:\n needs: external_trigger\n runs-on: ubuntu-latest\n steps:\n - run: echo \"${{ needs.external_trigger.outputs.version }}\"\nAny fix for this issue?\nThanks",
+    "community_category": "Actions",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/26664#discussioncomment-3252776",
+    "docs_urls": [
+      "https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#inputs",
+      "https://docs.github.com/en/actions/learn-github-actions/contexts#inputs-context",
+      "https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#providing-inputs",
+      "https://docs.github.com/en/actions/using-workflows/reusing-workflows#using-inputs-and-secrets-in-a-reusable-workflow"
+    ],
+    "qrel_ids": [
+      "/actions/how-tos/reuse-automations/reuse-workflows",
+      "/actions/reference/workflows-and-actions/contexts",
+      "/actions/reference/workflows-and-actions/events-that-trigger-workflows",
+      "/actions/reference/workflows-and-actions/metadata-syntax"
+    ],
+    "qrel_anchors": {
+      "/actions/how-tos/reuse-automations/reuse-workflows": [
+        "using-inputs-and-secrets-in-a-reusable-workflow"
+      ],
+      "/actions/reference/workflows-and-actions/contexts": [
+        "inputs-context"
+      ],
+      "/actions/reference/workflows-and-actions/events-that-trigger-workflows": [
+        "providing-inputs"
+      ],
+      "/actions/reference/workflows-and-actions/metadata-syntax": [
+        "inputs"
+      ]
+    },
+    "resolution_kinds": {
+      "https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#inputs": "frontmatter_redirect",
+      "https://docs.github.com/en/actions/learn-github-actions/contexts#inputs-context": "frontmatter_redirect",
+      "https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#providing-inputs": "frontmatter_redirect",
+      "https://docs.github.com/en/actions/using-workflows/reusing-workflows#using-inputs-and-secrets-in-a-reusable-workflow": "frontmatter_redirect"
+    },
+    "intent_category": "troubleshooting",
+    "evidence_category": "multi_page_linked",
+    "evidence_flags": [
+      "anchor_uses_reusable",
+      "query_has_variant_cue"
+    ],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 4,
+    "evidence_structure": "linked"
+  },
+  {
+    "question_id": "67928",
+    "source_url": "https://github.com/orgs/community/discussions/67928",
+    "title": "Delete my account",
+    "query": "Delete my account\nSelect Topic Area\nProduct Feedback\nIf I delete my account, it can recover or not after deleting it if 'yes' then how?",
+    "community_category": "Other Feature Feedback, Questions, & Ideas",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/67928#discussioncomment-7087354",
+    "docs_urls": [
+      "https://docs.github.com/en/account-and-profile/setting-up-and-managing-your-personal-account-on-github/managing-your-personal-account/deleting-your-personal-account"
+    ],
+    "qrel_ids": [
+      "/account-and-profile/how-tos/account-management/deleting-your-personal-account"
+    ],
+    "qrel_anchors": {},
+    "resolution_kinds": {
+      "https://docs.github.com/en/account-and-profile/setting-up-and-managing-your-personal-account-on-github/managing-your-personal-account/deleting-your-personal-account": "frontmatter_redirect"
+    },
+    "intent_category": "policy_billing_account",
+    "evidence_category": "single_page_direct",
+    "evidence_flags": [
+      "page_is_variant_conditioned",
+      "page_uses_reusable"
+    ],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "165515",
+    "source_url": "https://github.com/orgs/community/discussions/165515",
+    "title": "Is it acceptable to add privacy-respecting analytics to my open-source GitHub repo?",
+    "query": "Is it acceptable to add privacy-respecting analytics to my open-source GitHub repo?\nSelect Topic Area\nQuestion\nI’ve noticed something odd — every time I merge a pull request on my project, it gets cloned 15–25 times, but the GitHub Traffic page shows only one unique viewer (which is me). So I’m wondering:\nAre actual people or employers cloning and running it locally without hitting my tracking page?\nOr are bots or automated scripts (maybe for ML) doing all that cloning?\nTo get some answers, I’m working on a lightweight, privacy-friendly analytics setup:\nAdd an invisible pixel in the README that triggers a URL request when rendered, extracting:\nSanitized and encrypted user-agent\nGeo country and region via GeoIP (IP addresses are never saved)\nNo personal or IP data stored\nThis should help me see if the README is rendered locally or accessed by automated scripts.\nAdd app usage counter directly in app that logs only one entry per day without any user identifiers — just a basic count of how many times the app is run.\nA separate script that logs into my GitHub account, takes a screenshot of my traffic page, and extracts usage data via OCR (Tesseract), to correlate clone activity with actual usage.\nI’m doing this mainly out of curiosity and to learn. Does anyone know if this kind of tracking is acceptable with GitHub’s terms?\nThanks in advance!",
+    "community_category": "Repositories",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/165515#discussioncomment-13713101",
+    "docs_urls": [
+      "https://docs.github.com/en/site-policy/acceptable-use-policies/github-acceptable-use-policies",
+      "https://docs.github.com/en/site-policy/github-terms/github-terms-of-service?utm_source=chatgpt.com"
+    ],
+    "qrel_ids": [
+      "/site-policy/acceptable-use-policies/github-acceptable-use-policies",
+      "/site-policy/github-terms/github-terms-of-service"
+    ],
+    "qrel_anchors": {},
+    "resolution_kinds": {
+      "https://docs.github.com/en/site-policy/acceptable-use-policies/github-acceptable-use-policies": "canonical",
+      "https://docs.github.com/en/site-policy/github-terms/github-terms-of-service?utm_source=chatgpt.com": "canonical"
+    },
+    "intent_category": "policy_billing_account",
+    "evidence_category": "multi_page_linked",
+    "evidence_flags": [],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 2,
+    "evidence_structure": "linked"
+  },
+  {
+    "question_id": "51483",
+    "source_url": "https://github.com/orgs/community/discussions/51483",
+    "title": "Merge Queue feature availability?",
+    "query": "Merge Queue feature availability?\nI recently created public repository and noticed that there is this new option under branch protection rules:\nBut if I go my private repository (under organization), there is no such feature.\nDoes it mean, its currently only available for public repositories? Or maybe there is a way to opt in for this feature for any repo?",
+    "community_category": "Repositories",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/51483#discussioncomment-5503888",
+    "docs_urls": [
+      "https://docs.github.com/en/get-started/learning-about-github/githubs-products",
+      "https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue"
+    ],
+    "qrel_ids": [
+      "/get-started/learning-about-github/githubs-plans",
+      "/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue"
+    ],
+    "qrel_anchors": {},
+    "resolution_kinds": {
+      "https://docs.github.com/en/get-started/learning-about-github/githubs-products": "frontmatter_redirect",
+      "https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue": "canonical"
+    },
+    "intent_category": "other_product_question",
+    "evidence_category": "multi_page_dispersed",
+    "evidence_flags": [
+      "page_is_variant_conditioned",
+      "page_uses_reusable",
+      "query_has_variant_cue"
+    ],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 2,
+    "evidence_structure": "dispersed"
+  },
+  {
+    "question_id": "24335",
+    "source_url": "https://github.com/orgs/community/discussions/24335",
+    "title": "Basic authentication using a password to the API",
+    "query": "Basic authentication using a password to the API\nHi,\nOnce a week I receive this email from github ->\nHi @YannBerry,\nOn November 10th, 2020 at 10:37 (UTC) you used a password to access an endpoint through the GitHub API using curl:\nBasic authentication using a password to the API is deprecated and will soon no longer work. Visit for more information around suggested workarounds and removal dates.\nThanks,\nThe GitHub Team\nAs far as I’m concerned I don’t use the API. Why do I receive this email ? What should I do ?\nThanks !\nYann",
+    "community_category": "Apps, API and Webhooks",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/24335#discussioncomment-3243832",
+    "docs_urls": [
+      "https://docs.github.com/en/free-pro-team@latest/github/authenticating-to-github/creating-a-personal-access-token"
+    ],
+    "qrel_ids": [
+      "/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens"
+    ],
+    "qrel_anchors": {},
+    "resolution_kinds": {
+      "https://docs.github.com/en/free-pro-team@latest/github/authenticating-to-github/creating-a-personal-access-token": "frontmatter_redirect"
+    },
+    "intent_category": "explanation_comparison",
+    "evidence_category": "single_page_direct",
+    "evidence_flags": [
+      "page_is_variant_conditioned",
+      "page_uses_reusable",
+      "query_has_variant_cue"
+    ],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "152229",
+    "source_url": "https://github.com/orgs/community/discussions/152229",
+    "title": "Does GitHub Copilot use any code from individual users to train GitHub's model (or any successor model)?",
+    "query": "Does GitHub Copilot use any code from individual users to train GitHub's model (or any successor model)?\nI have read the FAQ and I think that it is very clear when it comes to Business and Enterprise users. Not as clear when it comes to Pro and free users.\nFor example Does GitHub Copilot use any of your code to train the GitHub's model (or any successor model)? -> No. GitHub uses neither Copilot Business nor Enterprise data to train the GitHub model. But nothing about free or pro users.\nWhen I look at my own Copilot policies (I am a pro user)\n(clicking at that link do not take me to any privacy policy, just to some random doc page)\nand reading the copilot documentation here It seems VERY clear that data (such as prompts which could include IP data) is NEVER used to train any AI-model.\nHowever, when reading this article it explicitly says\nCopilot for Business also does not use your code to train the Azure OpenAI model\nand\nGitHub Copilot for Individual users, however, can opt in and explicitly provide consent for their code to be used as training data. User engagement data is used to improve the performance of the Copilot Service; specifically, it’s used to fine-tune ranking, sort algorithms, and craft prompts.\nThen it sound like it is possible for individual users to opt-in to for the code (which should mean prompts?) to be used as training data (to train the Azure OpenAI model). Even though copilot documentation says that is never done.\nSo my question include\nWhat model is the Azure OpenAI model? Is that the model I choose to chat with? or is it something else?\nAs an individual user. Is it at any time possible that github or third parties use prompts or suggestions to train any AI-model?",
+    "community_category": "Copilot Conversations",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/152229#discussioncomment-15028343",
+    "docs_urls": [
+      "https://docs.github.com/en/copilot/managing-copilot/managing-copilot-as-an-individual-subscriber/managing-copilot-policies-as-an-individual-subscriber",
+      "https://docs.github.com/en/copilot/managing-copilot/managing-copilot-as-an-individual-subscriber/managing-copilot-policies-as-an-individual-subscriber#model-training-and-improvements",
+      "https://docs.github.com/en/site-policy/privacy-policies/github-privacy-statement"
+    ],
+    "qrel_ids": [
+      "/copilot/how-tos/manage-your-account/manage-policies",
+      "/site-policy/privacy-policies/github-general-privacy-statement"
+    ],
+    "qrel_anchors": {
+      "/copilot/how-tos/manage-your-account/manage-policies": [
+        "model-training-and-improvements"
+      ]
+    },
+    "resolution_kinds": {
+      "https://docs.github.com/en/copilot/managing-copilot/managing-copilot-as-an-individual-subscriber/managing-copilot-policies-as-an-individual-subscriber": "frontmatter_redirect",
+      "https://docs.github.com/en/copilot/managing-copilot/managing-copilot-as-an-individual-subscriber/managing-copilot-policies-as-an-individual-subscriber#model-training-and-improvements": "frontmatter_redirect",
+      "https://docs.github.com/en/site-policy/privacy-policies/github-privacy-statement": "frontmatter_redirect"
+    },
+    "intent_category": "policy_billing_account",
+    "evidence_category": "multi_page_dispersed",
+    "evidence_flags": [
+      "anchor_uses_reusable",
+      "query_has_variant_cue"
+    ],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 2,
+    "evidence_structure": "dispersed"
+  },
+  {
+    "question_id": "24657",
+    "source_url": "https://github.com/orgs/community/discussions/24657",
+    "title": "How to trigger repository_dispatch event for non-default branch?",
+    "query": "How to trigger repository_dispatch event for non-default branch?\nThe Github Actions documentation mentions the repository_dispatch event in the External Events section. The table in this sections says that the GITHUB_REF points to the “Branch that received dispatch”. My question now is: How can I specify the branch when sending the repository_dispatch event? The API documentation does not mention any branch related input argument.\nThanks!",
+    "community_category": "Apps, API and Webhooks",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/24657#discussioncomment-3244904",
+    "docs_urls": [
+      "https://docs.github.com/en/actions/reference/events-that-trigger-workflows#workflow_dispatch"
+    ],
+    "qrel_ids": [
+      "/actions/reference/workflows-and-actions/events-that-trigger-workflows"
+    ],
+    "qrel_anchors": {
+      "/actions/reference/workflows-and-actions/events-that-trigger-workflows": [
+        "workflow_dispatch"
+      ]
+    },
+    "resolution_kinds": {
+      "https://docs.github.com/en/actions/reference/events-that-trigger-workflows#workflow_dispatch": "frontmatter_redirect"
+    },
+    "intent_category": "capability_limit",
+    "evidence_category": "single_page_section",
+    "evidence_flags": [],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "142387",
+    "source_url": "https://github.com/orgs/community/discussions/142387",
+    "title": "How can I delete indexed repositories for GitHub Copilot in GitHub.com?",
+    "query": "How can I delete indexed repositories for GitHub Copilot in GitHub.com?\nSelect Topic Area\nQuestion\nI have individual subscription and I have been testing the indexing capability that Copilot in GitHub.com offers, although I ran out of repository indexes which is 5 and some test repos I have is indexed to test the feature, I couldn't seem to find a setting or an option to stop the repository from being Indexed so that I can index other repos... I believe the only way to remove the index is to delete the repository altogether which is highly impractical\nWould be helpful if there is such an option to do so, if there are workarounds, please let us know, thanks in advance!",
+    "community_category": "Copilot Conversations",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/142387#discussioncomment-11871989",
+    "docs_urls": [
+      "https://docs.github.com/en/copilot/using-github-copilot/indexing-repositories-for-copilot-chat"
+    ],
+    "qrel_ids": [
+      "/copilot/concepts/context/repository-indexing"
+    ],
+    "qrel_anchors": {},
+    "resolution_kinds": {
+      "https://docs.github.com/en/copilot/using-github-copilot/indexing-repositories-for-copilot-chat": "frontmatter_redirect"
+    },
+    "intent_category": "policy_billing_account",
+    "evidence_category": "single_page_direct",
+    "evidence_flags": [],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "75928",
+    "source_url": "https://github.com/orgs/community/discussions/75928",
+    "title": "Expressions should have a conditional operator or function",
+    "query": "Expressions should have a conditional operator or function\nSelect Topic Area\nProduct Feedback\nExpressions should have a way to write a condition. This could either be a ternary operator <condition> ? <true value> : <false value> or a function if(<condition>, <true-value>, <false-value>).\nOriginal issue: actions/runner#409",
+    "community_category": "Actions",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/75928#discussioncomment-15646385",
+    "docs_urls": [
+      "https://docs.github.com/en/actions/reference/workflows-and-actions/expressions#case"
+    ],
+    "qrel_ids": [
+      "/actions/reference/workflows-and-actions/expressions"
+    ],
+    "qrel_anchors": {
+      "/actions/reference/workflows-and-actions/expressions": [
+        "case"
+      ]
+    },
+    "resolution_kinds": {
+      "https://docs.github.com/en/actions/reference/workflows-and-actions/expressions#case": "canonical"
+    },
+    "intent_category": "other_product_question",
+    "evidence_category": "single_page_section",
+    "evidence_flags": [],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "23993",
+    "source_url": "https://github.com/orgs/community/discussions/23993",
+    "title": "Game with polemic content [Solved]",
+    "query": "Game with polemic content [Solved]\nCan you please help me report this game? It’s offensive, and promotes violence against women. Thanks.\nPreview: TikTok\nRepo: \nI know this can be off-topic, but I think is an important issue to address for the community.",
+    "community_category": "New to GitHub",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/23993#discussioncomment-3242445",
+    "docs_urls": [
+      "https://docs.github.com/en/github/building-a-strong-community/reporting-abuse-or-spam#reporting-a-user"
+    ],
+    "qrel_ids": [
+      "/communities/maintaining-your-safety-on-github/reporting-abuse-or-spam"
+    ],
+    "qrel_anchors": {
+      "/communities/maintaining-your-safety-on-github/reporting-abuse-or-spam": [
+        "reporting-a-user"
+      ]
+    },
+    "resolution_kinds": {
+      "https://docs.github.com/en/github/building-a-strong-community/reporting-abuse-or-spam#reporting-a-user": "frontmatter_redirect"
+    },
+    "intent_category": "other_product_question",
+    "evidence_category": "single_page_composed_anchor",
+    "evidence_flags": [
+      "anchor_uses_reusable"
+    ],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "146616",
+    "source_url": "https://github.com/orgs/community/discussions/146616",
+    "title": "Getting back a github account",
+    "query": "Getting back a github account\nSelect Topic Area\nQuestion\nHello everyone , i hope youre all doing well , i have a question concerning a github account that i had , so basically someone got into my gmail and reseted the password of my account and also removed the linked email in it , and now i dont have any access to that account, is it possible to get that account back or there is no solution for this issue?",
+    "community_category": "Other Feature Feedback, Questions, & Ideas",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/146616#discussioncomment-11522682",
+    "docs_urls": [
+      "https://docs.github.com/en/authentication/securing-your-account-with-two-factor-authentication-2fa/recovering-your-account-if-you-lose-your-2fa-credentials",
+      "https://docs.github.com/en/site-policy/other-site-policies/github-account-recovery-policy"
+    ],
+    "qrel_ids": [
+      "/authentication/securing-your-account-with-two-factor-authentication-2fa/recovering-your-account-if-you-lose-your-2fa-credentials",
+      "/site-policy/other-site-policies/github-account-recovery-policy"
+    ],
+    "qrel_anchors": {},
+    "resolution_kinds": {
+      "https://docs.github.com/en/authentication/securing-your-account-with-two-factor-authentication-2fa/recovering-your-account-if-you-lose-your-2fa-credentials": "canonical",
+      "https://docs.github.com/en/site-policy/other-site-policies/github-account-recovery-policy": "canonical"
+    },
+    "intent_category": "policy_billing_account",
+    "evidence_category": "multi_page_linked",
+    "evidence_flags": [
+      "page_is_variant_conditioned",
+      "page_uses_reusable"
+    ],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 2,
+    "evidence_structure": "linked"
+  },
+  {
+    "question_id": "39520",
+    "source_url": "https://github.com/orgs/community/discussions/39520",
+    "title": "Github API for deleting issues",
+    "query": "Github API for deleting issues\nSelect Topic Area\nQuestion\nCan't find api for deleting issues.\nIs there any plan to add the API for it?",
+    "community_category": "Apps, API and Webhooks",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/39520#discussioncomment-4185188",
+    "docs_urls": [
+      "https://docs.github.com/en/graphql/reference/mutations#deleteissue",
+      "https://docs.github.com/en/rest/issues"
+    ],
+    "qrel_ids": [
+      "/graphql/reference",
+      "/rest/issues"
+    ],
+    "qrel_anchors": {
+      "/graphql/reference": [
+        "deleteissue"
+      ]
+    },
+    "resolution_kinds": {
+      "https://docs.github.com/en/graphql/reference/mutations#deleteissue": "frontmatter_redirect",
+      "https://docs.github.com/en/rest/issues": "canonical"
+    },
+    "intent_category": "troubleshooting",
+    "evidence_category": "multi_page_dispersed",
+    "evidence_flags": [
+      "query_has_variant_cue"
+    ],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 2,
+    "evidence_structure": "dispersed"
+  },
+  {
+    "question_id": "143714",
+    "source_url": "https://github.com/orgs/community/discussions/143714",
+    "title": "How to attach a file to copilot",
+    "query": "How to attach a file to copilot\nI am having trouble getting copilot to reference a file when asking a question to copilot in my iOS app.How do I specify the file?\nℹ️ Additional Debug Info\nGitHub for iOS, version 1.183.1 (145298821)\nDevice: iPhone17,2 (iOS 18.1)",
+    "community_category": "Mobile",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/143714#discussioncomment-11162428",
+    "docs_urls": [
+      "https://docs.github.com/en/copilot/using-github-copilot/asking-github-copilot-questions-in-github"
+    ],
+    "qrel_ids": [
+      "/copilot/how-tos/copilot-on-github/chat-with-copilot/chat-in-github"
+    ],
+    "qrel_anchors": {},
+    "resolution_kinds": {
+      "https://docs.github.com/en/copilot/using-github-copilot/asking-github-copilot-questions-in-github": "frontmatter_redirect"
+    },
+    "intent_category": "how_to_configuration",
+    "evidence_category": "single_page_direct",
+    "evidence_flags": [
+      "page_uses_reusable",
+      "query_has_variant_cue"
+    ],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "24342",
+    "source_url": "https://github.com/orgs/community/discussions/24342",
+    "title": "Http api call limit, how it works?",
+    "query": "Http api call limit, how it works?\nHello!\nThere is a way to request a repo structure in JSON format like that (example)\n api.github.com\n//api.github.com/repos/betaflight/betaflight/contents/src/main/fc\nHow does the limitation work on the number of such “API” calls? I can make these calls without authentification at all from the incognito browser window.\nIs it 1000 calls from my IP address per hour? Or is it 1000 calls to this repo per hour total?\nThanks!",
+    "community_category": "Apps, API and Webhooks",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/24342#discussioncomment-3243847",
+    "docs_urls": [
+      "https://docs.github.com/en/free-pro-team@latest/rest/overview/resources-in-the-rest-api#rate-limiting"
+    ],
+    "qrel_ids": [
+      "/rest/using-the-rest-api/getting-started-with-the-rest-api"
+    ],
+    "qrel_anchors": {
+      "/rest/using-the-rest-api/getting-started-with-the-rest-api": [
+        "rate-limiting"
+      ]
+    },
+    "resolution_kinds": {
+      "https://docs.github.com/en/free-pro-team@latest/rest/overview/resources-in-the-rest-api#rate-limiting": "frontmatter_redirect"
+    },
+    "intent_category": "capability_limit",
+    "evidence_category": "single_page_section",
+    "evidence_flags": [],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "28581",
+    "source_url": "https://github.com/orgs/community/discussions/28581",
+    "title": "GitHub Apps \"Client secrets\" vs \"Private keys\"",
+    "query": "GitHub Apps \"Client secrets\" vs \"Private keys\"\nWhat is the difference between Client secrets and Private keys in GitHub Apps? Why and when should I chose the one over the other?\nThanks for the help!",
+    "community_category": "New to GitHub",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/28581#discussioncomment-8260094",
+    "docs_urls": [
+      "https://docs.github.com/en/enterprise-cloud@latest/apps/creating-github-apps/about-creating-github-apps/best-practices-for-creating-a-github-app#installation-access-tokens-user-access-tokens-and-refresh-tokens"
+    ],
+    "qrel_ids": [
+      "/apps/creating-github-apps/about-creating-github-apps/best-practices-for-creating-a-github-app"
+    ],
+    "qrel_anchors": {
+      "/apps/creating-github-apps/about-creating-github-apps/best-practices-for-creating-a-github-app": [
+        "installation-access-tokens-user-access-tokens-and-refresh-tokens"
+      ]
+    },
+    "resolution_kinds": {
+      "https://docs.github.com/en/enterprise-cloud@latest/apps/creating-github-apps/about-creating-github-apps/best-practices-for-creating-a-github-app#installation-access-tokens-user-access-tokens-and-refresh-tokens": "canonical"
+    },
+    "intent_category": "explanation_comparison",
+    "evidence_category": "single_page_section",
+    "evidence_flags": [],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "25235",
+    "source_url": "https://github.com/orgs/community/discussions/25235",
+    "title": "Use docker images from GitHub Package Registry",
+    "query": "Use docker images from GitHub Package Registry\nI joined GitHub Actions and GitHub Package Registry. According to Solved: Github Action Build Caching - GitHub Community Forum, we can skip docker build step for using GitHub Actions. GitHub Actions v2 can pull the docker images that are published on Docker Hub now. Can GitHub Actions v2 pull the docker images from GitHub Package Registry? Is this on the roadmap?",
+    "community_category": "Actions",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/25235#discussioncomment-3247005",
+    "docs_urls": [
+      "https://docs.github.com/en/packages/getting-started-with-github-container-registry/about-github-container-registry",
+      "https://docs.github.com/en/packages/getting-started-with-github-container-registry/migrating-to-github-container-registry-for-docker-images"
+    ],
+    "qrel_ids": [
+      "/packages/working-with-a-github-packages-registry/migrating-to-the-container-registry-from-the-docker-registry",
+      "/packages/working-with-a-github-packages-registry/working-with-the-container-registry"
+    ],
+    "qrel_anchors": {},
+    "resolution_kinds": {
+      "https://docs.github.com/en/packages/getting-started-with-github-container-registry/about-github-container-registry": "frontmatter_redirect",
+      "https://docs.github.com/en/packages/getting-started-with-github-container-registry/migrating-to-github-container-registry-for-docker-images": "frontmatter_redirect"
+    },
+    "intent_category": "how_to_configuration",
+    "evidence_category": "multi_page_linked",
+    "evidence_flags": [
+      "page_is_variant_conditioned",
+      "page_uses_reusable"
+    ],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 2,
+    "evidence_structure": "linked"
+  },
+  {
+    "question_id": "121855",
+    "source_url": "https://github.com/orgs/community/discussions/121855",
+    "title": ".mmd and .mermaid files not previewing in github.",
+    "query": ".mmd and .mermaid files not previewing in github.\nSelect Topic Area\nQuestion\nIn my repo we have /documents/mermaid and we have a bunch of .mmd files there. On our local machines we simply open it using IDE plugins or web editor - non-issue.\nI would like that within GitHub the 'preview' tab on any of our .mmd files, actually shows the diagram (so our non-technical team can view and edit from source without having to really use git). Viewing a .mmd file within git gives me \"Unable to render code block\". I have read but still my .mmd files do not show up.\nI understand that in anything markdown supported we can do \"```markdown ECT\", but that would require us saving as .md files and modifying every one. There must be a way that .mmd files can automatically be previewed but i cant seem to find a simple solution.\nI may be missing something obvious, but I have yet to find a solution. Any advice would be greatly apricated.\nThank you.",
+    "community_category": "Programming Help",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/121855#discussioncomment-9295280",
+    "docs_urls": [
+      "https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/attaching-files"
+    ],
+    "qrel_ids": [
+      "/get-started/writing-on-github/working-with-advanced-formatting/attaching-files"
+    ],
+    "qrel_anchors": {},
+    "resolution_kinds": {
+      "https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/attaching-files": "canonical"
+    },
+    "intent_category": "troubleshooting",
+    "evidence_category": "single_page_direct",
+    "evidence_flags": [
+      "page_is_variant_conditioned",
+      "query_has_variant_cue"
+    ],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "52316",
+    "source_url": "https://github.com/orgs/community/discussions/52316",
+    "title": "Creating a repo from a template using an installation or user token",
+    "query": "Creating a repo from a template using an installation or user token\nSelect Topic Area\nQuestion\nHi, I can't for the life of me figure out how to create a repo on behalf of another user using a templated repo. I keep getting this error:\n{\n \"message\": \"Resource not accessible by integration\",\n \"documentation_url\": \" \n}\nCreating a normal repo works fine, but when I try to do so using a publicly accessible template repo I get the error above. I've tried both with an installation access token and with a user token with the same results.\nForking the repo using the API works fine, but generating from a template does not.\nIs it even possible to create a repo using a template on behalf of a user? Is this a bug?\nPermissions:\nRead access to code and metadata\nRead and write access to administration, checks, and pull requests",
+    "community_category": "Repositories",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/52316#discussioncomment-5559719",
+    "docs_urls": [
+      "https://docs.github.com/en/rest/reference/repos#create-a-repository-using-a-template"
+    ],
+    "qrel_ids": [
+      "/rest/repos"
+    ],
+    "qrel_anchors": {
+      "/rest/repos": [
+        "create-a-repository-using-a-template"
+      ]
+    },
+    "resolution_kinds": {
+      "https://docs.github.com/en/rest/reference/repos#create-a-repository-using-a-template": "frontmatter_redirect"
+    },
+    "intent_category": "troubleshooting",
+    "evidence_category": "single_page_section",
+    "evidence_flags": [],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "202890",
+    "source_url": "https://github.com/orgs/community/discussions/202890",
+    "title": "Need help: Getting denied. Most of them are no reason provided",
+    "query": "Need help: Getting denied. Most of them are no reason provided\n🏷️ Discussion Type\nQuestion\n💬 Feature/Topic Area\nRe-verification/Repeat Application\nHi everyone,\nHi everyone first time writing here.\nIm from poland and have problem with RE-VERIFYING.\nMy school normaly is 5 years.\nWhen i started in it. Without a problem i could verify with my school portal.\nBut now i have been asked to reverify.\nWhen i decited to try it. Went instantly rejected.\nproblem is. In poland most of the IDS are 2 sided.\nWhen i try my \"Świadectwo szkolne\" - When you end a year document\nIt says. No date provided. Even tho there is a clear date, and it says i have promotion to next class, meaning i am still in the school.\nTried again my school portal like i did before. Does not work. Even when i tried to highlight my name and the school name. Not accepted...\nSadly some/most of the rejected reason are:\nWhat do to?\nI dont have any more document.\nI have:\nDocument saying i got promotion to next class/year (has a date. school name and my name)\nMy school id. (2 sided. on one side my photo name and school name. on the other that i am still in the school.)\nMy school portal\nThank you in advance",
+    "community_category": "GitHub Education",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/202890#discussioncomment-17772732",
+    "docs_urls": [
+      "https://docs.github.com/en/education/about-github-education/github-education-for-students/solving-problems-with-your-github-education-access"
+    ],
+    "qrel_ids": [
+      "/education/about-github-education/github-education-for-students/solving-problems-with-your-github-education-access"
+    ],
+    "qrel_anchors": {},
+    "resolution_kinds": {
+      "https://docs.github.com/en/education/about-github-education/github-education-for-students/solving-problems-with-your-github-education-access": "canonical"
+    },
+    "intent_category": "other_product_question",
+    "evidence_category": "single_page_direct",
+    "evidence_flags": [
+      "page_uses_reusable"
+    ],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "25924",
+    "source_url": "https://github.com/orgs/community/discussions/25924",
+    "title": "Can workflow_dispatch inputs be enhanced to set INPUT_* environmental variables?",
+    "query": "Can workflow_dispatch inputs be enhanced to set INPUT_* environmental variables?\nHI,\nI noticed that INPUT_<UPPERCASEDINPUTNAME> environmental variables are not set for inputs defined in a workflow_dispatch trigger.\nThe blog post says you define them the same way as action inputs, but it doesn’t explicitly say that the environmental variables will be set. Since it uses the action inputs documentation as a reference though, I almost expected them to work the same way.\n The GitHub Blog\nGitHub Actions: Manual triggers with workflow_dispatch The GitHub Blog\nGitHub Actions: Manual triggers with workflow_dispatch\nThe documentation describes the format of the env variables for actions:\nHere is a run showing it is not set\n GitHub\ndogboydog/manual-workflow-test\nTesting new workflow_dispatch event in GitHub Actions - dogboydog/manual-workflow-test\n GitHub\ndogboydog/manual-workflow-test\nTesting new workflow_dispatch event in GitHub Actions - dogboydog/manual-workflow-test\nEither way it can be set manually through the echo\"::set-env .... \" syntax so it’s not a huge deal. I just wondered if this was something that was considered.",
+    "community_category": "Actions",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/25924#discussioncomment-3249696",
+    "docs_urls": [
+      "https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#env"
+    ],
+    "qrel_ids": [
+      "/actions/reference/workflows-and-actions/workflow-syntax"
+    ],
+    "qrel_anchors": {
+      "/actions/reference/workflows-and-actions/workflow-syntax": [
+        "env"
+      ]
+    },
+    "resolution_kinds": {
+      "https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#env": "frontmatter_redirect"
+    },
+    "intent_category": "how_to_configuration",
+    "evidence_category": "single_page_composed_anchor",
+    "evidence_flags": [
+      "anchor_uses_reusable"
+    ],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "170877",
+    "source_url": "https://github.com/orgs/community/discussions/170877",
+    "title": "Using a shared workflow for Copilot coding agent setup steps",
+    "query": "Using a shared workflow for Copilot coding agent setup steps\nWe've got a working coding agent setup scripts workflow for restoring private dependencies etc. but now we want to convert it to a shared workflow so that we can use and maintain it across many repos.\nWe already do this for our main builds.\nHowever, once we move the Copilot setup steps to a shared workflow it no longer gets used when the coding agent session runs, as if it doesn't exist.\nHopefully this can be fixed.\nWhile we're on feedback we also found that env at the workflow top level didn't work so we had to replicate it in each step of the custom setup steps job",
+    "community_category": "Copilot Conversations",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/170877#discussioncomment-14593749",
+    "docs_urls": [
+      "https://docs.github.com/en/actions/tutorials/create-actions/create-a-composite-action"
+    ],
+    "qrel_ids": [
+      "/actions/tutorials/create-actions/create-a-composite-action"
+    ],
+    "qrel_anchors": {},
+    "resolution_kinds": {
+      "https://docs.github.com/en/actions/tutorials/create-actions/create-a-composite-action": "canonical"
+    },
+    "intent_category": "troubleshooting",
+    "evidence_category": "single_page_direct",
+    "evidence_flags": [
+      "page_uses_reusable"
+    ],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "196978",
+    "source_url": "https://github.com/orgs/community/discussions/196978",
+    "title": "Workflow not dispatched on submodule update with paths-ignore configured",
+    "query": "Workflow not dispatched on submodule update with paths-ignore configured\n🏷️ Discussion Type\nQuestion\n💬 Feature/Topic Area\nWorkflow Configuration\nDiscussion Details\nI've got a repository with two workflows, one of which builds the software, and the other one updates the git submodule.\nThe build workflow has a paths-ignore filter configured as follows to prevent unnecessary CI runs on docs changes:\non:\n push:\n branches:\n - main\n paths-ignore:\n - 'doc/**'\n - '.github/**'\n - '.firmwareci/**'\n - 'README.md'\n pull_request:\n branches:\n - main\n paths-ignore:\n - 'doc/**'\n - '.github/**'\n - '.firmwareci/**'\n - 'README.md'\n workflow_dispatch:\njobs:\n build:\n runs-on: [self-hosted, Hydra, Large]\n steps:\n - name: Checkout\n uses: actions/checkout@v6\n with:\n submodules: recursive\n fetch-depth: 0\n - name: Build\n uses: ./.github/actions/build\n with:\n board: canopy-qemu\nNow, when the update workflow runs and updates the submodule which results in a new PR, it ends up without running the build workflow for unknown reason. Example PR: canopybmc/canopybmc#187\nI've also tried to use paths instead of paths-ignore, but it still doesn't dispatch the workflow.\nNow my question: Is it expected that submodule updates never trigger a workflow if a paths filter is configured, or is this a bug? I couldn't find anything in the docs for that. If you have any workarounds for thata (auto-dispatching a workflow on the affected branch or so) I'd highly appreciate that!",
+    "community_category": "Actions",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/196978#discussioncomment-17061808",
+    "docs_urls": [
+      "https://docs.github.com/actions/concepts/security/github_token",
+      "https://docs.github.com/actions/how-tos/writing-workflows/choosing-when-your-workflow-runs/triggering-a-workflow",
+      "https://docs.github.com/actions/reference/workflows-and-actions/events-that-trigger-workflows#repository_dispatch"
+    ],
+    "qrel_ids": [
+      "/actions/concepts/security/github_token",
+      "/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow",
+      "/actions/reference/workflows-and-actions/events-that-trigger-workflows"
+    ],
+    "qrel_anchors": {
+      "/actions/reference/workflows-and-actions/events-that-trigger-workflows": [
+        "repository_dispatch"
+      ]
+    },
+    "resolution_kinds": {
+      "https://docs.github.com/actions/concepts/security/github_token": "canonical",
+      "https://docs.github.com/actions/how-tos/writing-workflows/choosing-when-your-workflow-runs/triggering-a-workflow": "frontmatter_redirect",
+      "https://docs.github.com/actions/reference/workflows-and-actions/events-that-trigger-workflows#repository_dispatch": "canonical"
+    },
+    "intent_category": "troubleshooting",
+    "evidence_category": "multi_page_linked",
+    "evidence_flags": [
+      "page_is_variant_conditioned",
+      "page_uses_reusable"
+    ],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 3,
+    "evidence_structure": "linked"
+  },
+  {
+    "question_id": "198506",
+    "source_url": "https://github.com/orgs/community/discussions/198506",
+    "title": "How to configure SSH keys in my account",
+    "query": "How to configure SSH keys in my account\nProduct Feedback\nDiscussion Content\nHello,\nIs there any doc how to configure SSH keys in my GitHub account",
+    "community_category": "Discussions",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/198506#discussioncomment-17237277",
+    "docs_urls": [
+      "https://docs.github.com/en/authentication/connecting-to-github-with-ssh"
+    ],
+    "qrel_ids": [
+      "/authentication/connecting-to-github-with-ssh"
+    ],
+    "qrel_anchors": {},
+    "resolution_kinds": {
+      "https://docs.github.com/en/authentication/connecting-to-github-with-ssh": "canonical"
+    },
+    "intent_category": "policy_billing_account",
+    "evidence_category": "single_page_direct",
+    "evidence_flags": [],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "163756",
+    "source_url": "https://github.com/orgs/community/discussions/163756",
+    "title": "Access Variables and Secrets from Their Source Repository?",
+    "query": "Access Variables and Secrets from Their Source Repository?\nWhy are you starting this discussion?\nQuestion\nWhat GitHub Actions topic or product is this about?\nWorkflow Configuration\nDiscussion Details\nCan GitHub Actions access variables and secrets from their source repository (not talking about variables and secrets from the repositories in which the GitHub Action is consumed)?\nI know it is possible for GitHub Actions to access variables and secrets from the repository in which it is consumes through inputs and ${{ secrets.NAME }}, but here I am asking about variables and secrets from their source repository",
+    "community_category": "Actions",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/163756#discussioncomment-13545671",
+    "docs_urls": [
+      "https://docs.github.com/en/actions/sharing-automations/reusing-workflows"
+    ],
+    "qrel_ids": [
+      "/actions/how-tos/reuse-automations/reuse-workflows"
+    ],
+    "qrel_anchors": {},
+    "resolution_kinds": {
+      "https://docs.github.com/en/actions/sharing-automations/reusing-workflows": "frontmatter_redirect"
+    },
+    "intent_category": "explanation_comparison",
+    "evidence_category": "single_page_direct",
+    "evidence_flags": [
+      "page_is_variant_conditioned",
+      "page_uses_reusable"
+    ],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "155096",
+    "source_url": "https://github.com/orgs/community/discussions/155096",
+    "title": "Fetching data from my profile",
+    "query": "Fetching data from my profile\nSelect Topic Area\nQuestion\nI'm trying to make a list of stared projects in my github profile to display it in my portfolio (which i deployed on github.io too) , I tried to fetch the data in my project but i got blocked by CORS policy: No 'Access-Control-Allow-Origin' header, is also tried to attach token in the headers but i got the same issue, any ideas ?",
+    "community_category": "Apps, API and Webhooks",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/155096#discussioncomment-12634530",
+    "docs_urls": [
+      "https://docs.github.com/en/rest"
+    ],
+    "qrel_ids": [
+      "/rest"
+    ],
+    "qrel_anchors": {},
+    "resolution_kinds": {
+      "https://docs.github.com/en/rest": "canonical"
+    },
+    "intent_category": "other_product_question",
+    "evidence_category": "single_page_direct",
+    "evidence_flags": [],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "77614",
+    "source_url": "https://github.com/orgs/community/discussions/77614",
+    "title": "[GraphQL API] CreateBranchProtectionRuleInput and UpdateBranchProtectionRuleInput should support merge queue configurations",
+    "query": "[GraphQL API] CreateBranchProtectionRuleInput and UpdateBranchProtectionRuleInput should support merge queue configurations\nSelect Topic Area\nProduct Feedback\nBackground\nMergeQueue and its related resource types was added to the GraphQL API on 2023-04-13: \nProblem\nI'm trying to utilize GraphQL API to create branch protection rules with merge queue configurations, but realized CreateBranchProtectionRuleInput and UpdateBranchProtectionRuleInput currently does not support merge queue configurations\nRequest\nadd merge queue configuration support to CreateBranchProtectionRuleInput and UpdateBranchProtectionRuleInput Input Objects",
+    "community_category": "Apps, API and Webhooks",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/77614#discussioncomment-10598205",
+    "docs_urls": [
+      "https://docs.github.com/en/graphql/reference/enums#repositoryruletype"
+    ],
+    "qrel_ids": [
+      "/graphql/reference"
+    ],
+    "qrel_anchors": {
+      "/graphql/reference": [
+        "repositoryruletype"
+      ]
+    },
+    "resolution_kinds": {
+      "https://docs.github.com/en/graphql/reference/enums#repositoryruletype": "frontmatter_redirect"
+    },
+    "intent_category": "capability_limit",
+    "evidence_category": "single_page_section",
+    "evidence_flags": [],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "183055",
+    "source_url": "https://github.com/orgs/community/discussions/183055",
+    "title": "Seeking Schema/Sample JSONs for Copilot Usage Metrics Exports: Documentation Gap on Data Hierarchy",
+    "query": "Seeking Schema/Sample JSONs for Copilot Usage Metrics Exports: Documentation Gap on Data Hierarchy\nSelect Topic Area\nQuestion\nCopilot Feature Area\nGeneral\nHi everyone,\nI am currently analyzing the GitHub Copilot Usage Metrics API (version 2022-11-28) to assess data quality and attribution depth.\nSince this API provides download links to JSON files instead of direct responses, there is a lack of documentation regarding the actual data hierarchy within these exports. While the 'exported keys' are listed in the documentation, the nesting logic and specific data types (especially for breakdowns like IDEs, features, or models) are not transparent.\nMy questions:\nDoes anyone have a Sample/Dummy JSON of these export files (e.g., for the enterprise, organization, or user level reports)?\nBeyond the official docs, is there any way to validate the JSON schema or simulate the data retrieval (e.g., via Mock APIs, Postman collections, or OpenAPI specs) without having a live Enterprise account?\nIf no mocks or samples are available, I’d like to understand the practical path to success for this analysis:\nIs it possible to access these specific JSON exports through a standard Copilot Business subscription, or is a full GitHub Enterprise account strictly required?\nAre there any developer programs or lower-tier evaluation licenses that grant access to these Copilot Usage Metrics API features?\nI am trying to understand the granularity and internal structure of the data before moving into technical implementation. Any shared samples, community-maintained mocks, or technical insights would be greatly appreciated.\nBest regards,\nOnur",
+    "community_category": "Copilot Conversations",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/183055#discussioncomment-16154947",
+    "docs_urls": [
+      "https://docs.github.com/en/enterprise-cloud@latest/copilot/reference/copilot-usage-metrics/example-schema"
+    ],
+    "qrel_ids": [
+      "/copilot/reference/copilot-usage-metrics/example-schema"
+    ],
+    "qrel_anchors": {},
+    "resolution_kinds": {
+      "https://docs.github.com/en/enterprise-cloud@latest/copilot/reference/copilot-usage-metrics/example-schema": "canonical"
+    },
+    "intent_category": "policy_billing_account",
+    "evidence_category": "single_page_direct",
+    "evidence_flags": [
+      "query_has_variant_cue"
+    ],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "23462",
+    "source_url": "https://github.com/orgs/community/discussions/23462",
+    "title": "Github Desktop Logout",
+    "query": "Github Desktop Logout\nHello!\nI recently installed GitHub Desktop on my MacBook (M1). Everything seems to be working, but I can’t seem to figure out how to log out in order to sign on with a different account of mine.\nAny help is appreciated.",
+    "community_category": "New to GitHub",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/23462#discussioncomment-3240454",
+    "docs_urls": [
+      "https://docs.github.com/en/desktop/installing-and-configuring-github-desktop/configuring-and-customizing-github-desktop/configuring-basic-settings"
+    ],
+    "qrel_ids": [
+      "/desktop/configuring-and-customizing-github-desktop/configuring-basic-settings-in-github-desktop"
+    ],
+    "qrel_anchors": {},
+    "resolution_kinds": {
+      "https://docs.github.com/en/desktop/installing-and-configuring-github-desktop/configuring-and-customizing-github-desktop/configuring-basic-settings": "frontmatter_redirect"
+    },
+    "intent_category": "policy_billing_account",
+    "evidence_category": "single_page_direct",
+    "evidence_flags": [
+      "page_uses_reusable"
+    ],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "121211",
+    "source_url": "https://github.com/orgs/community/discussions/121211",
+    "title": "Can I force a job to be re-run under \"Re-run failed\" even if it succeeded?",
+    "query": "Can I force a job to be re-run under \"Re-run failed\" even if it succeeded?\nSelect Topic Area\nQuestion\nOn our CI workflow, we have a setup steps that primes an ephemeral environment that our tests need to ping. This environment is configured to shutdown automatically after a few minutes of inactivity, to save costs.\nThe problem we have is that, when choosing to \"Re-run failed\" on a failed workflow, this setup step is not re-run, since it was successful on the original run. But without re-running this setup, we cannot re-run the failed tests. Is there a way to specify in the workflow yml that a given step must always be run, even during a \"re-run failed\" if it was successful in the latest attempt?",
+    "community_category": "Actions",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/121211#discussioncomment-9348435",
+    "docs_urls": [
+      "https://docs.github.com/en/actions/creating-actions/creating-a-composite-action"
+    ],
+    "qrel_ids": [
+      "/actions/tutorials/create-actions/create-a-composite-action"
+    ],
+    "qrel_anchors": {},
+    "resolution_kinds": {
+      "https://docs.github.com/en/actions/creating-actions/creating-a-composite-action": "frontmatter_redirect"
+    },
+    "intent_category": "troubleshooting",
+    "evidence_category": "single_page_direct",
+    "evidence_flags": [
+      "page_uses_reusable"
+    ],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "123039",
+    "source_url": "https://github.com/orgs/community/discussions/123039",
+    "title": "Cannot click next to name of currently open view",
+    "query": "Cannot click next to name of currently open view\nSelect Topic Area\nBug\nFeature Area\nProjects\n describes how to group/sort/filter etc. project table views. All the procedures involve clicking the little down arrow next to the name of the currently open view, then selecting something from a context menu. However, clicking the little down arrow just displays a tooltip saying \"View Options\" and does nothing. It is thus effectively impossible to sort the view, for example. Grouping is possible with the command palette, but sorting is not on the command palette. Screen shot of what appears is below. OS is Windows 2022 standard edition, browser is MS Edge, latest version as of 5/8/2022.\nGuidelines\n I have read the above statement and can confirm my post is relevant to the GitHub feature areas Issues and/or Projects.",
+    "community_category": "Projects and Issues",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/123039#discussioncomment-9362155",
+    "docs_urls": [
+      "https://docs.github.com/en/issues/planning-and-tracking-with-projects/customizing-views-in-your-project/customizing-the-table-layout"
+    ],
+    "qrel_ids": [
+      "/issues/planning-and-tracking-with-projects/customizing-views-in-your-project/customizing-the-table-layout"
+    ],
+    "qrel_anchors": {},
+    "resolution_kinds": {
+      "https://docs.github.com/en/issues/planning-and-tracking-with-projects/customizing-views-in-your-project/customizing-the-table-layout": "canonical"
+    },
+    "intent_category": "troubleshooting",
+    "evidence_category": "single_page_direct",
+    "evidence_flags": [
+      "page_uses_reusable",
+      "query_has_variant_cue"
+    ],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "26303",
+    "source_url": "https://github.com/orgs/community/discussions/26303",
+    "title": "Cancel github actions wokflow that uses if:always()",
+    "query": "Cancel github actions wokflow that uses if:always()\nHi there!\nI am using github actions as the CI/CD tool to run automated test cases on a given application.\nI have been struggling for a while with the if:always() tag, because I want to, at the end of the automation tests run, run a script in a test management platform to update it with the run results.\nI want this to be done at all times, meaning that even when the step for the suite run fails, I want this step to happen to check the results. To achieve that I am forced to use the if:always() tag.\nThere is however some days where the plaftorm I use as test management tool is down or slow. When this happens this step that uses the always tag just keeps on running.\nI’ve tried the cancelation thourgh the cancel workflow button or even runnning the command gh run cancel <run_id>, but nothing works.\nIs it possible to have a force cancel workflow? If not, given I use a private repo, I will pay for extra minutes when I am not taking advantage of the tool.\nThanks in advance!\nHelena",
+    "community_category": "Actions",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/26303#discussioncomment-3251302",
+    "docs_urls": [
+      "https://docs.github.com/en/actions/learn-github-actions/expressions#always"
+    ],
+    "qrel_ids": [
+      "/actions/reference/workflows-and-actions/expressions"
+    ],
+    "qrel_anchors": {
+      "/actions/reference/workflows-and-actions/expressions": [
+        "always"
+      ]
+    },
+    "resolution_kinds": {
+      "https://docs.github.com/en/actions/learn-github-actions/expressions#always": "frontmatter_redirect"
+    },
+    "intent_category": "capability_limit",
+    "evidence_category": "single_page_section",
+    "evidence_flags": [],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "46641",
+    "source_url": "https://github.com/orgs/community/discussions/46641",
+    "title": "Workflow `GITHUB_TOKEN` not authorised to download packages from GitHub registry",
+    "query": "Workflow `GITHUB_TOKEN` not authorised to download packages from GitHub registry\nSelect Topic Area\nQuestion\nFollowing this documentation, I'm using the default GITHUB_TOKEN secret to download & publish packages from another repository of mine (same scope) on GitHub registry, from a workflow. Yarn is configured to use the environment variable GITHUB_TOKEN. When using the default GITHUB_TOKEN secret, I get a 403 (Forbidden) error when downloading the package.\nWhen using a PAT (a secret named TOKEN that I define manually with write:packages right), it works fine, when not using any token, I get a different error. Therefore, I assume the token is well transmitted and there is a right issue.\nWhat am I missing?\nThank you.\nHere is my repository settings (Actions > General) :\nAllow all actions and reusable workflows: Any action or reusable workflow can be used, regardless of who authored it or where it is defined.\nRead & write permissions: Workflows have read and write permissions in the repository for all scopes.\nHere is a test workflow (link here):\nname: Test Token\non:\n workflow_dispatch:\njobs:\n # Fail\n github:\n name: Test GitHub Token\n runs-on: ubuntu-latest\n steps:\n - name: Checkout the repository\n uses: actions/checkout@v3\n - name: Setup Node\n uses: actions/setup-node@v3\n with:\n node-version: 18\n - name: Install dependencies\n run: yarn install\n env:\n GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}\n # Success\n pat:\n name: Test PAT\n runs-on: ubuntu-latest\n steps:\n - name: Checkout the repository\n uses: actions/checkout@v3\n - name: Setup Node\n uses: actions/setup-node@v3\n with:\n node-version: 18\n - name: Install dependencies\n run: yarn install\n env:\n GITHUB_TOKEN: ${{ secrets.TOKEN }}",
+    "community_category": "Actions",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/46641#discussioncomment-6242949",
+    "docs_urls": [
+      "https://docs.github.com/en/actions/using-jobs/running-jobs-in-a-container#defining-credentials-for-a-container-registry",
+      "https://docs.github.com/en/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility",
+      "https://docs.github.com/en/packages/managing-github-packages-using-github-actions-workflows/publishing-and-installing-a-package-with-github-actions#publishing-a-package-using-an-action",
+      "https://docs.github.com/en/packages/managing-github-packages-using-github-actions-workflows/publishing-and-installing-a-package-with-github-actions#upgrading-a-workflow-that-accesses-a-registry-using-a-personal-access-token"
+    ],
+    "qrel_ids": [
+      "/actions/how-tos/write-workflows/choose-where-workflows-run/run-jobs-in-a-container",
+      "/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility",
+      "/packages/managing-github-packages-using-github-actions-workflows/publishing-and-installing-a-package-with-github-actions"
+    ],
+    "qrel_anchors": {
+      "/actions/how-tos/write-workflows/choose-where-workflows-run/run-jobs-in-a-container": [
+        "defining-credentials-for-a-container-registry"
+      ],
+      "/packages/managing-github-packages-using-github-actions-workflows/publishing-and-installing-a-package-with-github-actions": [
+        "publishing-a-package-using-an-action",
+        "upgrading-a-workflow-that-accesses-a-registry-using-a-personal-access-token"
+      ]
+    },
+    "resolution_kinds": {
+      "https://docs.github.com/en/actions/using-jobs/running-jobs-in-a-container#defining-credentials-for-a-container-registry": "frontmatter_redirect",
+      "https://docs.github.com/en/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility": "canonical",
+      "https://docs.github.com/en/packages/managing-github-packages-using-github-actions-workflows/publishing-and-installing-a-package-with-github-actions#publishing-a-package-using-an-action": "canonical",
+      "https://docs.github.com/en/packages/managing-github-packages-using-github-actions-workflows/publishing-and-installing-a-package-with-github-actions#upgrading-a-workflow-that-accesses-a-registry-using-a-personal-access-token": "canonical"
+    },
+    "intent_category": "troubleshooting",
+    "evidence_category": "multi_page_linked",
+    "evidence_flags": [
+      "anchor_is_variant_conditioned",
+      "anchor_uses_reusable",
+      "page_is_variant_conditioned",
+      "page_uses_reusable",
+      "query_has_variant_cue"
+    ],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 3,
+    "evidence_structure": "linked"
+  },
+  {
+    "question_id": "196178",
+    "source_url": "https://github.com/orgs/community/discussions/196178",
+    "title": "Account suspension and restoration duration.",
+    "query": "Account suspension and restoration duration.\n🏷️ Discussion Type\nQuestion\n💬 Feature/Topic Area\nOther\nHi @community,\nMy account got suspended without reason a couple of days ago, on 15th May, and I raised a ticket, but I haven't gotten any response. How long does it usually take to get a response to an account suspension issue?\nAlso, one of my organisations and associated repos are no longer reachable, whereas other organisations are, does this have to do with the fact that I'm the only member of it?\n@queenofcorgis I'd appreciate your assistance on this matter too. Thank you.",
+    "community_category": "Other Feature Feedback, Questions, & Ideas",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/196178#discussioncomment-16966511",
+    "docs_urls": [
+      "https://docs.github.com/en/site-policy/acceptable-use-policies/github-appeal-and-reinstatement"
+    ],
+    "qrel_ids": [
+      "/site-policy/acceptable-use-policies/github-appeal-and-reinstatement"
+    ],
+    "qrel_anchors": {},
+    "resolution_kinds": {
+      "https://docs.github.com/en/site-policy/acceptable-use-policies/github-appeal-and-reinstatement": "canonical"
+    },
+    "intent_category": "policy_billing_account",
+    "evidence_category": "single_page_direct",
+    "evidence_flags": [],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "45698",
+    "source_url": "https://github.com/orgs/community/discussions/45698",
+    "title": "problems pushing my local repository to by remote GitHub",
+    "query": "problems pushing my local repository to by remote GitHub\nHello,\nI am having problems pushing my local repository to by remote GitHub, with this:\n1 I created a public GitHub for some software testing work that I am doing, and I have made it public.\n2 This is at \n3 I have used IntelliJ IDEA to develop my testing scripts.\n4 Using GitHub Desktop:\n4.1 I have pointed it to the local repository\n4.2 I have logged into my remote GitHub through GitHub Desktop.\n4.3 I get the following message:\n\" You don't have write access to 20230118ATMUnitTesting. Want to create a fork?\ncommit to main\"\nI do not want to create a fork, and I do wish to commit to main:\n1 I am still a novice with Git/GitHub and so I am not familiar with this message, is it telling me:\n1.1 That there is a security on my remote GitHub setting that is preventing me from pushing from my local repository to my remote GitHub? If so, what setting do I need to change?\n1.2 That there is a security setting on my local repository that is preventing me from pushing from my local repository to my remote GitHub? If so, what setting do I need to change",
+    "community_category": "New to GitHub",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/45698#discussioncomment-4808877",
+    "docs_urls": [
+      "https://docs.github.com/en/get-started/importing-your-projects-to-github/importing-source-code-to-github/adding-locally-hosted-code-to-github"
+    ],
+    "qrel_ids": [
+      "/migrations/importing-source-code/using-the-command-line-to-import-source-code/adding-locally-hosted-code-to-github"
+    ],
+    "qrel_anchors": {},
+    "resolution_kinds": {
+      "https://docs.github.com/en/get-started/importing-your-projects-to-github/importing-source-code-to-github/adding-locally-hosted-code-to-github": "frontmatter_redirect"
+    },
+    "intent_category": "how_to_configuration",
+    "evidence_category": "single_page_direct",
+    "evidence_flags": [
+      "page_is_variant_conditioned",
+      "page_uses_reusable"
+    ],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "124413",
+    "source_url": "https://github.com/orgs/community/discussions/124413",
+    "title": "API to get when a Docker tag was pushed/created",
+    "query": "API to get when a Docker tag was pushed/created\nSelect Topic Area\nQuestion\nI'm looking for a timestamp for each Docker tag from ghcr.io\nThe Docker Hub API gives me back rich metadata for each tag including last_updated:\n$ curl | jq .\n{\n \"count\": 161,\n \"next\": \" \n \"previous\": null,\n \"results\": [\n {\n \"creator\": 1156886,\n \"id\": 114871391,\n \"images\": [\n {\n \"architecture\": \"amd64\",\n \"features\": \"\",\n \"variant\": null,\n \"digest\": \"sha256:d8372b75ebdf58e11e2d0740ebea519a1ab05713f1f3969b302afb855614e48c\",\n \"os\": \"linux\",\n \"os_features\": \"\",\n \"os_version\": null,\n \"size\": 212496192,\n \"status\": \"active\",\n \"last_pulled\": \"2024-05-17T19:00:04.301911Z\",\n \"last_pushed\": \"2024-05-14T19:40:32.043167Z\"\n },\n # ... snip\n ]\n --> \"last_updated\": \"2024-05-14T19:42:08.294229Z\", <--\n \"last_updater\": 1156886,\n \"last_updater_username\": \"doijanky\",\n \"name\": \"latest\",\n \"repository\": 9711628,\n \"full_size\": 212496192,\n \"v2\": true,\n \"tag_status\": \"active\",\n \"tag_last_pulled\": \"2024-05-17T20:00:08.897881Z\",\n \"tag_last_pushed\": \"2024-05-14T19:42:08.294229Z\",\n \"media_type\": \"application/vnd.docker.distribution.manifest.list.v2+json\",\n \"content_type\": \"image\",\n \"digest\": \"sha256:166ecd36f5600a2abbcccc0dce94670fb1827e6f7096b79d30a3f7ab3557989d\"\n},\n# ... snip\nThis API response can be used to say the latest tag was last updated on 2024-05-14T19:42:08.294229Z.\nHowever, it doesn't work for GHCR.io:\n$ curl -v \n< HTTP/2 404 \n< content-type: text/plain; charset=utf-8\n< x-content-type-options: nosniff\n< date: Fri, 17 May 2024 20:06:08 GMT\n< content-length: 19\n< \n404 page not found\nWhat I've Tried\nI can fetch all tags by paginating /v2/${repo}/tags/list.\n$ export GITHUB_TOKEN=...\n$ export repo=gethomepage/homepage\n$ export token=$(curl -H \"Authorization: Bearer $GITHUB_TOKEN\" -s \" | jq -r .token)\n$ curl -i -H \"Authorization: Bearer $token\" \nHTTP/2 200 \ncontent-type: application/json\ndocker-distribution-api-version: registry/2.0\nlink: </v2/gethomepage/homepage/tags/list?last=nightly&n=5>; rel=\"next\"\ncontent-length: 85\n{\"name\":\"gethomepage/homepage\",\"tags\":[\"main\",\"v0.7.2\",\"latest\",\"v0.7.3\",\"nightly\"]}\nThis seems to be a rough implementation of the OCI image manifest API, specifically /v2/OWNER/REPO/tags/list.\nI know GitHub has this info since it shows up in the UI:",
+    "community_category": "Packages",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/124413#discussioncomment-9474904",
+    "docs_urls": [
+      "https://docs.github.com/en/rest/packages/packages?apiVersion=2022-11-28#list-package-versions-for-a-package-owned-by-an-organization"
+    ],
+    "qrel_ids": [
+      "/rest/packages/packages"
+    ],
+    "qrel_anchors": {
+      "/rest/packages/packages": [
+        "list-package-versions-for-a-package-owned-by-an-organization"
+      ]
+    },
+    "resolution_kinds": {
+      "https://docs.github.com/en/rest/packages/packages?apiVersion=2022-11-28#list-package-versions-for-a-package-owned-by-an-organization": "canonical"
+    },
+    "intent_category": "troubleshooting",
+    "evidence_category": "single_page_section",
+    "evidence_flags": [
+      "query_has_variant_cue"
+    ],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "30915",
+    "source_url": "https://github.com/orgs/community/discussions/30915",
+    "title": "Create multiple websites with multiple domains under one GitHub Account",
+    "query": "Create multiple websites with multiple domains under one GitHub Account\nHello,\nI'm brand new to GitHub and am currently floundering my way through the basics. I've managed to host two separate repositories each with their own custom domain under the same GitHub user account. Win. At least I think so... The strange thing about it is that I could find NO OFFICIAL DOCUMENTS from GitHub explaining how to do this. In fact I came across several articles stating that this wasn't even possible. Can anyone help me clarify if this activity is allowed by GitHub and/or safe and stable in a technical sense? (I know very little about the tech side of hosting). Many thanks David",
+    "community_category": "New to GitHub",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/30915#discussioncomment-3484433",
+    "docs_urls": [
+      "https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/about-custom-domains-and-github-pages"
+    ],
+    "qrel_ids": [
+      "/pages/configuring-a-custom-domain-for-your-github-pages-site/about-custom-domains-and-github-pages"
+    ],
+    "qrel_anchors": {},
+    "resolution_kinds": {
+      "https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/about-custom-domains-and-github-pages": "canonical"
+    },
+    "intent_category": "policy_billing_account",
+    "evidence_category": "single_page_direct",
+    "evidence_flags": [
+      "page_is_variant_conditioned",
+      "page_uses_reusable"
+    ],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "198720",
+    "source_url": "https://github.com/orgs/community/discussions/198720",
+    "title": "Cannot un-ignore Dependabot ignore conditions",
+    "query": "Cannot un-ignore Dependabot ignore conditions\n🏷️ Discussion Type\nQuestion\n💬 Feature/Topic Area\nOther\nDiscussion Details\nA long time ago a made a big mistake and ignored a dependency version: quickfix-j/quickfixj#509 (comment)\nIt was not until now that I realised that this will block any 2.2.x update (actually I wanted to ignore only that specific update to 2.2.1).\nI tried to un-ignore via the PR but this did not work because the PR was over 2 years old and the branch has been deleted.\nThen I tried to overrule this via dependabot config here and here but to no avail. The dependabot log still shows:\n2026-06-11T14:48:11.0029510Z updater | 2026/06/11 14:48:11 INFO <job_1408401704> Checking if org.apache.mina:mina-core 2.2.7 needs updating\n2026-06-11T14:48:11.0031760Z updater | 2026/06/11 14:48:11 INFO <job_1408401704> Ignored versions:\n2026-06-11T14:48:11.0032694Z 2026/06/11 14:48:11 INFO <job_1408401704> < 2.2.7 - from .github/dependabot.yml\n2026-06-11T14:48:11.0033435Z 2026/06/11 14:48:11 INFO <job_1408401704> >= 2.2.a, < 2.3 - from @dependabot ignore command\n2026-06-11T14:48:11.0901211Z proxy | 2026/06/11 14:48:11 [442] GET \n2026-06-11T14:48:11.1112114Z proxy | 2026/06/11 14:48:11 [442] 200 \n2026-06-11T14:48:11.2160926Z proxy | 2026/06/11 14:48:11 [444] GET \n2026-06-11T14:48:11.2339330Z proxy | 2026/06/11 14:48:11 [444] 200 \n2026-06-11T14:48:11.2490685Z updater | 2026/06/11 14:48:11 INFO <job_1408401704> Filtered out 9 pre-release versions\n2026-06-11T14:48:11.2720762Z updater | 2026/06/11 14:48:11 INFO <job_1408401704> All updates for org.apache.mina:mina-core were ignored\nShouldn't there be a config in the github settings or some other overrule switch somewhere? I couldn't find it.\nThanks in advance for any help.",
+    "community_category": "Actions",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/198720#discussioncomment-17268894",
+    "docs_urls": [
+      "https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/controlling-dependencies-updated",
+      "https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference",
+      "https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-pull-request-comment-commands"
+    ],
+    "qrel_ids": [
+      "/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/controlling-dependencies-updated",
+      "/code-security/reference/supply-chain-security/dependabot-options-reference",
+      "/code-security/reference/supply-chain-security/dependabot-pull-request-comment-commands"
+    ],
+    "qrel_anchors": {},
+    "resolution_kinds": {
+      "https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/controlling-dependencies-updated": "canonical",
+      "https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference": "canonical",
+      "https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-pull-request-comment-commands": "canonical"
+    },
+    "intent_category": "troubleshooting",
+    "evidence_category": "multi_page_linked",
+    "evidence_flags": [
+      "page_is_variant_conditioned",
+      "page_uses_reusable",
+      "query_has_variant_cue"
+    ],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 3,
+    "evidence_structure": "linked"
+  },
+  {
+    "question_id": "23895",
+    "source_url": "https://github.com/orgs/community/discussions/23895",
+    "title": "Downloading All My Gists From Github At Once",
+    "query": "Downloading All My Gists From Github At Once\nGreetings Everyone out there! I’m new to Github. I have 41 Gists in my account and I want to have a copy of all those gists in my local disk. I searched everywhere but could not find any solution to my question. There are ways to download gists one by one but downloading all of it 1 by 1 is difficult & impractical. Could you please help me by giving a solution? 🙏\nThanks,\nMrStarkJr",
+    "community_category": "New to GitHub",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/23895#discussioncomment-3242059",
+    "docs_urls": [
+      "https://docs.github.com/en/rest/reference/gists"
+    ],
+    "qrel_ids": [
+      "/rest/gists"
+    ],
+    "qrel_anchors": {},
+    "resolution_kinds": {
+      "https://docs.github.com/en/rest/reference/gists": "frontmatter_redirect"
+    },
+    "intent_category": "policy_billing_account",
+    "evidence_category": "single_page_direct",
+    "evidence_flags": [],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "188227",
+    "source_url": "https://github.com/orgs/community/discussions/188227",
+    "title": "Most Elegant Way To Transfer Repositories From Personal Account To Organization",
+    "query": "Most Elegant Way To Transfer Repositories From Personal Account To Organization\nSelect Topic Area\nQuestion\nHello,\nI currently have a couple of projects I'd like to move to my new organization. I think what I am looking for is confirmation on several potential pitfalls. One of which, I assume, is that the Packages (aka Docker Images from GHCR) won't be migrated. Is this still the expected behaviour or are the threads I've read stale?\nAdditionally, if I were to do such a thing and move the repositories, what would be the best way to go about it with minimal chaos. I want to plan this move first so that I don't run into more gotchas than a manageable amount. My projects are still early enough that a lot of users are not downloading said packages but let's say they are and they come looking, should I just have a new repository of the same name (after migration) that sends them to the one on the organization?\nIt's unclear and I don't want to jump into it without doing thorough research hence this thread. I also feel this is a huge security flaw and opens the door for potential (albeit a lot of hoops might be required to get there) repojacking or name hijacking since a lot can happen if you let go of a name. Again, the chances are low but not non-zero.\nI have been reading the documentation as well as threads here and there. But perhaps, my question is,\nwhat is the best way to most elegantly transfer a repository and if waiting would be better if this is about to become seamless at some point in the near future?\nCheers and thanks in advance.\nSome notable references I've read:",
+    "community_category": "Repositories",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/188227#discussioncomment-15950948",
+    "docs_urls": [
+      "https://docs.github.com/en/packages/learn-github-packages/connecting-a-repository-to-a-package",
+      "https://docs.github.com/en/repositories/creating-and-managing-repositories/transferring-a-repository"
+    ],
+    "qrel_ids": [
+      "/packages/learn-github-packages/connecting-a-repository-to-a-package",
+      "/repositories/creating-and-managing-repositories/transferring-a-repository"
+    ],
+    "qrel_anchors": {},
+    "resolution_kinds": {
+      "https://docs.github.com/en/packages/learn-github-packages/connecting-a-repository-to-a-package": "canonical",
+      "https://docs.github.com/en/repositories/creating-and-managing-repositories/transferring-a-repository": "canonical"
+    },
+    "intent_category": "policy_billing_account",
+    "evidence_category": "multi_page_dispersed",
+    "evidence_flags": [
+      "page_is_variant_conditioned",
+      "page_uses_reusable",
+      "query_has_variant_cue"
+    ],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 2,
+    "evidence_structure": "dispersed"
+  },
+  {
+    "question_id": "154781",
+    "source_url": "https://github.com/orgs/community/discussions/154781",
+    "title": "Get a new school on Github Education",
+    "query": "Get a new school on Github Education\nHi everyone,\nI was wondering how I can get my school onto github, it is a decent sized school (middle) 500-1000 students.\nI know this question is probably very common and has a simple yes/no answer. But I can't find it so any help would be appreciated!\nIf i need to get my school to contact github to set this up that is fine. Just let me know if I need to have them pay.",
+    "community_category": "GitHub Education",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/154781#discussioncomment-12592656",
+    "docs_urls": [
+      "https://docs.github.com/en/support/contacting-github-support/creating-a-support-ticket"
+    ],
+    "qrel_ids": [
+      "/support/contacting-github-support/creating-a-support-ticket"
+    ],
+    "qrel_anchors": {},
+    "resolution_kinds": {
+      "https://docs.github.com/en/support/contacting-github-support/creating-a-support-ticket": "canonical"
+    },
+    "intent_category": "troubleshooting",
+    "evidence_category": "single_page_direct",
+    "evidence_flags": [
+      "page_is_variant_conditioned",
+      "page_uses_reusable"
+    ],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "157939",
+    "source_url": "https://github.com/orgs/community/discussions/157939",
+    "title": "Are there plans to be able to use the GraphQL API for Discussions at the Org level?",
+    "query": "Are there plans to be able to use the GraphQL API for Discussions at the Org level?\nQuestion\nDiscussion Content\nHi,\nI see everything here in the docs for the GraphQL API for Discussions relates to repository level discussions \nIs there a way to use the GraphQL API for Discussions at the Org level? If not is this planned work?",
+    "community_category": "Discussions",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/157939#discussioncomment-12984741",
+    "docs_urls": [
+      "https://docs.github.com/en/rest/teams/discussions"
+    ],
+    "qrel_ids": [
+      "/discussions"
+    ],
+    "qrel_anchors": {},
+    "resolution_kinds": {
+      "https://docs.github.com/en/rest/teams/discussions": "frontmatter_redirect"
+    },
+    "intent_category": "capability_limit",
+    "evidence_category": "single_page_direct",
+    "evidence_flags": [],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "126853",
+    "source_url": "https://github.com/orgs/community/discussions/126853",
+    "title": "https://docs.github.com/authentication/securing-your-account-with-two-factor-authentication-2fa",
+    "query": "https://docs.github.com/authentication/securing-your-account-with-two-factor-authentication-2fa\nSelect Topic Area\nShow & Tell",
+    "community_category": "Apps, API and Webhooks",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/126853#discussioncomment-9630120",
+    "docs_urls": [
+      "https://docs.github.com/authentication/securing-your-account-with-two-factor-authentication-2fa"
+    ],
+    "qrel_ids": [
+      "/authentication/securing-your-account-with-two-factor-authentication-2fa"
+    ],
+    "qrel_anchors": {},
+    "resolution_kinds": {
+      "https://docs.github.com/authentication/securing-your-account-with-two-factor-authentication-2fa": "canonical"
+    },
+    "intent_category": "policy_billing_account",
+    "evidence_category": "single_page_direct",
+    "evidence_flags": [
+      "page_is_variant_conditioned",
+      "page_uses_reusable"
+    ],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "156480",
+    "source_url": "https://github.com/orgs/community/discussions/156480",
+    "title": "Best practices for handling rate limits when using the REST API for frequent polling",
+    "query": "Best practices for handling rate limits when using the REST API for frequent polling\nSelect Topic Area\nQuestion\nHi everyone,\nI'm working on an integration that uses GitHub's REST API to poll for updates on issues and pull requests every few minutes.\nI understand that there are rate limits in place, and I'm looking for best practices or recommended strategies to stay within those limits while still keeping data relatively fresh.\nSome specific questions I had:\nIs there a preferred way to reduce API calls, like using conditional requests (ETags)?\nWould webhooks be more efficient for this use case?\nAre there known patterns or tools that help manage GitHub API rate limits effectively?\nI’d love to hear how others have approached this, or if GitHub recommends a specific method for frequent syncs.\nThanks in advance!",
+    "community_category": "Apps, API and Webhooks",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/156480#discussioncomment-13930199",
+    "docs_urls": [
+      "https://docs.github.com/en/rest/overview/resources-in-the-rest-api#conditional-requests",
+      "https://docs.github.com/en/webhooks"
+    ],
+    "qrel_ids": [
+      "/rest/using-the-rest-api/getting-started-with-the-rest-api",
+      "/webhooks"
+    ],
+    "qrel_anchors": {
+      "/rest/using-the-rest-api/getting-started-with-the-rest-api": [
+        "conditional-requests"
+      ]
+    },
+    "resolution_kinds": {
+      "https://docs.github.com/en/rest/overview/resources-in-the-rest-api#conditional-requests": "frontmatter_redirect",
+      "https://docs.github.com/en/webhooks": "canonical"
+    },
+    "intent_category": "explanation_comparison",
+    "evidence_category": "multi_page_dispersed",
+    "evidence_flags": [],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 2,
+    "evidence_structure": "dispersed"
+  },
+  {
+    "question_id": "64750",
+    "source_url": "https://github.com/orgs/community/discussions/64750",
+    "title": "Github Codespaces",
+    "query": "Github Codespaces\nHow can I work with Github Codespaces?",
+    "community_category": "Codespaces",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/64750#discussioncomment-6804059",
+    "docs_urls": [
+      "https://docs.github.com/en/rest/codespaces/codespaces?apiVersion=2022-11-28"
+    ],
+    "qrel_ids": [
+      "/rest/codespaces/codespaces"
+    ],
+    "qrel_anchors": {},
+    "resolution_kinds": {
+      "https://docs.github.com/en/rest/codespaces/codespaces?apiVersion=2022-11-28": "canonical"
+    },
+    "intent_category": "capability_limit",
+    "evidence_category": "single_page_direct",
+    "evidence_flags": [],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "27172",
+    "source_url": "https://github.com/orgs/community/discussions/27172",
+    "title": "Unable to `docker login ghcr.io` 403",
+    "query": "Unable to `docker login ghcr.io` 403\nHi\nWhen running docker login ghcr.io I get prompted for username and password. After entering my GitHub username and password I get an error stating:\nError: error authenticating creds for \"ghcr.io\": Requesting bear token: invalid status code from registry 403 (Forbidden)\nI tried with both my email and my username as the username. I’m using podman as a drop-in replacement for docker, but I am able to log in to docker.io. I have also been able to log in to ghcr.io last week, but now I am unable to.\nIs it possible I’m doing something wrong on my end, or what could be the issue?",
+    "community_category": "Actions",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/27172#discussioncomment-3254917",
+    "docs_urls": [
+      "https://docs.github.com/en/free-pro-team@latest/github/authenticating-to-github/creating-a-personal-access-token"
+    ],
+    "qrel_ids": [
+      "/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens"
+    ],
+    "qrel_anchors": {},
+    "resolution_kinds": {
+      "https://docs.github.com/en/free-pro-team@latest/github/authenticating-to-github/creating-a-personal-access-token": "frontmatter_redirect"
+    },
+    "intent_category": "troubleshooting",
+    "evidence_category": "single_page_direct",
+    "evidence_flags": [
+      "page_is_variant_conditioned",
+      "page_uses_reusable"
+    ],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "26686",
+    "source_url": "https://github.com/orgs/community/discussions/26686",
+    "title": "How to get just the tag name?",
+    "query": "How to get just the tag name?\nI trigger my workflow using\non:\n push:\n tags:\nand I just want the name of the current tag that is just building.\nSadly, the github context variable’s ref has this value:\n\"ref\": \"refs/tags/0.3.1\"\nHowever, I only want the last part, 0.3.1.\nThere exists no function in GitHub Actions that allows me to extract that.\nAm I overlooking something? How do I get that?",
+    "community_category": "Actions",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/26686#discussioncomment-3396593",
+    "docs_urls": [
+      "https://docs.github.com/en/actions/learn-github-actions/contexts#github-context",
+      "https://docs.github.com/en/actions/learn-github-actions/environment-variables#default-environment-variables"
+    ],
+    "qrel_ids": [
+      "/actions/how-tos/write-workflows/choose-what-workflows-do/use-variables",
+      "/actions/reference/workflows-and-actions/contexts"
+    ],
+    "qrel_anchors": {
+      "/actions/how-tos/write-workflows/choose-what-workflows-do/use-variables": [
+        "default-environment-variables"
+      ],
+      "/actions/reference/workflows-and-actions/contexts": [
+        "github-context"
+      ]
+    },
+    "resolution_kinds": {
+      "https://docs.github.com/en/actions/learn-github-actions/contexts#github-context": "frontmatter_redirect",
+      "https://docs.github.com/en/actions/learn-github-actions/environment-variables#default-environment-variables": "frontmatter_redirect"
+    },
+    "intent_category": "how_to_configuration",
+    "evidence_category": "multi_page_linked",
+    "evidence_flags": [
+      "anchor_is_variant_conditioned",
+      "anchor_uses_reusable"
+    ],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 2,
+    "evidence_structure": "linked"
+  },
+  {
+    "question_id": "23483",
+    "source_url": "https://github.com/orgs/community/discussions/23483",
+    "title": "Is there any API for Discussions in GitHub?",
+    "query": "Is there any API for Discussions in GitHub?\nHi all!\n1. Context\nI would like to know where I can find API information from Discussions. For example, Gitlab has an API for you to receive and send information from Discussions. Is there any API for Discussions in GitHub?\n2. Notes\nI’m not criticizing Github, just asking if there is such a possibility, the possibility of having an API for the Discussions area\nI didn’t find information about my question or the documentation links about the API from GitHub Discussions - that’s why i’m asking here\nBy mentioning the Gitlab Discussions API, I don’t want to promote Gitlab, I just reference the Gitlab resource on GitHub, with this aim to check if there is such a possibility of a resource on GitHub - resource: the possibility of having an API for the Discussions area\nI would be happy if someone could clarify this doubt if possible\n3. References\nDiscussions API | GitLab",
+    "community_category": "New to GitHub",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/23483#discussioncomment-3240554",
+    "docs_urls": [
+      "https://docs.github.com/en/graphql/guides/using-the-graphql-api-for-discussions"
+    ],
+    "qrel_ids": [
+      "/graphql/guides/using-the-graphql-api-for-discussions"
+    ],
+    "qrel_anchors": {},
+    "resolution_kinds": {
+      "https://docs.github.com/en/graphql/guides/using-the-graphql-api-for-discussions": "canonical"
+    },
+    "intent_category": "explanation_comparison",
+    "evidence_category": "single_page_direct",
+    "evidence_flags": [],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "34872",
+    "source_url": "https://github.com/orgs/community/discussions/34872",
+    "title": "What happens to the account of a person who designates a successor and actually dies?",
+    "query": "What happens to the account of a person who designates a successor and actually dies?\nH. I'm kaizawa97.\nI have one question for everyone.\nWhat happens to the account of a person who designates a successor and dies?\nDoes the GitHub policy say that the successor will access the public repositories, but the account itself will remain?\nThank you.",
+    "community_category": "Other Feature Feedback, Questions, & Ideas",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/34872#discussioncomment-3781902",
+    "docs_urls": [
+      "https://docs.github.com/en/free-pro-team@latest/github/site-policy/github-deceased-user-policy"
+    ],
+    "qrel_ids": [
+      "/site-policy/other-site-policies/github-deceased-user-policy"
+    ],
+    "qrel_anchors": {},
+    "resolution_kinds": {
+      "https://docs.github.com/en/free-pro-team@latest/github/site-policy/github-deceased-user-policy": "frontmatter_redirect"
+    },
+    "intent_category": "policy_billing_account",
+    "evidence_category": "single_page_direct",
+    "evidence_flags": [],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "43",
+    "source_url": "https://github.com/orgs/community/discussions/43",
+    "title": "Discussions API",
+    "query": "Discussions API\nare there plans to implement api for discussions like teams discussions?\nmy need:\nI'm moving public communication with my community (pREST) to discussions and i want to read the communications to list on the site",
+    "community_category": "Discussions",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/43#discussioncomment-399047",
+    "docs_urls": [
+      "https://docs.github.com/en/graphql/guides/using-the-graphql-api-for-discussions"
+    ],
+    "qrel_ids": [
+      "/graphql/guides/using-the-graphql-api-for-discussions"
+    ],
+    "qrel_anchors": {},
+    "resolution_kinds": {
+      "https://docs.github.com/en/graphql/guides/using-the-graphql-api-for-discussions": "canonical"
+    },
+    "intent_category": "other_product_question",
+    "evidence_category": "single_page_direct",
+    "evidence_flags": [],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "23612",
+    "source_url": "https://github.com/orgs/community/discussions/23612",
+    "title": "I would request code owners",
+    "query": "I would request code owners\ncan you tell me where I can find the code owners of my repository?",
+    "community_category": "New to GitHub",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/23612#discussioncomment-3241112",
+    "docs_urls": [
+      "https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners"
+    ],
+    "qrel_ids": [
+      "/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners"
+    ],
+    "qrel_anchors": {},
+    "resolution_kinds": {
+      "https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners": "canonical"
+    },
+    "intent_category": "other_product_question",
+    "evidence_category": "single_page_direct",
+    "evidence_flags": [
+      "page_is_variant_conditioned",
+      "page_uses_reusable"
+    ],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  },
+  {
+    "question_id": "88451",
+    "source_url": "https://github.com/orgs/community/discussions/88451",
+    "title": "<title>won't let .e delete my account I just want it fucking deleted",
+    "query": "<title>won't let .e delete my account I just want it fucking deleted\nSelect Topic Area\nQuestion\nI'm not tech savvy didn't realize what I was signing up for I need customer support to delete my account because I've tried and it won't let me!!!",
+    "community_category": "Other Feature Feedback, Questions, & Ideas",
+    "accepted_answer_url": "https://github.com/orgs/community/discussions/88451#discussioncomment-8150282",
+    "docs_urls": [
+      "https://docs.github.com/en/support/contacting-github-support"
+    ],
+    "qrel_ids": [
+      "/support/contacting-github-support"
+    ],
+    "qrel_anchors": {},
+    "resolution_kinds": {
+      "https://docs.github.com/en/support/contacting-github-support": "canonical"
+    },
+    "intent_category": "policy_billing_account",
+    "evidence_category": "single_page_direct",
+    "evidence_flags": [],
+    "source_split": "dev",
+    "split": "train",
+    "qrel_count": 1,
+    "evidence_structure": "single"
+  }
+]

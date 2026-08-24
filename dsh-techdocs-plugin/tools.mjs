@@ -2,15 +2,23 @@ import { defineTool } from "@deepseek-ai/dsh-tools";
 import { renderEvidence } from "./evidence.mjs";
 
 export function registerTechdocsTools(ctx, service, config) {
+  const searchParameters = {
+    query: { type: "string", required: true, description: "Technical question or retrieval query." },
+    scope: { type: "string", description: `Optional URI below ${config.resourceRoot}.` },
+    limit: { type: "integer", description: `Result limit from 1 to ${config.resultLimit}.` },
+  };
+  if (config.searchGraphExpansion) {
+    searchParameters.allow_graph = {
+      type: "boolean",
+      description: "Allow bounded structural-graph expansion inside this search call.",
+    };
+  }
   ctx.tools.register(textTool({
     name: "techdocs_search",
-    description: "Search the technical-document knowledge base with lexical, dense, hierarchy, graph, and reranking signals. Returns a citation-ready evidence pack.",
-    parameters: {
-      query: { type: "string", required: true, description: "Technical question or retrieval query." },
-      scope: { type: "string", description: `Optional URI below ${config.resourceRoot}.` },
-      limit: { type: "integer", description: `Result limit from 1 to ${config.resultLimit}.` },
-      allow_graph: { type: "boolean", description: "Allow bounded structural-graph expansion." },
-    },
+    description: config.exposeExpand
+      ? "Retrieve lexical+dense seed evidence from the technical-document knowledge base. Use techdocs_expand explicitly when relationship traversal is needed."
+      : "Search the technical-document knowledge base with lexical, dense, and metadata signals. Returns a citation-ready evidence pack.",
+    parameters: searchParameters,
     async execute(args, exec) {
       const response = await service.search(args.query, {
         scope: args.scope,
@@ -21,6 +29,26 @@ export function registerTechdocsTools(ctx, service, config) {
       return renderEvidence(response, config.evidenceTokenBudget);
     },
   }));
+
+  if (config.exposeExpand) {
+    ctx.tools.register(textTool({
+      name: "techdocs_expand",
+      description: "Expand previously returned technical-document seed URIs through bounded, provenance-preserving graph relationships.",
+      parameters: {
+        query: { type: "string", required: true, description: "The relationship-bearing technical question." },
+        seed_uris: {
+          type: "array",
+          required: true,
+          items: { type: "string" },
+          description: `One or more seed URIs below ${config.resourceRoot} returned by techdocs_search.`,
+        },
+      },
+      async execute(args, exec) {
+        const response = await service.expand(args.query, args.seed_uris, { signal: exec.signal });
+        return renderEvidence(response, config.evidenceTokenBudget);
+      },
+    }));
+  }
 
   ctx.tools.register(textTool({
     name: "techdocs_fetch",
@@ -52,7 +80,9 @@ function textTool(definition) {
       kind: "read",
       title: definition.name === "techdocs_search"
         ? `Technical docs: ${args.query}`
-        : "Technical docs: fetch evidence",
+        : definition.name === "techdocs_expand"
+          ? `Technical docs graph: ${args.query}`
+          : "Technical docs: fetch evidence",
       rawInput: args,
     }),
   });

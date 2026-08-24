@@ -1,2 +1,0 @@
-Narration ablation treatment: do not emit intermediate user-facing progress, preambles, status updates, or summaries while working. Assistant responses before completion must contain tool calls only. Perform the same repository inspection, editing, and validation you otherwise would, then emit prose exactly once in the final concise summary. Do not reveal hidden chain-of-thought.
-

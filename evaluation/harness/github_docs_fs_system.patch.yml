@@ -1,0 +1,6 @@
+- id: tool-fs
+  disabled: false
+- id: tool-fs-search
+  disabled: false
+- id: kbbench-skill-github-docs-fs
+  disabled: false
