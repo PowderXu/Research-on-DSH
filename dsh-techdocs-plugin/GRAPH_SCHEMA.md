@@ -1,38 +1,33 @@
-# Repository graph schema
+# Neo4j schema
 
-The graph represents evidence in one pinned Git repository revision. Node identity includes repository identity and commit SHA so a link never silently changes meaning after the source repository moves.
+The graph is deterministic, query-blind, and namespaced so ingestion does not
+delete unrelated Neo4j data.
 
 ## Nodes
 
-| Label | Stable identity | Purpose |
-| --- | --- | --- |
-| `Repository` | canonical clone URL | repository boundary |
-| `Commit` | full SHA | immutable evaluation/index revision |
-| `Directory` | commit + normalized path | hierarchy and soft routing |
-| `Document` | commit + normalized Markdown path | retrievable document |
-| `Section` | document + normalized heading anchor | citation and section retrieval |
-| `CodeFile` | commit + normalized code path | linked implementation/configuration file |
-| `Symbol` | code file + language-aware symbol ID | definition/reference target |
-| `Snippet` | document + source line range | fenced example embedded in Markdown |
-| `ExternalResource` | normalized external URL | recorded boundary; not automatically ingested |
+| Label | Identity | Purpose |
+|---|---|---|
+| `KBGitHubDocPage` | canonical page ID | page metadata and graph seed |
+| `KBGitHubDocChunk` | page ID + chunk number | vector/full-text retrieval unit |
+| `KBGitHubDocRoute` | route ID | soft navigation relationship |
+| `KBGitHubDocReusable` | reusable identifier | pages sharing included content |
+| `KBGitHubDocCodeEntity` | normalized exact identifier | pages mentioning the same flag, environment variable, or code-shaped term |
 
-## Evidence-backed edges
+## Relationships
 
-| Relationship | From → To | Required evidence |
-| --- | --- | --- |
-| `AT_COMMIT` | repository content → commit | Git tree entry |
-| `CONTAINS` | repository/directory → path node | Git tree path |
-| `HAS_SECTION` | document → section | Markdown AST heading |
-| `LINKS_TO` | document/section → document | resolved Markdown link |
-| `LINKS_TO_SECTION` | document/section → section | resolved path plus heading fragment |
-| `LINKS_TO_CODE` | document/section → code file | resolved repository path or pinned GitHub blob URL |
-| `REFERENCES_SYMBOL` | document/section/snippet → symbol | explicit symbol link or exact unambiguous static-index match |
-| `DEFINES` | code file → symbol | language-aware static index |
-| `HAS_SNIPPET` | document/section → snippet | Markdown AST code fence |
-| `LINKS_EXTERNAL` | document/section → external resource | external Markdown link |
+| Type | Meaning |
+|---|---|
+| `GH_FROM_PAGE` | chunk belongs to page |
+| `GH_LINKS_TO` | explicit contextual Markdown link between pages |
+| `GH_IN_ROUTE` | page belongs to a documentation route |
+| `GH_INCLUDES` | page includes reusable content |
+| `GH_MENTIONS` | page mentions a bounded code-shaped identifier |
 
-Every relationship stores `source_path`, `source_line`, `source_anchor`, `parser`, and `commit`. Do not create a generic `RELATED_TO` relationship.
+`GH_LINKS_TO` stores source section, target anchor, anchor text, and local link
+context. Route/reusable/code nodes are degree-bounded during expansion so they
+cannot become unrestricted hubs.
 
-## Retrieval policy
-
-Hybrid lexical+dense retrieval supplies the seeds. Graph expansion is one hop by default, uses only allowlisted relationships, and keeps a small per-seed neighbor limit. Repository hierarchy is a scoring prior, not a filter. Common navigation links and ambiguous identifiers are down-weighted or excluded before expansion.
+Query-time expansion begins from hybrid-returned pages and permits one hop over
+the allowlisted relationships. Neighbor chunks are scored against the current
+query; path type and seed page remain visible in the result. A path is a
+discovery signal, not evidence by itself.

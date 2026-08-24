@@ -3,16 +3,9 @@
   config:
     endpoint: http://127.0.0.1:1936
     resourceRoot: viking://resources/techdocs
-    repositoryUrl: https://github.com/github/docs
-    repositoryRevision: c34e3dccad00f61133c799d20e7d1208a0e6cc92
     requestTimeoutMs: 30000
-    candidateLimit: 50
     resultLimit: 10
     evidenceTokenBudget: 2600
-    graphExpansion: true
-    searchGraphExpansion: false
     exposeExpand: true
-    graphSeedLimit: 8
-    graphNeighborLimit: 4
 - id: kbbench-skill-github-docs-neo4j
   disabled: false

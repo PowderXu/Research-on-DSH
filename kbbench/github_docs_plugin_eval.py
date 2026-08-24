@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -378,7 +379,7 @@ class Neo4jGitHubDocsGraphRAG:
                 from neo4j_graphrag.retrievers import HybridCypherRetriever
             except ImportError as exc:
                 raise RuntimeError(
-                    "Install requirements-neo4j.txt or expose neo4j-graphrag to this Python environment"
+                    "Install requirements-graph.txt or expose neo4j-graphrag to this Python environment"
                 ) from exc
 
         self.driver = GraphDatabase.driver(uri, auth=(username, password))
@@ -433,7 +434,7 @@ class Neo4jGitHubDocsGraphRAG:
         started = time.perf_counter()
         self.prepare_schema(int(embeddings.shape[1]))
         # Delete only this benchmark's namespaced labels. Existing Neo4j data,
-        # including the historical TechQA benchmark, is preserved.
+        # Other Neo4j data is preserved because this benchmark uses namespaced labels.
         self._execute(
             f"MATCH (node) WHERE node:{GH_PAGE_LABEL} OR node:{GH_CHUNK_LABEL} "
             f"OR node:{GH_ROUTE_LABEL} OR node:{GH_REUSABLE_LABEL} "
@@ -1126,10 +1127,18 @@ def main() -> None:
     parser.add_argument("--arms", nargs="+", choices=ARMS, default=list(ARMS))
     parser.add_argument("--fs-max-calls", type=int, default=3)
     parser.add_argument("--fs-max-matches", type=int, default=250)
-    parser.add_argument("--neo4j-uri", default="bolt://127.0.0.1:7687")
-    parser.add_argument("--neo4j-username", default="neo4j")
-    parser.add_argument("--neo4j-password", default="secretgraph")
-    parser.add_argument("--neo4j-database", default="neo4j")
+    parser.add_argument(
+        "--neo4j-uri", default=os.environ.get("NEO4J_URI", "bolt://127.0.0.1:7687")
+    )
+    parser.add_argument(
+        "--neo4j-username", default=os.environ.get("NEO4J_USERNAME", "neo4j")
+    )
+    parser.add_argument(
+        "--neo4j-password", default=os.environ.get("NEO4J_PASSWORD", "secretgraph")
+    )
+    parser.add_argument(
+        "--neo4j-database", default=os.environ.get("NEO4J_DATABASE", "neo4j")
+    )
     parser.add_argument("--ingest", action="store_true")
     parser.add_argument("--graph-seed-count", type=int, default=8)
     parser.add_argument("--graph-weight", type=float, default=0.25)

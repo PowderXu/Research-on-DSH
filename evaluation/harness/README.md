@@ -1,28 +1,15 @@
-# GitHub Docs agent harness
+# DSH agent harness
 
-This directory holds the answer schema and DSH patches used by the GitHub Docs
-agent evaluation. The three DSH arms share `github_docs_dsh_common.patch.yml`
-and load exactly one arm-specific system or skill patch:
+This directory contains the common answer schema and matched DSH patches used
+by integrated agent evaluation.
 
-- `github_docs_fs_*`: filesystem search;
-- `github_docs_hybrid_*`: BM25 + HNSW + RRF backend;
-- `github_docs_neo4j_*`: hybrid seeds plus Neo4j expansion.
+- `github_docs_dsh_common.patch.yml` disables unrelated tools for DocsQA.
+- `github_docs_fs_system.patch.yml` enables DSH filesystem tools and the FS skill.
+- `github_docs_hybrid_system.patch.yml` enables native TechDocs tools and the hybrid skill.
+- `github_docs_neo4j_system.patch.yml` additionally exposes `techdocs_expand`.
+- `*_skill.patch.yml` enables only the named skill for isolated skill checks.
 
-The corresponding external skill files live under
-`dsh-techdocs-plugin/skills/`. SkillOpt changes those Markdown overlays without
-editing the tool contract or backend implementation.
-
-Codex uses `answer_schema.json` with
-`codex-techdocs-plugin/skills/github-docs-fastctx/SKILL.md`; its runner is
-`kbbench.github_docs_codex_fastctx_eval`.
-
-Provider forwarding is opt-in. Codex accepts an isolated provider-only home
-through `--codex-home`; otherwise it passes `--ignore-user-config`. DSH creates
-a per-run `llm-pi-ai` overlay only when `DSH_OPENAI_BASE_URL` (or the fallback
-`OPENAI_BASE_URL`) is set. Provider mode is logged for every run, but API keys
-remain environment-only.
-
-Before a paired agent comparison, verify that every arm uses the same question
-IDs, requested and actual model, answer schema, timeout, non-KB plugin
-inventory, and machine. The primary ranking is the final ordered `sources`
-array. Backend-visible documents are a diagnostic only.
+Every arm returns the same JSON schema and runs through the same pinned headless
+DSH profile. The per-arm skill may differ because its available tools differ.
+For a fair run, keep question IDs, model, timeout, machine, and non-KB plugin
+inventory identical.

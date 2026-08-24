@@ -20,13 +20,13 @@ class GitHubDocsDshAdapter(EnvAdapter):
 
     def __init__(
         self,
-        split_dir: str = "",
+        split_dir: str = "evaluation/skillopt/github_docs_v2_split",
         split_mode: str = "split_dir",
         split_seed: int = 20260821,
         seed: int = 20260821,
         limit: int = 0,
         arm: str = "hybrid",
-        corpus_path: str = "evaluation/github_docs_v2/corpus.jsonl",
+        corpus_path: str = "dataset/github_docs_kb_benchmark/data/corpus.jsonl",
         dsh_binary: str = "node_modules/.bin/dsh",
         dsh_home: str = "dsh_home",
         workspace: str = "data/evaluation_raw/github-docs-corpus/content",

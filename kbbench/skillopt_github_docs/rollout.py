@@ -14,8 +14,6 @@ from typing import Any, Callable, Iterable, Mapping
 
 import yaml
 
-from kbbench.dsh_hotpot_eval import parse_agent_json
-
 from .scorer import GitHubDocsSourceResolver, score_ranked_sources
 from .validation import SkillCandidateError, validate_skill_candidate
 
@@ -25,6 +23,29 @@ ARM_SKILL_PLUGIN_IDS = {
     "hybrid": "kbbench-skill-github-docs-hybrid",
     "neo4j": "kbbench-skill-github-docs-neo4j",
 }
+
+ANSI_PATTERN = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+
+
+def parse_agent_json(output: str) -> dict[str, object]:
+    """Parse the DSH final response, tolerating a surrounding code fence."""
+
+    cleaned = ANSI_PATTERN.sub("", output).strip()
+    if cleaned.startswith("```"):
+        cleaned = re.sub(
+            r"^```(?:json)?\s*|\s*```$", "", cleaned, flags=re.IGNORECASE
+        )
+    try:
+        value = json.loads(cleaned)
+    except json.JSONDecodeError:
+        start = cleaned.find("{")
+        end = cleaned.rfind("}")
+        if start < 0 or end <= start:
+            raise
+        value = json.loads(cleaned[start : end + 1])
+    if not isinstance(value, dict):
+        raise ValueError("agent output is not a JSON object")
+    return value
 
 
 def _session_files(dsh_home: Path) -> set[Path]:

@@ -7,12 +7,6 @@ export function registerTechdocsTools(ctx, service, config) {
     scope: { type: "string", description: `Optional URI below ${config.resourceRoot}.` },
     limit: { type: "integer", description: `Result limit from 1 to ${config.resultLimit}.` },
   };
-  if (config.searchGraphExpansion) {
-    searchParameters.allow_graph = {
-      type: "boolean",
-      description: "Allow bounded structural-graph expansion inside this search call.",
-    };
-  }
   ctx.tools.register(textTool({
     name: "techdocs_search",
     description: config.exposeExpand
@@ -23,7 +17,6 @@ export function registerTechdocsTools(ctx, service, config) {
       const response = await service.search(args.query, {
         scope: args.scope,
         limit: args.limit,
-        allowGraph: args.allow_graph,
         signal: exec.signal,
       });
       return renderEvidence(response, config.evidenceTokenBudget);

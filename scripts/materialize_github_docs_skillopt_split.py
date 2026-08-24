@@ -187,7 +187,7 @@ def main() -> None:
     parser.add_argument(
         "--source",
         type=Path,
-        default=Path("evaluation/github_docs_v2/questions.jsonl"),
+        default=Path("dataset/github_docs_kb_benchmark/data/questions.jsonl"),
     )
     parser.add_argument(
         "--output-dir",

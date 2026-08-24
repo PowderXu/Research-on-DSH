@@ -236,36 +236,43 @@ def build_report(
 
     model_sets = {arm["arm"]: tuple(arm["models"]) for arm in arm_reports}
     model_mismatch = len(set(model_sets.values())) > 1
-    includes_codex = "codex-fastctx" in by_arm
     limitations = [
-        "Only five paired real-model questions are included; confidence intervals and final ranking claims are not warranted.",
-        "The sample contains no multi_page_linked questions.",
-        "The Neo4j arm made no techdocs_expand calls, so differences cannot be attributed to graph traversal.",
         "Accepted-answer citation qrels are incomplete and may drift relative to the pinned current documentation corpus.",
         "Latency is end-to-end agent latency; provider-only latency was not recorded in these trajectories.",
         "Primary retrieval metrics rank the agent's final ordered sources. First-visible tool documents are retained only as diagnostic fields.",
     ]
+    if len(first_ids) < 30:
+        limitations.append(
+            f"Only {len(first_ids)} paired questions are included; treat this as an engineering pilot, not a final ranking."
+        )
+    evidence_structures = {
+        str(row.get("evidence_structure") or "unknown")
+        for rows in by_arm.values()
+        for row in rows
+    }
+    if "linked" not in evidence_structures:
+        limitations.append(
+            "The sample contains no linked multi-page question, so it cannot measure graph-traversal advantage."
+        )
+    neo4j_rows = by_arm.get("neo4j") or []
+    if neo4j_rows and not any(
+        "techdocs_expand" in (row.get("tool_sequence") or []) for row in neo4j_rows
+    ):
+        limitations.append(
+            "The Neo4j arm made no techdocs_expand calls, so its result does not test graph traversal."
+        )
     if model_mismatch:
         limitations.append(
             "Requested/actual models differ by arm; accuracy and efficiency differences are descriptive system results, not a harness-only causal estimate."
         )
-    if includes_codex:
-        limitations.append(
-            "Codex receives the matched policy as both a project skill and invocation-scoped developer instructions; DSH loads its translation through the skill plugin."
-        )
     report = {
-        "benchmark": "GitHub Docs matched real-agent system performance",
-        "evaluation_layer": (
-            "DSH agent arms plus Codex + matched skill + FastCtx MCP"
-            if includes_codex
-            else "DSH agent + arm-specific initial skill + loaded plugins"
-        ),
-        "sample_kind": "paired train/validation engineering pilot",
+        "benchmark": "GitHub Docs DSH agent performance",
+        "evaluation_layer": "DSH agent + arm-specific skill + loaded retrieval plugins",
+        "sample_kind": "paired DSH agent evaluation",
         "questions": len(first_ids),
         "question_ids": sorted(first_ids),
         "arms": arm_reports,
         "candidate_skill_rollouts_included": False,
-        "held_out_test_used": False,
         "models_by_arm": model_sets,
         "model_mismatch": model_mismatch,
         "limitations": limitations,
@@ -275,10 +282,9 @@ def build_report(
 
 def render_markdown(report: dict[str, Any]) -> str:
     lines = [
-        "# GitHub Docs matched real-agent performance report",
+        "# GitHub Docs DSH-agent performance report",
         "",
-        f"This report contains **{report['questions']} identical real-model questions per arm**. "
-        "It is a paired engineering pilot, not the final held-out benchmark.",
+        f"This report contains **{report['questions']} identical real-model questions per DSH arm**.",
         "",
         "## Overall",
         "",
@@ -347,21 +353,13 @@ def main() -> None:
     parser.add_argument("--fs", type=Path, required=True)
     parser.add_argument("--hybrid", type=Path, required=True)
     parser.add_argument("--neo4j", type=Path, required=True)
-    parser.add_argument("--codex-fastctx", type=Path)
     parser.add_argument("--out-dir", type=Path, required=True)
     args = parser.parse_args()
     project_root = Path(__file__).resolve().parents[1]
     arm_roots = {"fs": args.fs, "hybrid": args.hybrid, "neo4j": args.neo4j}
-    arm_skills: dict[str, Path] = {}
-    if args.codex_fastctx:
-        arm_roots["codex-fastctx"] = args.codex_fastctx
-        arm_skills["codex-fastctx"] = (
-            project_root / "codex-techdocs-plugin/skills/github-docs-fastctx/SKILL.md"
-        )
     report, per_query = build_report(
         arm_roots,
         project_root=project_root,
-        arm_skills=arm_skills,
     )
     write_report(report, per_query, args.out_dir)
     print(render_markdown(report))

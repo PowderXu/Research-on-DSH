@@ -37,7 +37,7 @@ skill_init: dsh-techdocs-plugin/skills/hybrid/initial_skill.md
 split_mode: split_dir
 split_dir: evaluation/skillopt/github_docs_v2_split
 arm: hybrid
-corpus_path: evaluation/github_docs_v2/corpus.jsonl
+corpus_path: dataset/github_docs_kb_benchmark/data/corpus.jsonl
 dsh_binary: node_modules/.bin/dsh
 dsh_home: dsh_home
 workspace: data/github-docs/content

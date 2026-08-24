@@ -5,7 +5,6 @@ node_modules/
 results/runs/
 results/tmp/
 cache/
-.fastctx-runtime/
 __pycache__/
 *.pyc
 *.egg-info/

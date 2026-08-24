@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from kbbench.github_docs_three_arm_eval import (
+from kbbench.github_docs_plugin_eval import (
     _parse_rg_matches,
     extract_code_entities,
     lucene_query_text,

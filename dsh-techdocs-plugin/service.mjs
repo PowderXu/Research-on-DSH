@@ -15,29 +15,8 @@ export class TechdocsService {
     const body = {
       query: String(query || "").trim(),
       scope: this.resolveScope(options.scope),
-      repository: {
-        url: this.config.repositoryUrl || null,
-        revision: this.config.repositoryRevision || null,
-      },
-      candidate_limit: this.config.candidateLimit,
       result_limit: clamp(options.limit, 1, this.config.resultLimit, this.config.resultLimit),
       evidence_token_budget: this.config.evidenceTokenBudget,
-      passage_mode: this.config.generalizedPolicy
-        ? "adaptive"
-        : this.config.policyGuided
-          ? "section"
-          : "window",
-      ...(options.intent ? { intent: options.intent } : {}),
-      graph: {
-        enabled: options.allowGraph !== false && this.config.searchGraphExpansion,
-        seed_limit: this.config.graphSeedLimit,
-        neighbor_limit: this.config.graphNeighborLimit,
-        include_linked_code: false,
-        edge_types: [
-          "LINKS_TO",
-          "LINKS_TO_SECTION",
-        ],
-      },
     };
     if (!body.query) throw new Error("query is required");
     const response = await this.request("/v1/search", {

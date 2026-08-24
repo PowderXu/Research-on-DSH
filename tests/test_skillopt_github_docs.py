@@ -41,7 +41,7 @@ from materialize_github_docs_skillopt_split import build_split
 
 
 SPLIT_DIR = PROJECT_ROOT / "evaluation" / "skillopt" / "github_docs_v2_split"
-CORPUS = PROJECT_ROOT / "evaluation" / "github_docs_v2" / "corpus.jsonl"
+CORPUS = PROJECT_ROOT / "dataset/github_docs_kb_benchmark/data/corpus.jsonl"
 
 
 @pytest.mark.parametrize("command", ["train", "eval_only"])
@@ -63,7 +63,7 @@ def test_installed_skillopt_cli_accepts_local_adapter(command: str) -> None:
 def test_frozen_split_preserves_original_test_and_category_coverage() -> None:
     rows = [
         json.loads(line)
-        for line in (PROJECT_ROOT / "evaluation/github_docs_v2/questions.jsonl")
+        for line in (PROJECT_ROOT / "dataset/github_docs_kb_benchmark/data/questions.jsonl")
         .read_text(encoding="utf-8")
         .splitlines()
         if line

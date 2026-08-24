@@ -20,8 +20,8 @@ from .github_docs_eval import (
     build_chunks,
     build_or_load_embeddings,
 )
-from .github_docs_three_arm_eval import Neo4jGitHubDocsGraphRAG
-from .techdocs_service import (
+from .github_docs_plugin_eval import Neo4jGitHubDocsGraphRAG
+from .http_contract import (
     RESOURCE_ROOT,
     TechdocsRequestHandler,
     document_id_from_uri,
@@ -399,7 +399,11 @@ class GitHubDocsServiceHost:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--dataset-dir", type=Path, default=Path("evaluation/github_docs_v2"))
+    parser.add_argument(
+        "--dataset-dir",
+        type=Path,
+        default=Path("dataset/github_docs_kb_benchmark/data"),
+    )
     parser.add_argument("--cache-dir", type=Path, default=Path("data/evaluation_cache/github_docs_v1"))
     parser.add_argument("--arm", choices=("hybrid", "neo4j"), required=True)
     parser.add_argument("--host", default="127.0.0.1")

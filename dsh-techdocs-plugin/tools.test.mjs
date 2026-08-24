@@ -11,10 +11,9 @@ function definitionsFor(configInput) {
   return definitions;
 }
 
-test("explicit graph profile does not advertise the no-op inline graph flag", () => {
+test("Neo4j profile exposes an explicit expansion tool", () => {
   const definitions = definitionsFor({
     exposeExpand: true,
-    searchGraphExpansion: false,
   });
   const search = definitions.find(definition => definition.name === "techdocs_search");
   assert.ok(search);
@@ -23,12 +22,9 @@ test("explicit graph profile does not advertise the no-op inline graph flag", ()
   assert.ok(definitions.some(definition => definition.name === "techdocs_expand"));
 });
 
-test("inline graph profile exposes allow_graph without a separate expansion tool", () => {
-  const definitions = definitionsFor({
-    exposeExpand: false,
-    searchGraphExpansion: true,
-  });
+test("hybrid profile exposes only search and fetch", () => {
+  const definitions = definitionsFor({ exposeExpand: false });
   const search = definitions.find(definition => definition.name === "techdocs_search");
-  assert.ok(search.parameters.properties.allow_graph);
+  assert.equal(search.parameters.properties.allow_graph, undefined);
   assert.ok(!definitions.some(definition => definition.name === "techdocs_expand"));
 });
