@@ -1,18 +1,14 @@
-# Generated benchmark results
+# Generated results
 
-This directory is the stable output root for local benchmark and optimization
-runs. Generated payloads are intentionally not committed.
-
-Use `results/runs/` for outputs, for example:
+`results/runs/` is the stable local output root:
 
 ```text
 results/runs/
   retrieval/<run-id>/
-  agents/<arm>/<run-id>/
-  optimization/<arm>/<run-id>/
+  agents/<arm>/
+  agents/report/
 ```
 
-Evaluators create their requested output directory automatically. Raw events,
-predictions, reports, checkpoints, and diagnostics remain local because
-`results/runs/` and `results/tmp/` are ignored by Git. The consolidated
-historical reference tables are in the repository root `README.md`.
+Raw events, indexes, predictions, checkpoints, and generated reports are ignored
+by Git. The maintained commands and current consolidated tables are in
+`docs/RESULTS.md`.

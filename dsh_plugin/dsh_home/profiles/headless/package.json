@@ -1,0 +1,17 @@
+{
+  "name": "kbbench-dsh-headless-profile",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@kbbench/dsh-docsqa": "file:../../../plugin"
+  },
+  "dsh": {
+    "profile": {
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-headless",
+        "@kbbench/dsh-docsqa"
+      ]
+    }
+  }
+}

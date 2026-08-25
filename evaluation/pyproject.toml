@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "github-docs-kb-benchmark"
+version = "0.2.0"
+description = "Dataset construction and retrieval evaluation for linked GitHub Docs Markdown files"
+requires-python = ">=3.10"
+dependencies = [
+  "hnswlib==0.8.0",
+  "numpy>=1.26,<2",
+  "PyYAML>=6,<7",
+]
+
+[project.optional-dependencies]
+retrieval = [
+  "sentence-transformers>=3,<4",
+]
+graph = [
+  "neo4j>=5.26,<7",
+  "neo4j-graphrag==1.16.0",
+]
+analysis = [
+  "matplotlib>=3.9,<4",
+  "networkx>=3.4,<4",
+]
+test = [
+  "pytest>=8,<10",
+]
+all = [
+  "sentence-transformers>=3,<4",
+  "neo4j>=5.26,<7",
+  "neo4j-graphrag==1.16.0",
+  "matplotlib>=3.9,<4",
+  "networkx>=3.4,<4",
+  "pytest>=8,<10",
+]
+
+[project.scripts]
+github-docs-build = "dataset.build:main"
+github-docs-plugin-eval = "kbbench.plugin_eval:main"
+github-docs-evaluate-predictions = "kbbench.evaluate_predictions:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["kbbench*", "dataset*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "../dsh_plugin"]
+pythonpath = [".", ".."]
+addopts = "-q"

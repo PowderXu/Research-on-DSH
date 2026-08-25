@@ -1,11 +1,13 @@
 .env
 .venv/
 node_modules/
+dsh_plugin/plugin/lib/
 /data/
+evaluation/dataset/raw/
 results/runs/
 results/tmp/
+results/cache/
 cache/
-.fastctx-runtime/
 __pycache__/
 *.pyc
 *.egg-info/
