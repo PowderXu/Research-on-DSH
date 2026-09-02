@@ -5,11 +5,10 @@ name of one retrieval algorithm. This package exposes that stable capability
 while filesystem, hybrid, and Neo4j remain candidate implementations:
 
 - `@kbbench/dsh-docsqa`: `docsqa_search`, `docsqa_fetch`, and optional
-  `docsqa_expand` tools over the local GitHub Docs backend;
+  `docsqa_expand` tools over the local multi-project documentation backend;
 - `@kbbench/dsh-docsqa/skill-fs`: filesystem retrieval skill;
 - `@kbbench/dsh-docsqa/skill-hybrid`: BM25 + HNSW retrieval skill;
-- `@kbbench/dsh-docsqa/skill-neo4j`: hybrid plus explicit graph-expansion
-  skill.
+- `@kbbench/dsh-docsqa/skill-neo4j`: hybrid plus graph-expansion skill.
 
 `cordis.patch.yml` installs one plugin group. Evaluation patches enable
 the matching tool inventory and exactly one skill per arm. An administrator may
@@ -42,9 +41,14 @@ src/skill-*.ts          one public plugin entry per evaluation arm
 test/*.test.ts          strict TypeScript tests
 scripts/clean-runtime.ts remove only obsolete top-level runtime bundles
 skills/*/*.md           authored model instructions
+data/{fs,hybrid,neo4j}/ ignored local corpora, indexes, artifacts, and traces
 lib/*.js                generated DSH runtime entries and shared chunks
 lib/types/*.d.ts        generated consumer declarations
 ```
+
+Only `data/*/.gitignore` is versioned. Run the parent README's local-data
+preparation command after cloning; generated documentation, indexes, KGGen
+artifacts, and Neo4j files must not be published in the package or repository.
 
 The build is deliberately two-stage. `tsc -b` is the only TypeScript
 transformer and owns declarations in `lib/types/`; `tsdown` reads that emitted

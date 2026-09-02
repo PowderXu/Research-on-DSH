@@ -15,7 +15,7 @@ import {
   SKILL_ARMS,
 } from "../src/skill-loader.ts";
 
-test("all bundled GitHub Docs skills satisfy the protected contract", () => {
+test("all bundled DocsQA skills satisfy the protected contract", () => {
   for (const arm of SKILL_ARMS) {
     const skill = loadSkillDocument(arm);
     assert.equal(skill.metadata.arm, arm);
@@ -40,7 +40,7 @@ test("arm-specific entry points register distinct runtime skills", () => {
   applyNeo4jSkill(ctx);
   assert.deepEqual(
     registered.map(value => value.name),
-    ["github-docs-fs", "github-docs-hybrid", "github-docs-neo4j"],
+    ["docsqa-fs", "docsqa-hybrid", "docsqa-neo4j"],
   );
   assert.ok(registered.every(value => value.invocation?.modelInvocable));
 });

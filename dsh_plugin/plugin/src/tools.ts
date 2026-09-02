@@ -21,7 +21,7 @@ export function registerDocsQATools(
   ctx.tools.register(defineTool({
     name: "docsqa_search",
     description: config.exposeExpand
-      ? "Retrieve lexical and dense seed evidence from the DocsQA knowledge base. Use docsqa_expand explicitly when relationship traversal is needed."
+      ? "Retrieve lexical and dense seed evidence from the DocsQA knowledge base. Call docsqa_expand when relationship traversal is needed."
       : "Search the DocsQA knowledge base for linked Markdown documentation using lexical, dense, and metadata signals. Returns a citation-ready evidence pack.",
     parameters: {
       query: {

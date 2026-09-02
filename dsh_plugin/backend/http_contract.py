@@ -99,6 +99,9 @@ def render_evidence_text(
             lines.append(f"Source: {source}")
         if expanded_from:
             lines.append(f"Expanded from: {', '.join(expanded_from)}")
+        graph_hops = result.get("graphHops")
+        if isinstance(graph_hops, int) and graph_hops > 0:
+            lines.append(f"Graph hops: {graph_hops}")
         signals = ", ".join(str(value) for value in result.get("signals") or [])
         lines.extend(
             [

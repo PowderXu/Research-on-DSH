@@ -11,17 +11,29 @@ dsh_plugin/
 │   ├── test/                    TypeScript contract and registration tests
 │   ├── scripts/                 typed runtime-bundle cleanup
 │   ├── skills/{fs,hybrid,neo4j}/ authored Markdown instructions
+│   ├── data/{fs,hybrid,neo4j}/  local arm-owned corpora and databases
 │   ├── lib/                     generated JS, declarations, shared chunks
 │   ├── tsconfig.json            tsc-owned production emission
 │   ├── tsconfig.test.json       strict no-emit source/test checking
 │   ├── tsdown.config.ts         public ESM entry bundling only
 │   ├── cordis.patch.yml         package insertion into the DSH profile
 │   └── package.json             compiled exports and DSH peer contract
-├── backend/                     local HTTP service for hybrid and Neo4j
+├── backend/                     local stores, KGGen adapter, and HTTP service
 ├── dsh_home/                    pinned headless DSH profile
 ├── harness/                     common/model/per-arm patches and answer schema
-├── agent_eval/                  real-model runner and paired report generator
+├── agent_eval/                  real-model runner, frozen-aspect judge, reports
+├── tests/
+│   ├── backend/                 Python store, graph, and service tests
+│   └── agent_eval/              Python runner, judge, and report tests
 └── scripts/                     typed build/dependency verification
+```
+
+Python test source is kept under `tests/`, separate from the backend and agent
+implementation. The TypeScript package keeps its existing `plugin/test/`
+directory. From the repository root, run DSH Python tests with:
+
+```bash
+evaluation/.venv/bin/python -m pytest -c evaluation/pyproject.toml dsh_plugin/tests
 ```
 
 ## Documentation map
@@ -33,8 +45,9 @@ does not change runtime behavior.
 | Document | What it explains | Read it when |
 |---|---|---|
 | [`plugin/SERVICE_CONTRACT.md`](plugin/SERVICE_CONTRACT.md) | The wire contract between the TypeScript DSH adapter and the local Python backend: health, search, graph expansion, and evidence fetch endpoints; request fields; response envelope; URI scope; evidence budget; and error shape. | Implementing a new backend, changing a tool payload, or debugging an adapter/backend mismatch. |
-| [`plugin/GRAPH_SCHEMA.md`](plugin/GRAPH_SCHEMA.md) | The Neo4j representation: page, chunk, route, reusable-content, and code-entity nodes; allowed relationship types; stored Markdown-link context; degree bounds; one-hop expansion; scoring; and provenance. | Changing graph ingestion or expansion while keeping graph behavior query-blind and evidence-backed. |
+| [`plugin/GRAPH_SCHEMA.md`](plugin/GRAPH_SCHEMA.md) | The Neo4j v2 representation: projects, documents, sections, text-enriched image units, KGGen entities/predicates/claims, typed structural relationships, indexes, degree bounds, and evidence provenance. | Changing graph ingestion or expansion while keeping graph behavior query-blind and evidence-backed. |
 | [`../docs/PLUGIN_DESIGN.md`](../docs/PLUGIN_DESIGN.md) | The system-level architecture: DocsQA as the stable capability, filesystem/hybrid/Neo4j as candidate implementations, DSH plugin and skill roles, build/profile boundaries, tool flow, and evaluation invariants. | Understanding how the entire DSH package is composed or introducing another retrieval candidate. |
+| [`../docs/ASPECT_EVALUATION.md`](../docs/ASPECT_EVALUATION.md) | The question-specific aspect constructor, weak-supervision controls, GWAC answer metric, retrieval aspect metrics, and full-agent judge command. | Validating or running final-answer evaluation. |
 
 These documents deliberately do not duplicate one another:
 
@@ -112,3 +125,93 @@ versions, the installed profile package, strict types, and all plugin tests.
 Agent execution also imports the retrieval implementation from
 `evaluation/kbbench/`, but all DSH orchestration, profile configuration, service
 adaptation, trajectories, and agent reporting stay in this directory.
+
+`evaluation/kbbench/` supplies shared retrieval and scoring code and can be used
+for no-model implementation checks. The paper's reported system evaluation is
+`agent_eval/`: it runs the initialized `dsh_home/` profile and measures skill
+loading, plugin/tool orchestration, multi-turn model behavior, final answers,
+tokens, and end-to-end latency.
+
+## Local plugin data
+
+Each arm owns a separate runtime store below `plugin/data/`:
+
+```text
+data/<arm>/
+├── documents/   copied Markdown/MDX repositories and their assets
+├── corpus/      prepared corpus, manifest, and evaluation splits
+├── indexes/     embeddings and sparse/dense index caches
+├── assets/      derived image assets
+├── artifacts/   neutral retrieval units and optional KGGen graph JSON
+├── traces/      local service and agent traces
+└── database/    Neo4j files; created only for the neo4j arm
+```
+
+Every arm directory contains a negating `.gitignore`: Git stores the directory
+placeholder, while corpora, model artifacts, databases, and traces remain local.
+Prepare all three stores from the frozen normalized dataset:
+
+```bash
+for arm in fs hybrid neo4j; do
+  PYTHONPATH=evaluation:. evaluation/.venv/bin/python \
+    -m dsh_plugin.backend.prepare_plugin_data \
+    --arm "$arm" \
+    --source-dataset evaluation/dataset/evaluation_data/normalized \
+    --source-documents evaluation/dataset/docs \
+    --copy-documents
+done
+```
+
+Preparation first copies the authored workspace, then overwrites each canonical
+page with the normalized corpus `rendered_text`. This makes local image-derived
+text and all other searchable content identical across filesystem, hybrid, and
+Neo4j. The hybrid and Neo4j paths additionally emit the same query-blind neutral
+retrieval-unit and image-provenance records. Image-derived text is already part
+of its owning page before BM25/HNSW chunking; it is not indexed again as a
+standalone image vector. Neo4j projects the occurrence and asset provenance
+into the plugin-owned graph schema without changing the shared text index.
+
+KGGen is optional and runs offline in an isolated environment because its
+dependency range conflicts with the benchmark embedding environment:
+
+```bash
+python3 -m venv dsh_plugin/.venv-kggen
+dsh_plugin/.venv-kggen/bin/pip install \
+  -r dsh_plugin/backend/requirements-kggen.txt
+PYTHONPATH=evaluation:. evaluation/.venv/bin/python \
+  -m dsh_plugin.backend.prepare_plugin_data \
+  --arm neo4j \
+  --source-dataset evaluation/dataset/evaluation_data/normalized \
+  --source-documents evaluation/dataset/docs \
+  --copy-documents \
+  --run-kggen \
+  --kggen-python dsh_plugin/.venv-kggen/bin/python
+```
+
+This writes `plugin/data/neo4j/artifacts/kggen_graph.json`. Extraction and
+alias clustering come from KGGen; the adapter adds stable IDs and requires an
+evidence unit plus source excerpt for every claim. It never reads questions,
+answers, or qrels.
+
+The default extraction model is `openai/gpt-5.6-luna`. The scalable adapter
+batches retrieval units by project, checkpoints each raw KGGen response, uses
+SemHash for entity/predicate aliases, and rejects claims whose cited unit has
+only token overlap with the extracted relation. `--kggen-max-cost-usd` is an
+optional operator guard; no cost ceiling is applied unless it is explicitly
+passed.
+
+Start the plugin-owned Neo4j service and ingest the prepared records:
+
+```bash
+docker compose -f dsh_plugin/backend/compose.neo4j.yml up -d
+PYTHONPATH=evaluation:. evaluation/.venv/bin/python \
+  -m dsh_plugin.backend.ingest_neo4j
+```
+
+This service binds browser port `7475` and Bolt port `7688` to `127.0.0.1`
+only, avoiding the benchmark's older global Neo4j container and network
+exposure of the local-development database. Its `/data` and `/logs` mounts resolve
+to `plugin/data/neo4j/database` and `plugin/data/neo4j/traces/neo4j`. The ingest
+command creates text/full-text indexes, all schema-v2 document/image-text nodes
+and structural edges, and the semantic nodes and KGGen
+claims when `kggen_graph.json` exists.

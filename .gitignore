@@ -1,9 +1,10 @@
 .env
 .venv/
+dsh_plugin/.venv-kggen/
 node_modules/
 dsh_plugin/plugin/lib/
+dsh_plugin/dsh_home/sessions/
 /data/
-evaluation/dataset/raw/
 results/runs/
 results/tmp/
 results/cache/

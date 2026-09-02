@@ -5,12 +5,12 @@
       config:
         - id: kbbench-docsqa-runtime
           name: '@kbbench/dsh-docsqa'
-        - id: kbbench-skill-github-docs-fs
+        - id: kbbench-skill-docsqa-fs
           name: '@kbbench/dsh-docsqa/skill-fs'
           disabled: true
-        - id: kbbench-skill-github-docs-hybrid
+        - id: kbbench-skill-docsqa-hybrid
           name: '@kbbench/dsh-docsqa/skill-hybrid'
           disabled: true
-        - id: kbbench-skill-github-docs-neo4j
+        - id: kbbench-skill-docsqa-neo4j
           name: '@kbbench/dsh-docsqa/skill-neo4j'
           disabled: true

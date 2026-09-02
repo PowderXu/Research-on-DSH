@@ -1,4 +1,4 @@
-"""GitHub Docs HTTP backend consumed by the real DSH retrieval plugins."""
+"""DocsQA HTTP backend consumed by the real DSH retrieval plugins."""
 
 from __future__ import annotations
 
@@ -21,6 +21,8 @@ from kbbench.retrieval import (
     build_or_load_embeddings,
 )
 from kbbench.plugin_eval import Neo4jGitHubDocsGraphRAG
+from .data_paths import arm_data_layout
+from .graph_records import build_graph_snapshot
 from .http_contract import (
     RESOURCE_ROOT,
     DocsQARequestHandler,
@@ -28,6 +30,17 @@ from .http_contract import (
     document_uri,
     render_evidence_text,
 )
+from .retrieval_policy import (
+    FINAL_RESULT_LIMIT,
+    GRAPH_CANDIDATES_PER_SEED,
+    GRAPH_ENTITY_DEGREE_CAP,
+    GRAPH_MAX_HOPS,
+    GRAPH_ROUTE_PAGE_CAP,
+    GRAPH_SEED_LIMIT,
+    RRF_CANDIDATES_PER_RETRIEVER,
+    retrieval_contract,
+)
+from .semantic_store import load_semantic_artifact
 
 
 TOKEN_RE = re.compile(r"[A-Za-z0-9_./:-]+")
@@ -39,6 +52,15 @@ def _jsonl(path: Path) -> list[dict[str, Any]]:
         for line in path.read_text(encoding="utf-8").splitlines()
         if line.strip()
     ]
+
+
+def _corpus_revision(manifest: dict[str, Any], corpus_path: Path) -> str:
+    """Return a stable revision for source and normalized dataset schemas."""
+
+    explicit = manifest.get("corpus_revision")
+    if explicit:
+        return str(explicit)
+    return "sha256:" + hashlib.sha256(corpus_path.read_bytes()).hexdigest()
 
 
 def _bounded(value: Any, minimum: int, maximum: int, fallback: int) -> int:
@@ -57,7 +79,33 @@ def _doc_id(uri: str) -> str:
     normalized = str(uri).split("#", 1)[0].rstrip("/")
     if normalized == RESOURCE_ROOT:
         return "/"
-    return "/" + document_id_from_uri(str(uri)).lstrip("/")
+    decoded = document_id_from_uri(str(uri))
+    # Combined corpora use ``project::/path`` IDs.  Prefixing those with a
+    # slash breaks exact lookup after a URI round trip.  Keep the legacy slash
+    # normalization only for single-project IDs.
+    if "::" in decoded:
+        return decoded
+    return "/" + decoded.lstrip("/")
+
+
+def _scoped_doc_ids(
+    scope: Any,
+    rows_by_id: dict[str, dict[str, Any]],
+) -> set[str] | None:
+    """Resolve an optional resource URI to an exact document-prefix filter."""
+
+    value = str(scope or RESOURCE_ROOT).split("#", 1)[0].rstrip("/")
+    if value == RESOURCE_ROOT:
+        return None
+    prefix = _doc_id(value).rstrip("/")
+    allowed = {
+        doc_id
+        for doc_id in rows_by_id
+        if doc_id == prefix or doc_id.startswith(prefix + "/")
+    }
+    if not allowed:
+        raise ValueError(f"scope does not resolve below {RESOURCE_ROOT}")
+    return allowed
 
 
 class GitHubDocsPluginService:
@@ -72,12 +120,13 @@ class GitHubDocsPluginService:
         embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
         device: str = "cpu",
         local_files_only: bool = True,
-        retrieval_depth: int = 350,
-        neo4j_uri: str = "bolt://127.0.0.1:7687",
+        retrieval_depth: int = RRF_CANDIDATES_PER_RETRIEVER,
+        neo4j_uri: str = "bolt://127.0.0.1:7688",
         neo4j_username: str = "neo4j",
         neo4j_password: str = "secretgraph",
         neo4j_database: str = "neo4j",
         trace_path: Path | None = None,
+        data_root: Path | None = None,
     ) -> None:
         if arm not in {"hybrid", "neo4j"}:
             raise ValueError("GitHubDocsPluginService arm must be hybrid or neo4j")
@@ -85,13 +134,14 @@ class GitHubDocsPluginService:
 
         started = time.perf_counter()
         self.arm = arm
+        self.data_root = data_root.resolve() if data_root else None
         self.dataset_dir = dataset_dir.resolve()
         self.corpus_rows = _jsonl(self.dataset_dir / "corpus.jsonl")
         manifest_path = self.dataset_dir / "manifest.json"
         if not manifest_path.exists():
             manifest_path = self.dataset_dir / "dataset_manifest.json"
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        self.revision = str(manifest["corpus_revision"])
+        self.revision = _corpus_revision(manifest, self.dataset_dir / "corpus.jsonl")
         self.rows_by_id = {str(row["doc_id"]): row for row in self.corpus_rows}
         self.chunks = build_chunks(self.corpus_rows)
         self.embedding_model = SentenceTransformer(
@@ -115,18 +165,46 @@ class GitHubDocsPluginService:
         )
         self.retrieval_depth = retrieval_depth
         self.graph: Neo4jGitHubDocsGraphRAG | None = None
+        self.graph_snapshot: dict[str, Any] | None = None
         if arm == "neo4j":
+            semantic_path_candidates = [
+                path
+                for path in (
+                    (self.data_root / "artifacts/kggen_graph.json")
+                    if self.data_root
+                    else None,
+                    self.dataset_dir.parent / "artifacts/kggen_graph.json",
+                )
+                if path is not None and path.exists()
+            ]
+            semantic_artifact = load_semantic_artifact(
+                semantic_path_candidates[0] if semantic_path_candidates else None
+            )
+            expected_snapshot = build_graph_snapshot(
+                self.corpus_rows,
+                self.chunks,
+                self.embeddings,
+                embedding_model_name=embedding_model_name,
+                semantic_artifact=semantic_artifact,
+            )
             self.graph = Neo4jGitHubDocsGraphRAG(
                 neo4j_uri, neo4j_username, neo4j_password, neo4j_database
             )
             stats = self.graph.graph_stats()
-            if stats.pages != len(self.corpus_rows) or stats.chunks != len(self.chunks):
+            actual_snapshot = self.graph.graph_snapshot()
+            if (
+                stats.pages != len(self.corpus_rows)
+                or stats.chunks != len(self.chunks)
+                or actual_snapshot != expected_snapshot
+            ):
                 self.graph.close()
                 self.graph = None
                 raise RuntimeError(
-                    "Neo4j GitHub Docs graph does not match the frozen corpus; "
+                    "Neo4j DocsQA graph snapshot does not match the local corpus, "
+                    "schema, embeddings, and KGGen artifact; "
                     "run the namespaced ingest before evaluation"
                 )
+            self.graph_snapshot = actual_snapshot
         self.trace_path = trace_path.resolve() if trace_path else None
         self._trace_lock = threading.Lock()
         self.events: list[dict[str, Any]] = []
@@ -146,8 +224,11 @@ class GitHubDocsPluginService:
             "method": "BM25+HNSW+RRF"
             if self.arm == "hybrid"
             else "BM25+HNSW seeds + Neo4j typed expansion",
+            "retrievalContract": retrieval_contract(self.arm),
+            "graphSnapshot": self.graph_snapshot,
             "buildSeconds": self.build_seconds,
             "paidUsd": 0,
+            "dataRoot": str(self.data_root) if self.data_root else None,
         }
 
     def _query_vector(self, query: str) -> np.ndarray:
@@ -193,6 +274,7 @@ class GitHubDocsPluginService:
         signals: list[str],
         score: float | None = None,
         expanded_from: list[str] | None = None,
+        graph_hops: int | None = None,
     ) -> dict[str, Any]:
         row = self.rows_by_id[doc_id]
         passage = self._passage(row, query)
@@ -210,6 +292,7 @@ class GitHubDocsPluginService:
             "score": float(score if score is not None else 1.0 / (60.0 + rank)),
             "signals": signals,
             "expandedFrom": [_doc_uri(value) for value in expanded_from or []],
+            "graphHops": graph_hops,
         }
 
     def _record(self, event: dict[str, Any]) -> None:
@@ -225,11 +308,18 @@ class GitHubDocsPluginService:
         query = str(request.get("query") or "").strip()
         if not query:
             raise ValueError("query is required")
-        result_limit = _bounded(request.get("result_limit"), 1, 30, 10)
+        result_limit = _bounded(
+            request.get("result_limit"), 1, FINAL_RESULT_LIMIT, FINAL_RESULT_LIMIT
+        )
         token_budget = _bounded(request.get("evidence_token_budget"), 200, 12_000, 2600)
+        scope = str(request.get("scope") or RESOURCE_ROOT).rstrip("/")
+        allowed_doc_ids = _scoped_doc_ids(scope, self.rows_by_id)
         started = time.perf_counter()
         ranked, diagnostics = self.hybrid.search(
-            query, "bm25_hnsw_rrf", top_k=result_limit
+            query,
+            "bm25_hnsw_rrf",
+            top_k=result_limit,
+            allowed_doc_ids=allowed_doc_ids,
         )
         results = [
             self._result(doc_id, query, rank, signals=["bm25", "hnsw", "rrf"])
@@ -248,6 +338,11 @@ class GitHubDocsPluginService:
                 "stageCounts": {
                     "documents": len(self.corpus_rows),
                     "chunks": len(self.chunks),
+                    "scopeDocuments": (
+                        len(allowed_doc_ids)
+                        if allowed_doc_ids is not None
+                        else len(self.corpus_rows)
+                    ),
                     "returned": len(results),
                 },
                 "graphPolicy": {"requested": False, "applied": False},
@@ -262,8 +357,11 @@ class GitHubDocsPluginService:
                 "operation": "search",
                 "query_id": query_id,
                 "query": query,
+                "scope": scope,
                 "ranked_ids": ranked,
                 "latency_ms": latency_ms,
+                "retrieval_contract": retrieval_contract(self.arm),
+                "diagnostics": diagnostics,
             }
         )
         return response
@@ -284,15 +382,20 @@ class GitHubDocsPluginService:
                 seed_ids.append(doc_id)
         if not seed_ids:
             raise ValueError("at least one valid seed URI is required")
-        result_limit = _bounded(request.get("result_limit"), 1, 30, 10)
+        result_limit = _bounded(
+            request.get("result_limit"), 1, FINAL_RESULT_LIMIT, FINAL_RESULT_LIMIT
+        )
         token_budget = _bounded(request.get("evidence_token_budget"), 200, 12_000, 2600)
         started = time.perf_counter()
         graph_rows, diagnostics = self.graph.expand_from_seeds(
             self._query_vector(query),
             seed_ids,
             top_k=result_limit,
-            max_entity_degree=20,
-            max_route_pages=20,
+            max_entity_degree=GRAPH_ENTITY_DEGREE_CAP,
+            max_route_pages=GRAPH_ROUTE_PAGE_CAP,
+            max_link_hops=GRAPH_MAX_HOPS,
+            max_graph_candidates_per_seed=GRAPH_CANDIDATES_PER_SEED,
+            max_seed_count=GRAPH_SEED_LIMIT,
         )
         results = [
             self._result(
@@ -302,6 +405,7 @@ class GitHubDocsPluginService:
                 signals=["neo4j", *row["path_types"]],
                 score=row["score"],
                 expanded_from=row["expanded_from"],
+                graph_hops=row["hops"],
             )
             for rank, row in enumerate(graph_rows, start=1)
         ]
@@ -314,7 +418,7 @@ class GitHubDocsPluginService:
             "results": results,
             "trace": {
                 "latencyMs": latency_ms,
-                "method": "neo4j_typed_seed_expansion",
+                "method": "neo4j_typed_multihop_seed_expansion",
                 "stageCounts": {
                     "seeds": len(seed_ids),
                     "returned": len(results),
@@ -333,6 +437,8 @@ class GitHubDocsPluginService:
                 "seed_ids": seed_ids,
                 "ranked_ids": [row["doc_id"] for row in graph_rows],
                 "latency_ms": latency_ms,
+                "retrieval_contract": retrieval_contract(self.arm),
+                "diagnostics": diagnostics,
             }
         )
         return response
@@ -361,7 +467,7 @@ class GitHubDocsPluginService:
                 }
             )
         if not results:
-            raise ValueError("no in-scope GitHub Docs URI was found")
+            raise ValueError("no in-scope DocsQA URI was found")
         self._record(
             {
                 "operation": "fetch",
@@ -402,25 +508,38 @@ def main() -> None:
     parser.add_argument(
         "--dataset-dir",
         type=Path,
-        default=Path("evaluation/dataset/data"),
+        help="Prepared corpus directory; defaults to this arm's local data/corpus",
     )
-    parser.add_argument("--cache-dir", type=Path, default=Path("data/evaluation_cache/github_docs_v1"))
+    parser.add_argument(
+        "--cache-dir",
+        type=Path,
+        help="Embedding/index cache; defaults to this arm's local data/indexes",
+    )
+    parser.add_argument(
+        "--data-root",
+        type=Path,
+        help="Override the plugin package's local-only data root",
+    )
     parser.add_argument("--arm", choices=("hybrid", "neo4j"), required=True)
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int)
     parser.add_argument("--embedding-model", default="sentence-transformers/all-MiniLM-L6-v2")
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--allow-model-download", action="store_true")
-    parser.add_argument("--neo4j-uri", default=os.environ.get("NEO4J_URI", "bolt://127.0.0.1:7687"))
+    parser.add_argument("--neo4j-uri", default=os.environ.get("NEO4J_URI", "bolt://127.0.0.1:7688"))
     parser.add_argument("--neo4j-username", default=os.environ.get("NEO4J_USERNAME", "neo4j"))
     parser.add_argument("--neo4j-password", default=os.environ.get("NEO4J_PASSWORD", "secretgraph"))
     parser.add_argument("--neo4j-database", default=os.environ.get("NEO4J_DATABASE", "neo4j"))
     parser.add_argument("--trace-path", type=Path)
     args = parser.parse_args()
+    layout = arm_data_layout(args.arm, args.data_root).ensure()
+    dataset_dir = args.dataset_dir or layout.corpus
+    cache_dir = args.cache_dir or layout.indexes
+    trace_path = args.trace_path or layout.traces / "service.jsonl"
     port = args.port or (1935 if args.arm == "hybrid" else 1936)
     service = GitHubDocsPluginService(
-        dataset_dir=args.dataset_dir,
-        cache_dir=args.cache_dir,
+        dataset_dir=dataset_dir,
+        cache_dir=cache_dir,
         arm=args.arm,
         embedding_model_name=args.embedding_model,
         device=args.device,
@@ -429,7 +548,8 @@ def main() -> None:
         neo4j_username=args.neo4j_username,
         neo4j_password=args.neo4j_password,
         neo4j_database=args.neo4j_database,
-        trace_path=args.trace_path,
+        trace_path=trace_path,
+        data_root=layout.root,
     )
     host = GitHubDocsServiceHost(service, args.host, port)
     host.start()

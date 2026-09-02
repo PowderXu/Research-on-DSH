@@ -49,7 +49,9 @@ test("expanded evidence preserves its seed provenance", () => {
       uri: "viking://resources/docsqa/target",
       snippet: "target evidence",
       expandedFrom: ["viking://resources/docsqa/seed"],
+      graphHops: 2,
     }],
   }, "viking://resources/docsqa");
   assert.match(renderEvidence(response, 200), /Expanded from: .*\/seed/);
+  assert.match(renderEvidence(response, 200), /Graph hops: 2/);
 });

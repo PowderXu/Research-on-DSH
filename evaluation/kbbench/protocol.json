@@ -1,9 +1,9 @@
 {
-  "name": "github-docs-kb-retrieval-v2.1",
-  "task": "rank canonical GitHub Docs pages for real support questions",
+  "name": "docsqa-linked-docs-v5-development",
+  "task": "rank canonical technical-documentation pages and evaluate grounded answers for real support questions",
   "evaluation_unit": "canonical documentation page",
   "default_split": "test",
-  "required_top_k": 20,
+  "required_top_k": 10,
   "primary_metrics": [
     "Recall@10",
     "Hit@10",
@@ -13,28 +13,213 @@
   "secondary_metrics": [
     "Recall@1",
     "Recall@5",
-    "Recall@20",
     "Hit@1",
     "Hit@5",
-    "Hit@20",
-    "AllSupport@10",
-    "p95_latency_ms"
+    "AllSupport@10"
   ],
+  "optional_diagnostics": [
+    "p95_latency_ms when recorded by a complete run",
+    "index build time when recorded",
+    "graph ingest time when recorded",
+    "graph and storage statistics when recorded"
+  ],
+  "aspect_annotated_retrieval_metrics": {
+    "primary": [
+      "WeightedAspectRecall@10",
+      "alpha-nDCG@10"
+    ],
+    "eligibility": "only questions with frozen model-reviewed silver aspects; answer-only aspects without a local documentation ID are excluded from retrieval denominators",
+    "purpose": "measure whether retrieved documents jointly cover complementary answer requirements rather than merely matching any linked page"
+  },
+  "aspect_annotated_agent_metrics": {
+    "primary": "CorpusConditionedGroundedWeightedAspectCoverage",
+    "eligibility": "questions with at least one critical aspect supported by a pinned local documentation ID",
+    "secondary": [
+      "AllAspectGroundedWeightedAspectCoverage",
+      "CriticalAspectSuccess",
+      "CompleteRate",
+      "PartialRate",
+      "IncorrectRate",
+      "UnsupportedClaimRate",
+      "CitationIntegrityRate"
+    ],
+    "efficiency": [
+      "TokensPerQA",
+      "p50LatencyPerQA"
+    ],
+    "failure_policy": "agent failures remain in the denominator with zero coverage and an incorrect outcome"
+  },
   "macro_average": true,
+  "system_setting": {
+    "regime": "corpus-aware zero-shot",
+    "scored_split": "test (physical filename; development status)",
+    "scored_questions": 361,
+    "evaluation_status": "development/exploratory because this pool was reused during system iteration",
+    "publication_test_requirement": "evaluate a newly collected disjoint post-freeze cohort once",
+    "system_training_from_benchmark": false,
+    "benchmark_examples_in_prompt": false
+  },
+  "judge_weak_supervision_overlay": {
+    "purpose": "evaluator-only split for tuning, selecting, freezing, and confirming the answer judge; it does not alter agent execution",
+    "manifest": "evaluation/dataset/evaluation_data/normalized/weak_supervision_split.json",
+    "manifest_sha256": "c1923e36606590b186b1079510cbfe5906840c2ad5a8bea2c0e5173c7259cbcc",
+    "manifest_canonical_sha256": "c10038cb4ff2fc07368cbd789120ece69a35158b9695a7a0f5dff4cea9a8f9fd",
+    "normalized_question_count": 467,
+    "partitions": {
+      "calibration_train": {
+        "count": 280,
+        "fraction": 0.6,
+        "use": "revise domain-neutral judge rules",
+        "project_counts": {
+          "GitHub Docs": 118,
+          "Prisma": 75,
+          "Supabase": 31,
+          "Tailwind CSS": 56
+        }
+      },
+      "calibration_validation": {
+        "count": 93,
+        "fraction": 0.2,
+        "use": "select a candidate and freeze the exact rubric, prompt, thresholds, and model settings",
+        "project_counts": {
+          "GitHub Docs": 39,
+          "Prisma": 25,
+          "Supabase": 10,
+          "Tailwind CSS": 19
+        }
+      },
+      "final_test": {
+        "count": 94,
+        "fraction": 0.2,
+        "use": "one post-freeze evaluator confirmation; no evaluator edit may follow inspection",
+        "project_counts": {
+          "GitHub Docs": 40,
+          "Prisma": 25,
+          "Supabase": 11,
+          "Tailwind CSS": 18
+        }
+      }
+    },
+    "execution_status": "complete: the selected evaluator passed calibration train, calibration validation, and the frozen final test",
+    "aspect_artifact": {
+      "path": "results/runs/dataset-analysis/aspects-v2-all/aspects.jsonl",
+      "questions": 467,
+      "sha256": "a15bfdb34667721f23adb1f6f9864867a586bfefff861d4a99eac60622341b36"
+    },
+    "selection_history": [
+      {
+        "iteration": 1,
+        "max_variant_repairs": 1,
+        "train": {
+          "path": "results/runs/dataset-analysis/aspect-calibration-v2-train/report.json",
+          "questions": 280,
+          "valid_balanced_cases": 277,
+          "balanced_case_rate": 0.9892857142857143,
+          "macro_f1": 0.9541947479611476,
+          "passed": true
+        },
+        "validation": {
+          "path": "results/runs/dataset-analysis/aspect-calibration-v2-validation-602020/report.json",
+          "questions": 93,
+          "valid_balanced_cases": 88,
+          "balanced_case_rate": 0.946236559139785,
+          "macro_f1": 0.9581964574214389,
+          "passed": false,
+          "only_failed_gate": "balanced_case_rate"
+        }
+      },
+      {
+        "iteration": 2,
+        "max_variant_repairs": 2,
+        "train": {
+          "path": "results/runs/dataset-analysis/aspect-calibration-v2-train-r2/report.json",
+          "questions": 280,
+          "valid_balanced_cases": 279,
+          "balanced_case_rate": 0.9964285714285714,
+          "macro_f1": 0.9545502343585643,
+          "passed": true
+        },
+        "validation": {
+          "path": "results/runs/dataset-analysis/aspect-calibration-v2-validation-r2/report.json",
+          "questions": 93,
+          "valid_balanced_cases": 92,
+          "balanced_case_rate": 0.989247311827957,
+          "macro_f1": 0.9601367017097354,
+          "passed": true
+        },
+        "selected": true
+      }
+    ],
+    "selected_evaluator": {
+      "rubric_version": "docsqa-aspect-rubric-v2",
+      "rubric_sha256": "840d17a4552044b780ed146b5916eb6abad76e06820a07a35b9582e3edadde34",
+      "model": "gpt-5.6-luna",
+      "reasoning_effort": "medium",
+      "attempts": 3,
+      "max_variant_repairs": 2,
+      "seed": 42,
+      "request_timeout_seconds": 120.0
+    },
+    "frozen_final_test_result": {
+      "path": "results/runs/dataset-analysis/aspect-calibration-v2-final-test/report.json",
+      "questions": 94,
+      "valid_balanced_cases": 93,
+      "candidates": 279,
+      "accuracy": 0.9498207885304659,
+      "macro_f1": 0.9496487569786,
+      "source_answer_complete_recall": 0.9354838709677419,
+      "partial_recall": 0.9247311827956989,
+      "incorrect_recall": 0.989247311827957,
+      "incorrect_false_complete_rate": 0.010752688172043012,
+      "independent_source_review_rate": 1.0,
+      "balanced_case_rate": 0.9893617021276596,
+      "passed": true,
+      "report_sha256": "3162cced32b118b53a0670d10befce9481292f06c73d30424790d3b93947bec9"
+    },
+    "holdout_scope": "prospective for current judge-rule optimization only; all records previously participated in dataset construction and normalization",
+    "confirmatory_answer_quality_requirement": "the frozen judge must pass the final_test gates before its agent answer-quality scores are confirmatory",
+    "confirmatory_answer_quality_status": "evaluator requirement satisfied; system measurements on the reused 361-question development partition remain exploratory",
+    "legacy_development_check": {
+      "physical_split": "validation",
+      "questions": 73,
+      "candidates": 219,
+      "status": "historical development evidence; not the current final test"
+    }
+  },
+  "frozen_retrieval_parameters": {
+    "policy_id": "production-window-v1",
+    "top_k": 10,
+    "retrieval_depth": 50,
+    "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+    "device": "cpu",
+    "fs_max_calls": 3,
+    "fs_max_matches": 250,
+    "graph_seed_count": 5,
+    "graph_fusion": "equal-weight RRF over the exact hybrid ranking and bounded graph ranking",
+    "graph_max_hops": 2,
+    "max_entity_degree": 20,
+    "max_route_pages": 20,
+    "max_graph_candidates_per_seed": 10,
+    "max_graph_candidates_total": 50,
+    "neo4j_effective_search_ratio": 1
+  },
   "slices": [
     "intent_category",
     "evidence_category",
     "evidence_structure",
-    "qrel_count_group"
+    "qrel_count_group",
+    "qrel_count_exact",
+    "question_image_group",
+    "question_image_text_group"
   ],
-  "qrel_provenance": "distinct docs.github.com pages linked in accepted GitHub Community answers",
+  "qrel_provenance": "distinct in-corpus documentation pages explicitly linked in accepted public support answers",
   "unjudged_policy": "zero measured gain; do not claim exhaustive irrelevance",
   "oracle_features_excluded": [
     "graph_opportunity"
   ],
   "fairness_controls": [
     "same corpus revision",
-    "same frozen question split",
+    "same development question pool",
     "same top-k",
     "same agent and non-KB tools for plugin comparisons",
     "retrieved canonical IDs logged before generation",

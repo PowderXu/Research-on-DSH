@@ -1,9 +1,9 @@
 {
-  "name": "github-docs-kb-benchmark-runtime",
+  "name": "docsqa-benchmark-runtime",
   "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "Pinned DeepSeek Harness runtime for the GitHub Docs KB benchmark",
+  "description": "Pinned DeepSeek Harness runtime for the multi-project DocsQA benchmark",
   "packageManager": "npm@10.9.4",
   "engines": {
     "node": "^22.19.0 || >=24"

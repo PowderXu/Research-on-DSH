@@ -9,7 +9,7 @@ import {
 export const Config = SkillConfig;
 export type Config = SkillPluginConfig;
 
-export const name = "kbbench-skill-github-docs-neo4j";
+export const name = "kbbench-skill-docsqa-neo4j";
 export const inject = ["skills"] as const;
 
 export function apply(ctx: Context, config: Config = {}): () => void {
