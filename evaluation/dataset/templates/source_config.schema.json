@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DocsQA public source configuration",
+  "type": "object",
+  "required": ["schema_version", "sources"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "display_name",
+          "description",
+          "repository",
+          "revision",
+          "checkout_dir",
+          "normalizer",
+          "docs_hosts",
+          "image_base_url",
+          "image_routes",
+          "content_roots",
+          "support_roots"
+        ],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+          "display_name": {"type": "string", "minLength": 1},
+          "description": {"type": "string"},
+          "repository": {"type": "string", "pattern": "^https://github\\.com/.+\\.git$"},
+          "revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+          "checkout_dir": {"type": "string", "minLength": 1},
+          "normalizer": {"enum": ["github", "tailwind", "prisma", "supabase"]},
+          "docs_hosts": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+          "image_base_url": {"type": "string", "format": "uri"},
+          "image_routes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["url_prefix", "local_root"],
+              "properties": {
+                "url_prefix": {"type": "string", "pattern": "^/"},
+                "local_root": {"type": "string", "minLength": 1}
+              }
+            }
+          },
+          "content_roots": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+          "support_roots": {"type": "array", "items": {"type": "string"}}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

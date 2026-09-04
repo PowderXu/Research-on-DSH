@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "frozen_manifest": {
+    "path": "evaluation/dataset/templates/discussion_sources.jsonl",
+    "rows": 798,
+    "sha256": "d37c939c4cf6652b26d3253bf6272244c558876dda2c183776fb983d90b764b3"
+  },
+  "github_listing": {
+    "historical_result_ceiling": 1000,
+    "new_discovery_guard_threshold": 950,
+    "basis": "The retained 2026-08-24 host screens and legacy discovery code treat GitHub's web listing as capped around 1,000 results. No primary-source GitHub cap snapshot was retained, so new discovery fails closed near that ceiling and requires date partitions."
+  },
+  "datasets": {
+    "github_docs": {
+      "project_id": "github-docs",
+      "scope": "organization:community",
+      "docs_hosts": [
+        "docs.github.com"
+      ],
+      "docs_path_prefixes": [
+        "/"
+      ],
+      "frozen_rows": 328,
+      "selection_reproducibility": "partial",
+      "irrecoverable_step": "The enumerated GitHub Community listing and pre-freeze host-screen artifact were not retained. The 328 frozen identifiers and accepted-answer permalinks are reproducible inputs, but population coverage and the exact historical candidate-to-freeze decisions cannot be reconstructed."
+    },
+    "prisma": {
+      "project_id": "prisma",
+      "scope": "repository:prisma/prisma",
+      "docs_hosts": [
+        "prisma.io",
+        "www.prisma.io"
+      ],
+      "docs_path_prefixes": [
+        "/docs"
+      ],
+      "frozen_rows": 213,
+      "selection_reproducibility": "partial",
+      "irrecoverable_step": "The host screen is retained, but the exact historical post-screen selection procedure, pinned-route index, and redirect state used to choose 213 of 227 exact-host/path rows were not retained.",
+      "historical_host_screen": {
+        "artifact_date_label": "2026-08-24",
+        "directory": "results/prisma_host_yield_2026-08-24",
+        "summary_sha256": "f94c7e07f56c89dd85f862ad33e6b9fc381c2938c302f02a6f2ccbf88800d456",
+        "rows_sha256": "9aee037792643114e4e093b66a0080cdc55a09e2d2a2816d3f7cc224b496d685",
+        "answered_listing_discussions": 1002,
+        "accepted_answer_records": 999,
+        "base_host_rows": 239,
+        "exact_host_and_path_rows": 227,
+        "created_ranges": [],
+        "cap_status": "reached_or_exceeded"
+      }
+    },
+    "supabase": {
+      "project_id": "supabase",
+      "scope": "organization:supabase",
+      "docs_hosts": [
+        "supabase.com"
+      ],
+      "docs_path_prefixes": [
+        "/docs"
+      ],
+      "frozen_rows": 90,
+      "selection_reproducibility": "partial",
+      "irrecoverable_step": "The host screen is retained, but the exact historical post-screen selection procedure, pinned-route index, and redirect state used to choose 90 of 132 exact-host/path rows were not retained.",
+      "historical_host_screen": {
+        "artifact_date_label": "2026-08-24",
+        "directory": "results/supabase_host_yield_2026-08-24",
+        "summary_sha256": "9e4b88229bed5a2c41cd1221cc219939aa3bb3699aab84d16fb4e1ec01ae8c94",
+        "rows_sha256": "46b163db33cc4075a18d70c856658ba937bf566c185b420be6427621b7d436e4",
+        "answered_listing_discussions": 1002,
+        "accepted_answer_records": 998,
+        "base_host_rows": 166,
+        "exact_host_and_path_rows": 132,
+        "created_ranges": [],
+        "cap_status": "reached_or_exceeded"
+      }
+    },
+    "tailwind": {
+      "project_id": "tailwind-css",
+      "scope": "repository:tailwindlabs/tailwindcss",
+      "docs_hosts": [
+        "tailwindcss.com"
+      ],
+      "docs_path_prefixes": [
+        "/docs"
+      ],
+      "frozen_rows": 167,
+      "selection_reproducibility": "partial",
+      "irrecoverable_step": "The host screen is retained, but the exact historical post-screen selection procedure, pinned-route index, and redirect state used to choose 167 of 202 exact-host/path rows were not retained. One retained project manifest separately records a 91-qrel high-link exclusion, but the other per-row exclusions are not fully recoverable.",
+      "historical_host_screen": {
+        "artifact_date_label": "2026-08-24",
+        "directory": "results/tailwind_host_yield_2026-08-24",
+        "summary_sha256": "29df1f36c7958968a0e5eda8fa16bd81569a77f97ac09f9a614cbbaefb35dcf7",
+        "rows_sha256": "70394aac83d5bd3ebce6089902476ed1c611be16aa44c19b9d4f19b90a6ab678",
+        "answered_listing_discussions": 999,
+        "accepted_answer_records": 994,
+        "base_host_rows": 370,
+        "exact_host_and_path_rows": 202,
+        "created_ranges": [],
+        "cap_status": "near_cap"
+      }
+    }
+  }
+}

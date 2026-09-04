@@ -1,43 +1,96 @@
 {
-  "name": "github-docs-kb-retrieval-v2.1",
-  "task": "rank canonical GitHub Docs pages for real support questions",
+  "name": "docsqa-linked-docs-v5-development",
+  "task": "rank canonical technical-documentation pages and answer real support questions from pinned local evidence",
   "evaluation_unit": "canonical documentation page",
   "default_split": "test",
-  "required_top_k": 20,
-  "primary_metrics": [
+  "required_top_k": 10,
+  "primary_retrieval_metrics": [
     "Recall@10",
     "Hit@10",
     "nDCG@10",
     "p50_latency_ms"
   ],
+  "primary_answer_metric": "CorpusConditionedGroundedWeightedAspectCoverage",
   "secondary_metrics": [
-    "Recall@1",
-    "Recall@5",
-    "Recall@20",
-    "Hit@1",
-    "Hit@5",
-    "Hit@20",
     "AllSupport@10",
-    "p95_latency_ms"
+    "CriticalAspectSuccess",
+    "UnsupportedClaimRate",
+    "CitationIntegrityRate",
+    "TokensPerQA",
+    "ToolCallsPerQA",
+    "p95LatencyPerQA"
   ],
-  "macro_average": true,
+  "system_setting": {
+    "regime": "corpus-aware zero-shot",
+    "scored_split": "test (historical physical name; development status)",
+    "scored_questions": 361,
+    "evaluation_status": "exploratory because this pool was reused during system development",
+    "publication_test_requirement": "evaluate a newly collected disjoint post-freeze cohort once",
+    "system_training_from_benchmark": false,
+    "benchmark_examples_in_prompt": false
+  },
+  "aspect_rule_optimization": {
+    "purpose": "select one general aspect-construction rule before freezing question-specific aspects; it does not alter evaluated agents",
+    "implementation": "SkillOpt 0.2.0 with a local environment adapter",
+    "normalized_record_count": 467,
+    "split": {
+      "ratio": "60:20:20",
+      "seed": 20260901,
+      "train": 280,
+      "validation": 94,
+      "test": 93,
+      "stratification": "project",
+      "duplicate_policy": "duplicate source questions remain in one partition",
+      "materialization": "generated under the ignored rule-optimization run directory"
+    },
+    "target_model": "gpt-5.6-luna",
+    "target_reasoning_effort": "medium",
+    "optimizer_model": "gpt-5.6-sol",
+    "optimizer_reasoning_effort": "xhigh",
+    "editable_state": "evaluation/rule_optimization/initial_rule.md only",
+    "validation_gate": "the fraction of records with importance-weighted source-answer aspect coverage at least 0.80 must improve",
+    "source_coverage_threshold": 0.8,
+    "minimum_validation_pass_rate": 0.8,
+    "test_policy": "evaluate once after the rule is frozen; no optimizer feedback from test",
+    "status": "completed; selected rule passed validation and one-time held-out evaluation, and frozen aspects were generated for all 467 normalized records"
+  },
+  "frozen_retrieval_parameters": {
+    "policy_id": "production-window-v1",
+    "top_k": 10,
+    "retrieval_depth": 50,
+    "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+    "device": "cpu",
+    "fs_max_calls": 3,
+    "fs_max_matches": 250,
+    "graph_seed_count": 5,
+    "graph_fusion": "equal-weight RRF over the hybrid and bounded graph rankings",
+    "graph_max_hops": 2,
+    "max_entity_degree": 20,
+    "max_route_pages": 20,
+    "max_graph_candidates_per_seed": 10,
+    "max_graph_candidates_total": 50,
+    "neo4j_effective_search_ratio": 1
+  },
   "slices": [
     "intent_category",
     "evidence_category",
     "evidence_structure",
-    "qrel_count_group"
+    "qrel_count_group",
+    "qrel_count_exact",
+    "question_image_group",
+    "question_image_text_group"
   ],
-  "qrel_provenance": "distinct docs.github.com pages linked in accepted GitHub Community answers",
+  "qrel_provenance": "distinct in-corpus documentation pages explicitly linked in accepted public support answers",
   "unjudged_policy": "zero measured gain; do not claim exhaustive irrelevance",
   "oracle_features_excluded": [
     "graph_opportunity"
   ],
   "fairness_controls": [
     "same corpus revision",
-    "same frozen question split",
+    "same question pool",
     "same top-k",
-    "same agent and non-KB tools for plugin comparisons",
-    "retrieved canonical IDs logged before generation",
-    "all failures retained in denominator"
+    "same language model and non-retrieval tools for agent comparisons",
+    "retrieved canonical IDs logged before answer generation",
+    "all failures retained in the denominator"
   ]
 }

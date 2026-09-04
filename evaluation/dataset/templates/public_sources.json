@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "sources": [
+    {
+      "id": "github-docs",
+      "display_name": "GitHub Docs",
+      "description": "GitHub Actions, repositories, security, organizations, APIs, and Copilot.",
+      "repository": "https://github.com/github/docs.git",
+      "revision": "c34e3dccad00f61133c799d20e7d1208a0e6cc92",
+      "checkout_dir": "github-docs",
+      "normalizer": "github",
+      "docs_hosts": [
+        "docs.github.com"
+      ],
+      "image_base_url": "https://docs.github.com",
+      "image_routes": [
+        {
+          "url_prefix": "/assets/",
+          "local_root": "assets"
+        }
+      ],
+      "content_roots": [
+        "content"
+      ],
+      "support_roots": [
+        "data/reusables",
+        "data/variables"
+      ]
+    },
+    {
+      "id": "tailwind-css",
+      "display_name": "Tailwind CSS",
+      "description": "Installation, configuration, utilities, responsive design, and styling.",
+      "repository": "https://github.com/tailwindlabs/tailwindcss.com.git",
+      "revision": "bd868a314bd05ca78acd047e3da289274dd6ccd7",
+      "checkout_dir": "tailwindcss",
+      "normalizer": "tailwind",
+      "docs_hosts": [
+        "tailwindcss.com"
+      ],
+      "image_base_url": "https://tailwindcss.com",
+      "image_routes": [
+        {
+          "url_prefix": "/img/",
+          "local_root": "src/docs/img"
+        }
+      ],
+      "content_roots": [
+        "src/docs"
+      ],
+      "support_roots": []
+    },
+    {
+      "id": "prisma",
+      "display_name": "Prisma",
+      "description": "Prisma ORM, Client, schemas, migrations, databases, Studio, and platform services.",
+      "repository": "https://github.com/prisma/web.git",
+      "revision": "c4ac0e9dd35d46ae34b5e979b2768be5cd0c390c",
+      "checkout_dir": "prisma",
+      "normalizer": "prisma",
+      "docs_hosts": [
+        "www.prisma.io",
+        "prisma.io"
+      ],
+      "image_base_url": "https://www.prisma.io",
+      "image_routes": [],
+      "content_roots": [
+        "apps/docs/content/docs"
+      ],
+      "support_roots": []
+    },
+    {
+      "id": "supabase",
+      "display_name": "Supabase",
+      "description": "Database, authentication, storage, Edge Functions, local development, and APIs.",
+      "repository": "https://github.com/supabase/supabase.git",
+      "revision": "6ea3567948178e81369cd485bc06c5aa40009db3",
+      "checkout_dir": "supabase",
+      "normalizer": "supabase",
+      "docs_hosts": [
+        "supabase.com"
+      ],
+      "image_base_url": "https://supabase.com",
+      "image_routes": [],
+      "content_roots": [
+        "apps/docs/content"
+      ],
+      "support_roots": []
+    }
+  ]
+}

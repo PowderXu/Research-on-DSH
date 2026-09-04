@@ -7,6 +7,7 @@ export interface SearchResult {
   readonly score: number;
   readonly signals: readonly string[];
   readonly expandedFrom: readonly string[];
+  readonly graphHops: number | null;
   readonly repoPath: string;
   readonly commit: string;
   readonly lineStart: number | null;
@@ -51,6 +52,7 @@ export function renderEvidence(response: SearchResponse, tokenBudget: number): s
       result.expandedFrom.length > 0
         ? `Expanded from: ${result.expandedFrom.join(", ")}`
         : "",
+      result.graphHops ? `Graph hops: ${result.graphHops}` : "",
       `Score: ${result.score.toFixed(4)}; signals: ${result.signals.join(", ") || "unspecified"}`,
       result.snippet,
     ].filter(Boolean).join("\n");
@@ -84,6 +86,7 @@ function normalizeResult(item: unknown): SearchResult {
     score: finiteScore(item.score),
     signals: stringArray(item.signals),
     expandedFrom: stringArray(item.expandedFrom),
+    graphHops: positiveInteger(item.graphHops),
     repoPath: String(item.repoPath || ""),
     commit: String(item.commit || ""),
     lineStart: positiveInteger(item.lineStart),

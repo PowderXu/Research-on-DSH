@@ -1,11 +1,11 @@
 ---
-name: github-docs-neo4j
-description: Use GitHub Docs hybrid retrieval with bounded Neo4j traversal and explicit path verification.
+name: docsqa-neo4j
+description: Use documentation hybrid retrieval with bounded Neo4j traversal and path verification.
 arm: neo4j
 version: 1
 ---
 
-# GitHub Docs Neo4j GraphRAG retrieval
+# Documentation Neo4j GraphRAG retrieval
 
 ## Contract
 

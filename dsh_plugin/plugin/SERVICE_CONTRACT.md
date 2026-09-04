@@ -5,8 +5,8 @@ The DSH plugin calls one local service. All responses are wrapped as
 
 ## `GET /health`
 
-Returns arm, corpus revision, document/chunk counts, retrieval method, and index
-build duration.
+Returns arm, corpus revision, document/chunk counts, retrieval method, index
+build duration, and the selected arm-owned local data root.
 
 ## `POST /v1/search`
 
@@ -20,7 +20,11 @@ span, snippet, score, and retrieval signals.
 Neo4j only. Request fields: `query`, `seed_uris`, `result_limit`, and evidence
 budget. Every seed URI must have been returned under
 `viking://resources/docsqa`. Results preserve `expandedFrom` seed provenance
-and typed path signals.
+and expose hop count plus typed path signals. Markdown-link traversal is capped
+at two page-to-page hops; shared reusable-content, code-entity, and route
+transitions remain capped at one. KGGen entity/claim transitions are also one
+hop and degree bounded; every semantic path terminates at a retrieval unit that
+stores the source evidence.
 
 ## `POST /v1/fetch`
 

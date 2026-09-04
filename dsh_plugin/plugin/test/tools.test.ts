@@ -33,13 +33,13 @@ function definitionsFor(configInput: Config): ToolDefinition[] {
   return definitions;
 }
 
-test("Neo4j profile exposes an explicit expansion tool", () => {
+test("Neo4j profile exposes a graph expansion tool", () => {
   const definitions = definitionsFor({ exposeExpand: true });
   const search = definitions.find(definition => definition.name === "docsqa_search");
   assert.ok(search);
   const properties = search.parameters.properties as Record<string, unknown>;
   assert.equal(properties.allow_graph, undefined);
-  assert.match(search.description, /Use docsqa_expand explicitly/);
+  assert.match(search.description, /Call docsqa_expand/);
   assert.ok(definitions.some(definition => definition.name === "docsqa_expand"));
 });
 

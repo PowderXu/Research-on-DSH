@@ -1,0 +1,54 @@
+{
+  "owner": "dsh-docsqa-plugin",
+  "schema_version": 2,
+  "nodes": {
+    "KBDocsQAProject": ["project_id"],
+    "KBDocsQADocument": ["doc_id", "project_id", "title", "source_path", "route", "content_type", "variant_conditioned"],
+    "KBDocsQASection": ["section_id", "doc_id", "title", "level", "ordinal"],
+    "KBDocsQARetrievalUnit": ["unit_id", "doc_id", "project_id", "section_id", "unit_type", "ordinal", "search_text", "source_path", "source_line", "text_embedding"],
+    "KBDocsQAImageOccurrence": ["unit_id", "asset_id", "alt_text", "image_title", "source_url", "source_syntax"],
+    "KBDocsQAImageAsset": ["asset_id", "project_id", "content_hash", "local_path", "mime_type", "width", "height", "description", "ocr_text"],
+    "KBDocsQAEntity": ["entity_id", "project_id", "canonical_name", "aliases", "claim_count"],
+    "KBDocsQAPredicate": ["predicate_id", "project_id", "canonical_name", "aliases", "family"],
+    "KBDocsQAClaim": ["claim_id", "project_id", "raw_subject", "raw_predicate", "raw_object", "evidence_excerpt", "extraction_method", "confidence", "polarity", "condition"],
+    "KBDocsQARoute": ["route_id", "document_count"],
+    "KBDocsQAReusable": ["reusable_id", "document_count"],
+    "KBDocsQACodeEntity": ["code_id", "project_id", "key", "document_count"]
+  },
+  "relationships": {
+    "KB_HAS_DOCUMENT": "KBDocsQAProject -> KBDocsQADocument",
+    "KB_HAS_SECTION": "KBDocsQADocument -> KBDocsQASection",
+    "KB_HAS_UNIT": "KBDocsQASection -> KBDocsQARetrievalUnit",
+    "KB_NEXT": "KBDocsQARetrievalUnit -> KBDocsQARetrievalUnit",
+    "KB_LINKS_TO": "KBDocsQADocument -> KBDocsQADocument; properties: anchor_text, source_section, target_anchor, context",
+    "KB_USES_ASSET": "KBDocsQAImageOccurrence -> KBDocsQAImageAsset",
+    "KB_NEAR": "KBDocsQAImageOccurrence -> KBDocsQARetrievalUnit",
+    "KB_IN_ROUTE": "KBDocsQADocument -> KBDocsQARoute",
+    "KB_INCLUDES": "KBDocsQADocument -> KBDocsQAReusable",
+    "KB_MENTIONS": "KBDocsQADocument -> KBDocsQACodeEntity",
+    "KB_SUBJECT_OF": "KBDocsQAEntity -> KBDocsQAClaim",
+    "KB_HAS_OBJECT": "KBDocsQAClaim -> KBDocsQAEntity",
+    "KB_USES_PREDICATE": "KBDocsQAClaim -> KBDocsQAPredicate",
+    "KB_SUPPORTED_BY": "KBDocsQAClaim -> KBDocsQARetrievalUnit"
+  },
+  "extraction": {
+    "structure": "Deterministic Markdown/MDX parsing; query blind.",
+    "images": "Alt text, OCR, and normalized descriptions remain occurrence- and asset-scoped text evidence; image vectors are excluded.",
+    "semantics": "kg-gen 0.4.0 open extraction followed by entity and predicate clustering.",
+    "provenance": "Every claim must resolve to one retrieval unit and carry its source excerpt.",
+    "schema_policy": "KGGen predicates are stored as data nodes, not dynamically-created Neo4j relationship types.",
+    "identity_scope": "Image assets, code identifiers, KGGen entities, predicates, and claims are project-scoped to prevent false cross-project paths."
+  },
+  "indexes": {
+    "fulltext": "KBDocsQARetrievalUnit.search_text",
+    "text_hnsw": "KBDocsQARetrievalUnit.text_embedding"
+  },
+  "retrieval_policy": {
+    "foundation": "BM25 plus text HNSW; image alt/OCR/description text participates in this foundation",
+    "link_hops": 2,
+    "semantic_hops": 1,
+    "max_graph_candidates_per_seed": 10,
+    "hub_policy": "Route, reusable, code, and KGGen entities are degree bounded.",
+    "evidence_policy": "A graph path is a discovery signal; its supported retrieval unit is the evidence."
+  }
+}

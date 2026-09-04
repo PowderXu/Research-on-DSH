@@ -1,10 +1,11 @@
-"""Deterministic source normalization and IR scoring for GitHub Docs."""
+"""Deterministic source normalization and IR scoring for DocsQA corpora."""
 
 from __future__ import annotations
 
 import json
 import math
 import re
+from collections import defaultdict
 from pathlib import Path, PurePosixPath
 from typing import Any, Iterable
 from urllib.parse import unquote, urlsplit
@@ -14,17 +15,29 @@ VERSION_SEGMENT = re.compile(
     r"^(?:enterprise-cloud|enterprise-server|free-pro-team)(?:@[^/]+)?$",
     re.IGNORECASE,
 )
+PROJECT_BY_DOCS_HOST = {
+    "docs.github.com": "github-docs",
+    "tailwindcss.com": "tailwind-css",
+    "www.prisma.io": "prisma",
+    "prisma.io": "prisma",
+    "supabase.com": "supabase",
+}
 
 
 def _normalize_doc_id(value: str) -> str:
     path = unquote(str(value or "").strip()).replace("\\", "/")
+    project = ""
+    if "::" in path:
+        project, path = path.split("::", 1)
+        project = project.strip().casefold()
     path = path.split("#", 1)[0].split("?", 1)[0]
     path = re.sub(r"/+", "/", path)
     if path.endswith(".md"):
         path = path[:-3]
     if path.endswith("/index"):
         path = path[:-6] or "/"
-    return "/" + path.strip("/") if path.strip("/") else "/"
+    normalized = "/" + path.strip("/") if path.strip("/") else "/"
+    return f"{project}::{normalized}" if project else normalized
 
 
 class GitHubDocsSourceResolver:
@@ -32,43 +45,87 @@ class GitHubDocsSourceResolver:
 
     def __init__(self, corpus_path: Path) -> None:
         self.corpus_path = corpus_path.resolve()
-        self.aliases: dict[str, str] = {}
+        canonical_doc_ids: dict[str, str] = {}
+        alias_targets: dict[str, set[str]] = defaultdict(set)
         for line in self.corpus_path.read_text(encoding="utf-8").splitlines():
             if not line.strip():
                 continue
             row = json.loads(line)
             doc_id = _normalize_doc_id(str(row["doc_id"]))
+            canonical_doc_ids[doc_id.casefold()] = doc_id
+            project = str(row.get("project") or "").casefold()
+            source_doc_id = _normalize_doc_id(str(row.get("source_doc_id") or ""))
             source_path = str(row.get("source_path") or "").replace("\\", "/")
+            repository_source_path = str(
+                row.get("repository_source_path") or source_path
+            ).replace("\\", "/")
             route = str(row.get("route") or "")
             candidates = {
                 doc_id,
                 doc_id.lstrip("/"),
+                source_doc_id,
+                source_doc_id.lstrip("/"),
                 source_path,
+                repository_source_path,
                 source_path.removeprefix("content/"),
                 f"content/{source_path.removeprefix('content/')}",
                 _normalize_doc_id(source_path),
                 _normalize_doc_id(route),
             }
+            if project:
+                candidates.update(
+                    {
+                        _normalize_doc_id(f"{project}::{source_doc_id}"),
+                        _normalize_doc_id(f"{project}::{source_path}"),
+                        _normalize_doc_id(f"{project}::{repository_source_path}"),
+                    }
+                )
             for candidate in candidates:
                 normalized = str(candidate).strip().casefold()
                 if normalized:
-                    self.aliases[normalized] = doc_id
+                    alias_targets[normalized].add(doc_id)
+        self.canonical_doc_ids = canonical_doc_ids
+        self.aliases = {
+            alias: next(iter(targets))
+            for alias, targets in alias_targets.items()
+            if len(targets) == 1
+        }
 
     def resolve(self, source: str) -> str | None:
         raw = str(source or "").strip()
         if not raw:
             return None
+
+        # A canonical ID is an identity, not an alias.  Check it before the
+        # alias table because a document route may legitimately be shared by
+        # several corpus rows (for example, the REST releases landing page and
+        # its generated endpoint pages).  Such a collision must not make the
+        # canonical landing-page ID unresolvable.
+        if "::" in raw:
+            canonical = self.canonical_doc_ids.get(
+                _normalize_doc_id(raw).casefold()
+            )
+            if canonical:
+                return canonical
+
+        project_hint = ""
         if raw.startswith("viking://"):
             raw = urlsplit(raw).path
             marker = "/docsqa/"
             raw = raw.split(marker, 1)[-1] if marker in raw else raw
         elif "://" in raw:
-            raw = urlsplit(raw).path
+            parsed = urlsplit(raw)
+            project_hint = PROJECT_BY_DOCS_HOST.get(
+                (parsed.hostname or "").casefold(), ""
+            )
+            raw = parsed.path
 
         raw = unquote(raw).replace("\\", "/")
         raw = raw.split("#", 1)[0].split("?", 1)[0]
         content_relative = raw.split("/content/", 1)[1] if "/content/" in raw else ""
         segments = [part for part in PurePosixPath(raw).parts if part not in {"/", ""}]
+        if segments and segments[0].casefold() in set(PROJECT_BY_DOCS_HOST.values()):
+            project_hint = segments.pop(0).casefold()
         if segments and segments[0].casefold() == "en":
             segments = segments[1:]
         if segments and VERSION_SEGMENT.match(segments[0]):
@@ -83,6 +140,11 @@ class GitHubDocsSourceResolver:
             _normalize_doc_id(raw),
             _normalize_doc_id(raw).lstrip("/"),
         ]
+        if project_hint:
+            candidates.extend(
+                _normalize_doc_id(f"{project_hint}::{candidate}")
+                for candidate in list(candidates)
+            )
         for candidate in candidates:
             resolved = self.aliases.get(str(candidate).strip().casefold())
             if resolved:

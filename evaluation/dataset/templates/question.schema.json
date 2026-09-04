@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DocsQA evaluation question row",
+  "type": "object",
+  "required": [
+    "question_id",
+    "project",
+    "query",
+    "reference_answer",
+    "qrel_ids",
+    "qrel_count",
+    "split",
+    "source_validation"
+  ],
+  "properties": {
+    "question_id": {"type": "string", "pattern": "^[a-z0-9-]+::.+$"},
+    "project": {"type": "string", "minLength": 1},
+    "query": {"type": "string", "minLength": 1},
+    "reference_answer": {"type": "string", "minLength": 1},
+    "qrel_ids": {"type": "array", "minItems": 1, "items": {"type": "string"}, "uniqueItems": true},
+    "qrel_count": {"type": "integer", "minimum": 1},
+    "split": {"enum": ["train", "validation", "test"]},
+    "source_validation": {"const": "accepted_structurally"},
+    "question_images": {"type": "array"},
+    "reference_answer_images": {"type": "array"},
+    "requires_multimodal_judgment": {"type": "boolean"}
+  },
+  "additionalProperties": true
+}

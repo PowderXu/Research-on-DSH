@@ -52,7 +52,7 @@ DSH model
   -> docsqa_search / docsqa_fetch / docsqa_expand
   -> native DSH tool registration
   -> local HTTP contract
-  -> GitHub Docs retrieval backend
+  -> multi-project DocsQA retrieval backend
 ```
 
 The backend returns canonical page IDs, repository paths, line spans, commit
@@ -60,9 +60,9 @@ identity, retrieval signals, and an evidence package with a fixed token budget.
 The plugin rejects results outside `viking://resources/docsqa` before they can
 enter model context.
 
-`docsqa_expand` is explicit rather than hidden inside search. This lets the
-agent decide whether a relationship-bearing question warrants traversal and
-lets the evaluation measure whether expansion was actually called.
+`docsqa_expand` is separate from search. This lets the agent request traversal
+for a relationship-bearing question and lets the evaluation measure whether
+expansion was actually called.
 
 ## Retrieval arms
 
@@ -76,13 +76,29 @@ answers. The agent must open and verify the final Markdown passage.
 
 Chunks rendered Markdown by paragraph boundaries, builds sparse BM25 and dense
 HNSW indexes, and fuses document rankings with reciprocal-rank fusion. It
+also stores image occurrences as textual retrieval units using their local
+heading, alt text, and normalized image description. No image-vector branch is
+built or queried. These records stay flat; hybrid does not require Neo4j. It
 returns citation-ready passages from the top pages.
 
 ### Neo4j
 
 Uses the same hybrid seeds, then permits one bounded expansion over a graph
-built before evaluation. Graph paths are discovery reasons; a page is not valid
-evidence until its passage supports the answer.
+built before evaluation. Deterministic parsing creates project/document/section,
+reading-order, authored-link, reusable, route, code-identifier, and image
+structure. Optional KGGen 0.4.0 performs open entity/relation extraction and
+entity/predicate clustering. The adapter reifies each extracted fact as a
+claim supported by a concrete retrieval unit; predicates are data rather than
+dynamically invented Neo4j relationship types. Graph paths are discovery
+reasons; a page is not valid evidence until its passage supports the answer.
+
+## Data ownership
+
+`dsh_plugin/plugin/data/{fs,hybrid,neo4j}` are independent local runtime stores.
+Only their `.gitignore` placeholders are committed. Each contains its own corpus,
+documentation workspace, indexes, artifacts, and traces; Neo4j additionally
+owns `database/`. This prevents an evaluation run from silently sharing a cache
+or graph between treatments while keeping large generated contents out of Git.
 
 ## Invariants
 

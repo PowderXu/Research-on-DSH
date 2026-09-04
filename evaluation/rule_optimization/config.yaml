@@ -1,0 +1,55 @@
+model:
+  backend: openai_chat
+  optimizer_backend: openai_chat
+  target_backend: openai_chat
+  optimizer: gpt-5.6-sol
+  target: gpt-5.6-luna
+  reasoning_effort: xhigh
+  azure_openai_endpoint: https://api.openai.com/v1
+  azure_openai_auth_mode: openai_compatible
+
+train:
+  num_epochs: 1
+  batch_size: 56
+  accumulation: 1
+  seed: 20260901
+
+gradient:
+  minibatch_size: 6
+  merge_batch_size: 8
+  analyst_workers: 4
+  failure_only: false
+  max_analyst_rounds: 2
+
+optimizer:
+  learning_rate: 3
+  min_learning_rate: 1
+  lr_scheduler: constant
+  lr_control_mode: fixed
+  skill_update_mode: patch
+  use_slow_update: false
+  use_meta_skill: false
+  use_skill_aware_reflection: false
+
+evaluation:
+  use_gate: true
+  gate_metric: hard
+  sel_env_num: 0
+  test_env_num: 0
+  eval_test: false
+
+env:
+  name: docsqa-aspect-rule
+  skill_init: evaluation/rule_optimization/initial_rule.md
+  out_root: results/runs/rule-optimization/skillopt-sol-luna
+  data_path: results/runs/dataset-analysis/normalization-v14/per_question.jsonl
+  split_mode: ratio
+  split_ratio: "3:1:1"
+  split_seed: 20260901
+  workers: 4
+  max_completion_tokens: 6000
+  target_reasoning_effort: medium
+  source_coverage_threshold: 0.80
+  minimum_validation_pass_rate: 0.80
+  freeze_all_aspects: true
+  request_timeout: 180

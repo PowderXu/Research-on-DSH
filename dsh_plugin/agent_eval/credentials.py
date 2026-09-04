@@ -22,9 +22,12 @@ def load_openai_key_from_configured_env() -> bool:
                 line = raw_line.strip()
                 if line.startswith("export "):
                     line = line[7:].lstrip()
-                if not line.startswith("OPENAI_API_KEY="):
+                if "=" not in line:
                     continue
-                key = line.split("=", 1)[1].strip().strip("'\"")
+                name, value = line.split("=", 1)
+                if name.strip() != "OPENAI_API_KEY":
+                    continue
+                key = value.strip().strip("'\"")
                 break
     if not key:
         return False
