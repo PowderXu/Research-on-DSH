@@ -208,14 +208,14 @@ def _judgment(a1: tuple[float, str], a2: tuple[float, str]) -> CandidateAspectJu
 def test_complete_outcome_requires_all_critical_aspects() -> None:
     result = compute_candidate_score(_record(), _judgment((1.0, "full"), (0.5, "partial")))
     assert result["outcome"] == "complete"
-    assert result["grounded_weighted_aspect_coverage"] == 0.8125
+    assert result["weighted_aspect_coverage"] == 0.8125
     assert result["critical_aspect_success"] == 1.0
 
 
 def test_missing_critical_aspect_is_partial() -> None:
     result = compute_candidate_score(_record(), _judgment((0.5, "partial"), (1.0, "full")))
     assert result["outcome"] == "partial"
-    assert result["grounded_weighted_aspect_coverage"] == 0.6875
+    assert result["weighted_aspect_coverage"] == 0.6875
 
 
 def test_contradicted_critical_aspect_is_incorrect() -> None:
@@ -260,10 +260,10 @@ def test_agent_failure_is_zero_and_incorrect() -> None:
         _record(), _judgment((1.0, "full"), (1.0, "full")), agent_ok=False
     )
     assert result["outcome"] == "incorrect"
-    assert result["grounded_weighted_aspect_coverage"] == 0.0
+    assert result["weighted_aspect_coverage"] == 0.0
 
 
-def test_corpus_conditioned_score_excludes_answer_only_aspects() -> None:
+def test_weighted_aspect_coverage_includes_every_frozen_aspect() -> None:
     record = _record()
     record["aspects"][1]["retrieval_doc_ids"] = []
     record["aspects"][0]["retrieval_doc_ids"] = ["d1"]
@@ -272,13 +272,11 @@ def test_corpus_conditioned_score_excludes_answer_only_aspects() -> None:
         record, _judgment((1.0, "full"), (0.0, "absent"))
     )
 
-    assert result["grounded_weighted_aspect_coverage"] == 0.625
-    assert result["corpus_conditioned_gwac"] == 1.0
-    assert result["corpus_conditioned_outcome"] == "complete"
-    assert result["corpus_unsupported_aspect_count"] == 1
+    assert result["weighted_aspect_coverage"] == 0.625
+    assert result["document_unsupported_aspect_count"] == 1
 
 
-def test_question_without_document_supported_critical_aspect_is_not_scorable() -> None:
+def test_question_without_document_supported_critical_aspect_still_has_wac() -> None:
     record = _record()
     record["aspects"][0]["retrieval_doc_ids"] = []
     record["aspects"][1]["retrieval_doc_ids"] = ["d2"]
@@ -287,9 +285,9 @@ def test_question_without_document_supported_critical_aspect_is_not_scorable() -
         record, _judgment((1.0, "full"), (1.0, "full"))
     )
 
-    assert result["corpus_scorable"] is False
-    assert result["corpus_conditioned_gwac"] is None
-    assert result["corpus_conditioned_outcome"] == "not_scorable"
+    assert result["weighted_aspect_coverage"] == 1.0
+    assert result["document_supported_critical_aspect_count"] == 0
+    assert result["document_unsupported_critical_aspect_count"] == 1
 
 
 def test_prompt_uses_anonymous_candidates_and_frozen_aspects() -> None:
@@ -369,7 +367,7 @@ def test_paired_bootstrap_reports_primary_arm_deltas() -> None:
                 {
                     "question_id": question_id,
                     "arm": arm,
-                    "corpus_conditioned_gwac": value,
+                    "weighted_aspect_coverage": value,
                 }
             )
     by_contrast = {
@@ -812,12 +810,9 @@ def test_replay_artifact_report_recomputes_without_model_calls(tmp_path) -> None
                 "evidence_structure": "single",
                 "qrel_count": 1,
                 "question_has_image": False,
-                "corpus_scorable": True,
-                "grounded_weighted_aspect_coverage": score,
-                "corpus_conditioned_gwac": score,
+                "weighted_aspect_coverage": score,
                 "critical_aspect_success": score,
                 "outcome": "complete",
-                "corpus_conditioned_outcome": "complete",
                 "material_unsupported_claims": [],
                 "material_contradictions": [],
                 "citation_integrity": True,

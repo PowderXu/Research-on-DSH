@@ -16,7 +16,7 @@ URLs against the pinned corpus, so evaluation requires no live web content.
 DocsQA-Repo evaluates both retrieval trajectories and final answers. Retrieval
 uses Recall@10, Hit@10, nDCG@10, evidence-completeness, latency, tokens, and
 validity failures. Final answers use question-specific weighted aspects and
-Corpus-Conditioned Grounded Weighted Aspect Coverage (C-GWAC). Because
+Weighted Aspect Coverage (WAC), following BRIGHT-Pro's standard formula. Because
 human-authored aspects are unavailable, we define a weakly supervised
 aspect-rule optimization protocol. It assumes that most platform-selected
 answers are sufficiently correct when combined with their internally linked
@@ -31,9 +31,9 @@ We report development results for three DeepSeek Harness baseline agents:
 filesystem search, BM25--HNSW hybrid retrieval, and hybrid retrieval with
 optional Neo4j expansion. In a matched 361-question run, Recall@10 is 0.445,
 0.483, and 0.500, respectively. The filesystem arm uses 38,034 tokens per
-question, compared with 11,786 and 12,680 for the indexed arms. On the 273
-questions with corpus-supported critical aspects, C-GWAC is 0.655, 0.737, and
-0.769. The indexed agents outperform filesystem search in answer coverage,
+question, compared with 11,786 and 12,680 for the indexed arms. Across all 361
+questions, WAC is 0.624, 0.700, and 0.727. The indexed agents outperform
+filesystem search in answer coverage,
 while Neo4j-capable retrieval obtains the highest retrieval and answer scores.
 Because each system is run once and graph expansion is used on only nine
 questions, these results do not isolate graph traversal from other agent
@@ -184,16 +184,21 @@ criticality label, and supporting-documentation mapping. The answer judge assign
 frozen aspect a support value of 1 for full, 0.5 for partial, and 0 for missing,
 incorrect, contradicted, or materially unsupported coverage.
 
-The primary metric is **Corpus-Conditioned Grounded Weighted Aspect Coverage
-(C-GWAC)**:
+The primary metric is **Weighted Aspect Coverage (WAC)**. We follow the
+standard formula and three-point aspect scale used by the
+[BRIGHT-Pro paper](https://arxiv.org/abs/2605.04018) and its
+[official agent-answer evaluator](https://github.com/yale-nlp/Bright-Pro/blob/main/agentic_retrieval/scripts_evaluation/judge.py):
 
 ```text
-C-GWAC(q) = sum_i w_i c_i / sum_i w_i,
+WAC(q) = sum_{i in A_q}(w_i c_i) / sum_{i in A_q}(w_i),
 ```
 
-where only aspects supported by the permitted pinned documentation enter the sum.
-The LLM labels aspect coverage; deterministic code computes the score. The
-judge cannot add aspects or change their weights. Secondary diagnostics are
+where `A_q` is the complete frozen aspect set for question `q`, `w_i` is an
+aspect's importance, and `c_i` is 1 for full, 0.5 for partial, and 0 for
+missing or incorrect coverage. The LLM labels aspect coverage; deterministic
+code computes the score. The judge cannot add aspects or change their weights.
+Whether an aspect has pinned-document support is a dataset-quality check, not a
+reason to remove it from the WAC denominator. Secondary diagnostics are
 critical-aspect success, unsupported-claim rate, citation integrity, and
 abstention behavior.
 
@@ -268,7 +273,7 @@ Filesystem   Hybrid    Graph
 Retrieval       Answer quality
 evaluation      evaluation
         ↓           ↓
-Recall, Hit,    C-GWAC and
+Recall, Hit,    WAC and
 nDCG, latency   hallucination checks
 ```
 
@@ -290,8 +295,7 @@ provider and model variance are not estimated.
 The full Sol/Luna optimization, held-out test, and all-record aspect freeze were
 completed once. A frozen `gpt-5.6-luna` judge then compares the three anonymized
 answers for each question in one paired call. All agent failures remain in the
-answer-evaluation denominator. C-GWAC is defined for the 273 questions that
-have at least one corpus-supported critical aspect.
+answer-evaluation denominator and receive zero WAC.
 
 ## 6. Results
 
@@ -310,21 +314,20 @@ and produces 40 more invalid trajectories. Graph expansion occurs on nine
 questions; therefore the aggregate Neo4j-capable result does not isolate the
 effect of graph expansion.
 
-### 6.2 C-GWAC final-answer evaluation
+### 6.2 WAC final-answer evaluation
 
-| Agent arm | C-GWAC (N=273) | Critical success | Unsupported claims | Citation integrity |
+| Agent arm | WAC (N=361) | Critical success | Unsupported claims | Citation integrity |
 |---|---:|---:|---:|---:|
-| Filesystem | 0.6551 | 0.5130 | **0.2382** | 0.9834 |
-| Hybrid | 0.7367 | 0.5565 | 0.2687 | 0.9834 |
-| Neo4j-capable | **0.7690** | **0.5884** | 0.2742 | 0.9834 |
+| Filesystem | 0.6238 | 0.5130 | **0.2382** | 0.9834 |
+| Hybrid | 0.6996 | 0.5565 | 0.2687 | 0.9834 |
+| Neo4j-capable | **0.7273** | **0.5884** | 0.2742 | 0.9834 |
 
-Hybrid improves C-GWAC over filesystem by 0.0815 (95% paired bootstrap interval
-0.0352--0.1285), and Neo4j-capable retrieval improves over hybrid by 0.0323
-(0.0042--0.0609). Neo4j-capable retrieval also has the highest critical-aspect
+Hybrid improves WAC over filesystem by 0.0758 (95% paired bootstrap interval
+0.0409--0.1121), and Neo4j-capable retrieval improves over hybrid by 0.0277
+(0.0057--0.0494). Neo4j-capable retrieval also has the highest critical-aspect
 success, but its unsupported-claim rate is higher than filesystem search. This
 shows why answer coverage and hallucination diagnostics must be reported
-together. Critical-aspect success, unsupported-claim rate, and citation
-integrity use all 361 questions; C-GWAC uses the 273 corpus-scorable questions.
+together. Every metric in the table uses all 361 questions.
 
 ## 7. Limitations
 
@@ -411,7 +414,7 @@ Retention requires a score above 0.90 from both the construction and
 falsification views, full critical-requirement coverage, verification of every
 cited URL against the pinned snapshot, no unsupported material claim, and no contradiction. This
 formula is only a data-cleaning gate; it is distinct from aspect-rule
-optimization and C-GWAC.
+optimization and WAC.
 
 ### A.3 Evidence structure
 

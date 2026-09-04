@@ -332,9 +332,15 @@ def compute_candidate_score(
         row = expected[aspect_id]
         return float(row.get("weight") or row.get("importance") or 1)
 
-    def weighted_coverage(aspect_ids: set[str]) -> float | None:
+    def weighted_aspect_coverage(aspect_ids: set[str]) -> float:
+        """Apply BRIGHT-Pro's weighted aspect-coverage aggregation.
+
+        Reference implementation:
+        https://github.com/yale-nlp/Bright-Pro/blob/main/agentic_retrieval/scripts_evaluation/judge.py
+        """
+
         if not aspect_ids:
-            return None
+            return 0.0
         denominator = sum(aspect_weight(aspect_id) for aspect_id in aspect_ids)
         return sum(
             aspect_weight(aspect_id) * float(actual[aspect_id].coverage)
@@ -353,15 +359,14 @@ def compute_candidate_score(
         }
 
     all_ids = set(expected)
-    corpus_ids = {
+    document_supported_ids = {
         aspect_id
         for aspect_id, row in expected.items()
         if retrieval_doc_ids(row)
     }
-    weighted = float(weighted_coverage(all_ids) or 0.0)
-    corpus_weighted = weighted_coverage(corpus_ids)
+    weighted = weighted_aspect_coverage(all_ids)
     critical_ids = {key for key, row in expected.items() if bool(row.get("critical"))}
-    corpus_critical_ids = critical_ids & corpus_ids
+    document_supported_critical_ids = critical_ids & document_supported_ids
     critical_full = all(actual[key].coverage == 1.0 and actual[key].support == "full" for key in critical_ids)
     critical_error = any(
         actual[key].support in {"unsupported", "contradicted"} for key in critical_ids
@@ -388,38 +393,14 @@ def compute_candidate_score(
     else:
         outcome = "incorrect"
 
-    corpus_scorable = bool(corpus_critical_ids)
-    corpus_critical_full = corpus_scorable and all(
-        actual[key].coverage == 1.0 and actual[key].support == "full"
-        for key in corpus_critical_ids
-    )
-    corpus_critical_error = any(
-        actual[key].support in {"unsupported", "contradicted"}
-        for key in corpus_critical_ids
-    )
-    if not agent_ok or corpus_critical_error or material_error:
-        corpus_outcome = "incorrect" if corpus_scorable else "not_scorable"
-        if not agent_ok and corpus_weighted is not None:
-            corpus_weighted = 0.0
-    elif not corpus_scorable:
-        corpus_outcome = "not_scorable"
-    elif corpus_critical_full:
-        corpus_outcome = "complete"
-    elif any(actual[key].coverage > 0 for key in corpus_ids):
-        corpus_outcome = "partial"
-    else:
-        corpus_outcome = "incorrect"
     return {
-        "grounded_weighted_aspect_coverage": round(weighted, 6),
-        "corpus_conditioned_gwac": round(corpus_weighted, 6)
-        if corpus_weighted is not None and corpus_scorable
-        else None,
-        "corpus_conditioned_outcome": corpus_outcome,
-        "corpus_scorable": corpus_scorable,
-        "corpus_supported_aspect_count": len(corpus_ids),
-        "corpus_unsupported_aspect_count": len(all_ids - corpus_ids),
-        "corpus_supported_critical_aspect_count": len(corpus_critical_ids),
-        "corpus_unsupported_critical_aspect_count": len(critical_ids - corpus_ids),
+        "weighted_aspect_coverage": round(weighted, 6),
+        "document_supported_aspect_count": len(document_supported_ids),
+        "document_unsupported_aspect_count": len(all_ids - document_supported_ids),
+        "document_supported_critical_aspect_count": len(document_supported_critical_ids),
+        "document_unsupported_critical_aspect_count": len(
+            critical_ids - document_supported_ids
+        ),
         "critical_aspects_full": critical_full,
         "critical_aspect_success": (
             sum(actual[key].coverage == 1.0 and actual[key].support == "full" for key in critical_ids)
@@ -454,44 +435,19 @@ def summarize(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         grouped[str(row["arm"])].append(row)
     output = []
     for arm, values in sorted(grouped.items()):
-        corpus_values = [row for row in values if row.get("corpus_scorable")]
         output.append(
             {
                 "arm": arm,
                 "questions": len(values),
-                "corpus_scorable_questions": len(corpus_values),
-                "grounded_weighted_aspect_coverage": statistics.fmean(
-                    float(row["grounded_weighted_aspect_coverage"]) for row in values
+                "weighted_aspect_coverage": statistics.fmean(
+                    float(row["weighted_aspect_coverage"]) for row in values
                 ),
-                "corpus_conditioned_gwac": statistics.fmean(
-                    float(row["corpus_conditioned_gwac"]) for row in corpus_values
-                )
-                if corpus_values
-                else None,
                 "critical_aspect_success": statistics.fmean(
                     float(row["critical_aspect_success"]) for row in values
                 ),
                 "complete_rate": statistics.fmean(row["outcome"] == "complete" for row in values),
                 "partial_rate": statistics.fmean(row["outcome"] == "partial" for row in values),
                 "incorrect_rate": statistics.fmean(row["outcome"] == "incorrect" for row in values),
-                "corpus_conditioned_complete_rate": statistics.fmean(
-                    row["corpus_conditioned_outcome"] == "complete"
-                    for row in corpus_values
-                )
-                if corpus_values
-                else None,
-                "corpus_conditioned_partial_rate": statistics.fmean(
-                    row["corpus_conditioned_outcome"] == "partial"
-                    for row in corpus_values
-                )
-                if corpus_values
-                else None,
-                "corpus_conditioned_incorrect_rate": statistics.fmean(
-                    row["corpus_conditioned_outcome"] == "incorrect"
-                    for row in corpus_values
-                )
-                if corpus_values
-                else None,
                 "unsupported_claim_rate": statistics.fmean(
                     bool(row["material_unsupported_claims"] or row["material_contradictions"])
                     for row in values
@@ -530,7 +486,7 @@ def summarize_by(
 def paired_bootstrap_deltas(
     rows: list[dict[str, Any]],
     *,
-    metric: str = "corpus_conditioned_gwac",
+    metric: str = "weighted_aspect_coverage",
     samples: int = 10_000,
     seed: int = 20_260_831,
 ) -> list[dict[str, Any]]:
@@ -1125,17 +1081,15 @@ def evaluate(args: argparse.Namespace, *, client: Any | None = None) -> dict[str
         "rubric_version": rubric["rubric_version"],
         "rubric_sha256": rubric_sha256,
         "primary_metric": {
-            "name": "Corpus-Conditioned Grounded Weighted Aspect Coverage",
-            "abbreviation": "C-GWAC",
-            "field": "corpus_conditioned_gwac",
+            "name": "Weighted Aspect Coverage",
+            "abbreviation": "WAC",
+            "field": "weighted_aspect_coverage",
             "range": "0-1",
-            "formula": "GWAC over aspects with pinned local-document support; a question is scored only when at least one critical aspect has local-document support",
+            "formula": "sum(aspect_weight * aspect_score) / sum(aspect_weight) over every frozen aspect",
             "aspect_scale": [0, 0.5, 1],
-        },
-        "diagnostic_metric": {
-            "name": "All-Aspect Grounded Weighted Aspect Coverage",
-            "field": "grounded_weighted_aspect_coverage",
-            "note": "Includes accepted-answer-only aspects and therefore measures the historical support-answer gap, not solely the retrieval system.",
+            "method_reference": "BRIGHT-Pro agent-answer evaluation",
+            "paper_url": "https://arxiv.org/abs/2605.04018",
+            "reference_implementation_url": "https://github.com/yale-nlp/Bright-Pro/blob/main/agentic_retrieval/scripts_evaluation/judge.py",
         },
         "arms": summarize(rows),
         "paired_primary_metric_deltas": paired_bootstrap_deltas(rows),

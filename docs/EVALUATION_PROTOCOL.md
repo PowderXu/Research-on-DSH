@@ -81,14 +81,15 @@ count group, and presence of question-image text.
 
 ## Final-answer metric
 
-The primary metric is **Corpus-Conditioned Grounded Weighted Aspect Coverage
-(C-GWAC)**. Each frozen question-specific aspect has importance (w_i) and an
-answer-support value (c_i\in\{1,0.5,0\}) for full, partial, or missing/incorrect
-coverage. Only aspects supported by permitted local documentation enter the
-corpus-conditioned score:
+The primary metric is **Weighted Aspect Coverage (WAC)**, following the
+[BRIGHT-Pro paper](https://arxiv.org/abs/2605.04018) and its
+[official agent-answer evaluator](https://github.com/yale-nlp/Bright-Pro/blob/main/agentic_retrieval/scripts_evaluation/judge.py).
+Each frozen question-specific aspect has importance `w_i` and an answer-coverage
+value `c_i` in `{1, 0.5, 0}` for full, partial, or missing/incorrect coverage.
+Every frozen aspect enters the score:
 
 ```text
-C-GWAC = sum(w_i * c_i) / sum(w_i)
+WAC(q) = sum_{i in A_q}(w_i * c_i) / sum_{i in A_q}(w_i)
 ```
 
 An LLM judge assigns the aspect support labels from the candidate answer and
@@ -98,7 +99,9 @@ new aspects or alter their weights. Agent failures receive zero.
 Secondary answer diagnostics are critical-aspect success, unsupported-claim
 rate, and citation-integrity rate. The normalization score documented in
 [`NORMALIZED_DATASET.md`](NORMALIZED_DATASET.md) is only a dataset-construction
-filter; it is not C-GWAC and is not used to rank agent answers.
+filter; it is not WAC and is not used to rank agent answers. Whether each aspect
+has pinned local-document support is checked as a dataset-quality property; it
+does not change the WAC denominator during agent evaluation.
 
 ## Aspect-rule optimization and freeze
 

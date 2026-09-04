@@ -35,8 +35,10 @@ test because it was used during development.
 
 Trajectory retrieval reports Recall@10, Hit@10, nDCG@10, p50 latency, model
 tokens, and validity failures. Final-answer evaluation uses question-specific
-weighted aspects and reports Corpus-Conditioned Grounded Weighted Aspect
-Coverage (C-GWAC) plus groundedness and citation diagnostics.
+weighted aspects and reports Weighted Aspect Coverage (WAC), following the
+[BRIGHT-Pro paper](https://arxiv.org/abs/2605.04018) and its
+[official evaluator](https://github.com/yale-nlp/Bright-Pro/blob/main/agentic_retrieval/scripts_evaluation/judge.py),
+plus unsupported-claim and citation diagnostics.
 
 The general aspect-construction rule is optimized separately from all evaluated
 agents. The 467 normalized records are divided into an exact deterministic

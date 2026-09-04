@@ -154,26 +154,29 @@ PYTHONPATH=evaluation:. evaluation/.venv/bin/python \
   --out-dir "$RUN_ROOT/trajectory-report"
 ```
 
-## C-GWAC final-answer evaluation
+## WAC final-answer evaluation
 
 The matched answers were judged with the optimized rule's frozen aspects and a
-paired `gpt-5.6-luna` call per question. C-GWAC is computed over 273 questions
-with at least one corpus-supported critical aspect. Other rates use all 361
-questions, including invalid agent trajectories.
+paired `gpt-5.6-luna` call per question. Weighted Aspect Coverage (WAC) follows
+the formula and `{0, 0.5, 1}` aspect scale used by the
+[BRIGHT-Pro paper](https://arxiv.org/abs/2605.04018) and its
+[official evaluator](https://github.com/yale-nlp/Bright-Pro/blob/main/agentic_retrieval/scripts_evaluation/judge.py).
+WAC and all other rates use all 361 questions, including invalid agent
+trajectories, which receive zero WAC.
 
-| Agent arm | C-GWAC (N=273) | Critical-aspect success | Complete | Partial | Incorrect | Unsupported claims | Citation integrity |
+| Agent arm | WAC (N=361) | Critical-aspect success | Complete | Partial | Incorrect | Unsupported claims | Citation integrity |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| Filesystem | 0.6551 | 0.5130 | 0.3241 | 0.3075 | 0.3684 | **0.2382** | 0.9834 |
-| Hybrid | 0.7367 | 0.5565 | 0.3518 | 0.3573 | **0.2909** | 0.2687 | 0.9834 |
-| Neo4j-capable | **0.7690** | **0.5884** | **0.3684** | 0.3407 | **0.2909** | 0.2742 | 0.9834 |
+| Filesystem | 0.6238 | 0.5130 | 0.3241 | 0.3075 | 0.3684 | **0.2382** | 0.9834 |
+| Hybrid | 0.6996 | 0.5565 | 0.3518 | 0.3573 | **0.2909** | 0.2687 | 0.9834 |
+| Neo4j-capable | **0.7273** | **0.5884** | **0.3684** | 0.3407 | **0.2909** | 0.2742 | 0.9834 |
 
-| Paired C-GWAC contrast | Mean delta | 95% paired bootstrap interval |
+| Paired WAC contrast | Mean delta | 95% paired bootstrap interval |
 |---|---:|---:|
-| Hybrid - filesystem | +0.0815 | [0.0352, 0.1285] |
-| Neo4j-capable - hybrid | +0.0323 | [0.0042, 0.0609] |
-| Neo4j-capable - filesystem | +0.1139 | [0.0713, 0.1574] |
+| Hybrid - filesystem | +0.0758 | [0.0409, 0.1121] |
+| Neo4j-capable - hybrid | +0.0277 | [0.0057, 0.0494] |
+| Neo4j-capable - filesystem | +0.1036 | [0.0698, 0.1385] |
 
-The intervals use 10,000 paired bootstrap samples over the 273 corpus-scorable
+The intervals use 10,000 paired bootstrap samples over all 361 matched
 questions. Neo4j-capable retrieval has the highest coverage and critical-aspect
 success, but also the highest unsupported-claim rate. Coverage and
 hallucination diagnostics must therefore be interpreted together. The 361
@@ -205,7 +208,7 @@ PYTHONPATH=evaluation:. evaluation/.venv/bin/python \
 
 `test_frozen_aspects.jsonl` is the exact question-ID intersection of the 467
 all-record frozen aspects and the 361-question physical test split. The report
-contains C-GWAC, corpus-scorable count, critical-aspect success, unsupported
+contains WAC, critical-aspect success, unsupported
 claims, citation integrity, and paired bootstrap intervals.
 
 ## Publication boundary
@@ -213,7 +216,7 @@ claims, citation integrity, and paired bootstrap intervals.
 Current results show that retrieval and answer quality can improve while
 unsupported-claim rate also increases, and that similar latency can hide large
 token and validity differences. They also show that graph-capable configuration
-does not imply frequent graph use. The optimized aspect rule and C-GWAC judge
+does not imply frequent graph use. The optimized aspect rule and WAC judge
 have not been validated against domain experts. A publication release still
 needs an independent project-stratified human audit and a newly sealed system
 cohort.

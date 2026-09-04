@@ -47,7 +47,7 @@ does not change runtime behavior.
 | [`plugin/SERVICE_CONTRACT.md`](plugin/SERVICE_CONTRACT.md) | The wire contract between the TypeScript DSH adapter and the local Python backend: health, search, graph expansion, and evidence fetch endpoints; request fields; response envelope; URI scope; evidence budget; and error shape. | Implementing a new backend, changing a tool payload, or debugging an adapter/backend mismatch. |
 | [`plugin/GRAPH_SCHEMA.md`](plugin/GRAPH_SCHEMA.md) | The Neo4j v2 representation: projects, documents, sections, text-enriched image units, KGGen entities/predicates/claims, typed structural relationships, indexes, degree bounds, and evidence provenance. | Changing graph ingestion or expansion while keeping graph behavior query-blind and evidence-backed. |
 | [`../docs/PLUGIN_DESIGN.md`](../docs/PLUGIN_DESIGN.md) | The system-level architecture: DocsQA as the stable capability, filesystem/hybrid/Neo4j as candidate implementations, DSH plugin and skill roles, build/profile boundaries, tool flow, and evaluation invariants. | Understanding how the entire DSH package is composed or introducing another retrieval candidate. |
-| [`../docs/RULE_OPTIMIZATION.md`](../docs/RULE_OPTIMIZATION.md) | The benchmark's question-specific aspect construction, shared-rule optimization, frozen-rule boundary, and C-GWAC handoff. | Understanding how answer-evaluation aspects are created before agent scoring. |
+| [`../docs/RULE_OPTIMIZATION.md`](../docs/RULE_OPTIMIZATION.md) | The benchmark's question-specific aspect construction, shared-rule optimization, frozen-rule boundary, and WAC handoff. | Understanding how answer-evaluation aspects are created before agent scoring. |
 
 These documents deliberately do not duplicate one another:
 

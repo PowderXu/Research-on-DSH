@@ -11,7 +11,7 @@ general rule.
 
 Only that general rule is optimized. The process does not optimize an answer
 agent, a retrieval skill, a plugin, model weights, per-question prompts, or the
-deterministic C-GWAC formula.
+deterministic WAC formula.
 
 ## Assumption and optimization signal
 
@@ -117,7 +117,15 @@ After the rule is selected and the held-out test is run:
 4. give an answer judge the question, candidate agent answer, permitted local
    evidence, and frozen aspects;
 5. let the judge assign aspect support labels; and
-6. compute C-GWAC deterministically from those labels and aspect weights.
+6. compute Weighted Aspect Coverage (WAC) deterministically from those labels
+   and all frozen aspect weights.
+
+This final score follows the standard weighted coverage formula used by
+[BRIGHT-Pro](https://arxiv.org/abs/2605.04018) and its
+[official evaluator](https://github.com/yale-nlp/Bright-Pro/blob/main/agentic_retrieval/scripts_evaluation/judge.py):
+`sum(w_i * c_i) / sum(w_i)`, with `c_i` in `{0, 0.5, 1}`. Unlike the
+weak-supervision source-coverage score above, final WAC grades an evaluated
+agent answer against the frozen aspects.
 
 The source answer is used while optimizing and generating aspects. It is never
 shown as a reference answer to the evaluated agent. Aspects are never rebuilt
