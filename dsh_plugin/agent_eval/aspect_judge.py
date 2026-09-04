@@ -21,16 +21,19 @@ from .credentials import load_openai_key_from_configured_env
 from .report import (
     EXPECTED_ARMS,
     EXPECTED_FULL_QUESTIONS,
+    MATCHED_DEVELOPMENT_MODEL,
     load_arm_rollouts,
+    load_expected_question_ids,
     validate_arm_rollouts,
 )
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_RUBRIC = (
-    PROJECT_ROOT / "evaluation/dataset_analysis/rubrics/aspect_evaluation_v2.json"
+    PROJECT_ROOT / "evaluation/dataset_analysis/rubrics/aspect_judge_generic_v1.json"
 )
 ARM_ORDER = EXPECTED_ARMS
+CANONICAL_TEST_SPLIT = PROJECT_ROOT / "evaluation/dataset/evaluation_data/normalized/splits/test.json"
 
 
 class AspectScore(BaseModel):
@@ -615,6 +618,111 @@ def _usage_totals(calls: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _file_sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _path_identity(path: Path) -> dict[str, str]:
+    return {"path": str(path.resolve()), "sha256": _file_sha256(path)}
+
+
+def _rollout_source(path: Path) -> Path:
+    return path if path.is_file() else path / "rollouts.json"
+
+
+def _capture_mixed_inputs(
+    arm_entries: list[tuple[str, Path]], inputs: dict[str, Path],
+) -> dict[str, Any]:
+    return {
+        "inputs": {name: _path_identity(path) for name, path in inputs.items()},
+        "arms": {
+            str(arm): {"rollouts": _path_identity(_rollout_source(path))}
+            for arm, path in arm_entries
+        },
+    }
+
+
+def _assert_mixed_inputs_unchanged(provenance: dict[str, Any]) -> None:
+    identities = list(provenance["inputs"].values()) + [
+        arm["rollouts"] for arm in provenance["arms"].values()
+    ]
+    for identity in identities:
+        path = Path(identity["path"])
+        if _file_sha256(path) != identity["sha256"]:
+            raise ValueError(f"mixed-generation input changed during evaluation: {path}")
+
+
+def _mixed_generation_provenance(
+    captured: dict[str, Any], rollout_lists: dict[str, list[dict[str, Any]]],
+) -> dict[str, Any]:
+    arms: dict[str, Any] = {}
+    for arm, captured_arm in captured["arms"].items():
+        first = rollout_lists[str(arm)][0]
+        contract = first["evaluation_contract"]
+        arms[str(arm)] = {
+            "rollouts_path": captured_arm["rollouts"]["path"],
+            "rollouts_sha256": captured_arm["rollouts"]["sha256"],
+            "skill_path": str(first["skill_path"]),
+            "skill_sha256": str(first["skill_sha256"]),
+            "runtime_sha256": str(contract["runtime"]["sha256"]),
+            "compiled_plugin_sha256": str(contract["compiled_plugin"]["sha256"]),
+            "dependency_bundle_sha256": str(contract["dependencies"]["locked_files"]["sha256"]),
+        }
+    return {
+        "inputs": captured["inputs"],
+        "arms": arms,
+    }
+
+
+def _validate_fs_preflight(path: Path, fs_contract: dict[str, Any]) -> None:
+    preflight = json.loads(path.read_text(encoding="utf-8"))
+    workspace = fs_contract.get("corpus", {}).get("searchable_workspace")
+    fields = ("protocol", "document_count", "corpus_sha256", "workspace_sha256", "ignore_sha256")
+    if not isinstance(workspace, dict) or any(preflight.get(key) != workspace.get(key) for key in fields):
+        raise ValueError("filesystem preflight does not match the rollout searchable-workspace contract")
+    official = preflight.get("official_tools") or {}
+    count = workspace["document_count"]
+    if (
+        not official.get("ok")
+        or official.get("expected_document_count") != count
+        or official.get("searchable_document_count") != count
+        or official.get("glob_document_count") != count
+        or official.get("model_calls") != 0
+        or not official.get("probes")
+    ):
+        raise ValueError("filesystem preflight did not prove complete official-tool visibility")
+
+
+def _validate_question_linkage(
+    aspects: dict[str, dict[str, Any]], by_arm: dict[str, dict[str, dict[str, Any]]],
+    ordered_ids: list[str],
+) -> dict[str, Any]:
+    exact = enriched = 0
+    marker = "\n\nImage-derived question evidence:\n"
+    for question_id in ordered_ids:
+        frozen = str(aspects[question_id]["question"])
+        agent_question = str(by_arm["fs"][question_id]["question"])
+        prompt_parts = str(by_arm["fs"][question_id]["target_user_prompt"]).split(
+            "\nQuestion:\n", 1
+        )
+        if len(prompt_parts) != 2 or prompt_parts[1] != agent_question:
+            raise ValueError(f"agent prompt/question linkage mismatch: {question_id}")
+        if agent_question == frozen:
+            exact += 1
+        elif (
+            agent_question.startswith(frozen + marker)
+            and bool(by_arm["fs"][question_id].get("question_has_image"))
+        ):
+            enriched += 1
+        else:
+            raise ValueError(f"agent/aspect question linkage mismatch: {question_id}")
+    return {
+        "judge_question_source": "exact agent question shared across arms",
+        "exact_frozen_question": exact,
+        "appended_image_evidence": enriched,
+    }
+
+
 def _validate_judged_candidates(
     parsed: AspectBatchJudgment,
     *,
@@ -648,10 +756,18 @@ def _judge_one_question(
     model: str,
     reasoning_effort: str,
     resume: bool,
+    question_from_rollout: bool = False,
 ) -> dict[str, Any]:
-    record = aspects[question_id]
     # The arm ordering is fixed independently of CLI argument order.
     paired = {arm: by_arm[arm][question_id] for arm in ARM_ORDER}
+    record = aspects[question_id]
+    if question_from_rollout:
+        record = {
+            **record,
+            # Mixed-mode validation requires this exact enriched question to be
+            # the one every agent answered. Frozen aspects/evidence stay fixed.
+            "question": paired["fs"]["question"],
+        }
     payload, aliases = build_judge_prompt(record, paired, corpus, rubric)
     prompt_sha256 = hashlib.sha256(
         json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
@@ -754,6 +870,7 @@ def run_judgments(
     reasoning_effort: str,
     resume: bool,
     workers: int = 1,
+    question_from_rollout: bool = False,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Run one paired judge call per question with bounded concurrency.
 
@@ -787,6 +904,7 @@ def run_judgments(
                 model=model,
                 reasoning_effort=reasoning_effort,
                 resume=resume,
+                question_from_rollout=question_from_rollout,
             )
             futures[future] = question_id
         for future in as_completed(futures):
@@ -828,9 +946,7 @@ def run_judgments(
 
 
 def evaluate(args: argparse.Namespace, *, client: Any | None = None) -> dict[str, Any]:
-    rubric, rubric_sha256 = load_judge_rubric(args.rubric)
-    aspects = _unique_index(_jsonl(args.aspects), "question_id", source=args.aspects)
-    corpus = _unique_index(_jsonl(args.corpus), "doc_id", source=args.corpus)
+    mixed_generation = bool(getattr(args, "mixed_generation_sensitivity", False))
     arm_entries = list(args.arm)
     arm_names = [str(arm) for arm, _ in arm_entries]
     duplicate_arms = sorted({arm for arm in arm_names if arm_names.count(arm) > 1})
@@ -849,6 +965,42 @@ def evaluate(args: argparse.Namespace, *, client: Any | None = None) -> dict[str
     if duplicate_requested:
         raise ValueError(f"duplicate explicitly requested question IDs: {duplicate_requested}")
     limit = getattr(args, "limit", None)
+    captured_inputs: dict[str, Any] | None = None
+    if mixed_generation:
+        if small_trial or requested_ids or limit is not None:
+            raise ValueError("mixed-generation sensitivity mode requires the full 361-question test split")
+        if bool(getattr(args, "resume", False)):
+            raise ValueError("mixed-generation sensitivity mode requires fresh paired judge calls")
+        if (args.model, args.reasoning_effort) != (MATCHED_DEVELOPMENT_MODEL, "medium"):
+            raise ValueError("mixed-generation sensitivity mode requires gpt-5.6-luna at medium reasoning")
+        if args.output_dir.exists() and any(args.output_dir.iterdir()):
+            raise ValueError("mixed-generation sensitivity output directory must be new or empty")
+        fs_preflight = getattr(args, "fs_preflight", None)
+        if fs_preflight is None:
+            raise ValueError("mixed-generation sensitivity mode requires --fs-preflight")
+        expected_hash_entries = list(getattr(args, "expected_rollout_sha256", []) or [])
+        expected_hashes = dict(expected_hash_entries)
+        if len(expected_hash_entries) != 2 or set(expected_hashes) != {"hybrid", "neo4j"}:
+            raise ValueError(
+                "mixed-generation sensitivity mode requires one expected rollout SHA-256 "
+                "for each retained arm: hybrid and neo4j"
+            )
+        captured_inputs = _capture_mixed_inputs(
+            arm_entries,
+            dict(
+                aspects=args.aspects,
+                corpus=args.corpus,
+                split=CANONICAL_TEST_SPLIT,
+                rubric=args.rubric,
+                fs_preflight=fs_preflight,
+            ),
+        )
+        for arm, expected_hash in expected_hashes.items():
+            if captured_inputs["arms"][arm]["rollouts"]["sha256"] != expected_hash:
+                raise ValueError(f"retained {arm} rollout SHA-256 does not match the pinned value")
+    rubric, rubric_sha256 = load_judge_rubric(args.rubric)
+    aspects = _unique_index(_jsonl(args.aspects), "question_id", source=args.aspects)
+    corpus = _unique_index(_jsonl(args.corpus), "doc_id", source=args.corpus)
     if (requested_ids or limit is not None) and not small_trial:
         raise ValueError(
             "--question-id/--limit are pilot selectors and require explicit --small-trial"
@@ -868,6 +1020,19 @@ def evaluate(args: argparse.Namespace, *, client: Any | None = None) -> dict[str
             f"complete matched development judge run requires exactly {EXPECTED_FULL_QUESTIONS} frozen aspects; "
             f"got {len(ordered_ids)}"
         )
+    if mixed_generation:
+        canonical_ids = load_expected_question_ids(CANONICAL_TEST_SPLIT)
+        if ordered_ids != sorted(canonical_ids):
+            raise ValueError("mixed-generation aspects do not equal the canonical test split")
+        expected_aspect_contract = ("test", "accepted", rubric["rubric_version"], rubric_sha256)
+        for question_id in ordered_ids:
+            record = aspects[question_id]
+            actual = tuple(
+                record.get(field)
+                for field in ("split", "status", "rubric_version", "rubric_sha256")
+            )
+            if actual != expected_aspect_contract:
+                raise ValueError(f"mixed-generation aspect contract mismatch: {question_id}")
 
     expected_set = set(ordered_ids)
     rollout_lists: dict[str, list[dict[str, Any]]] = {}
@@ -892,7 +1057,16 @@ def evaluate(args: argparse.Namespace, *, client: Any | None = None) -> dict[str
         project_root=PROJECT_ROOT,
         expected_question_ids=ordered_ids,
         small_trial=small_trial,
+        mixed_generation=mixed_generation,
     )
+    if mixed_generation:
+        contract = rollout_lists["fs"][0]["evaluation_contract"]
+        corpus_identity = contract["corpus"]["corpus"]
+        split_identity = contract["split"]["file"]
+        if _file_sha256(args.corpus) != corpus_identity.get("sha256"):
+            raise ValueError("--corpus bytes differ from the rollout corpus identity")
+        if _file_sha256(CANONICAL_TEST_SPLIT) != split_identity.get("sha256"):
+            raise ValueError("canonical test-split bytes differ from the rollout split identity")
     by_arm = {
         arm: _unique_index(
             rows,
@@ -902,15 +1076,31 @@ def evaluate(args: argparse.Namespace, *, client: Any | None = None) -> dict[str
         for arm, path in arm_entries
         for rows in [rollout_lists[str(arm)]]
     }
+    question_linkage: dict[str, Any] | None = None
+    if mixed_generation:
+        _validate_fs_preflight(args.fs_preflight, rollout_lists["fs"][0]["evaluation_contract"])
+        question_linkage = _validate_question_linkage(aspects, by_arm, ordered_ids)
 
     workers = int(getattr(args, "workers", 1))
     if workers <= 0:
         raise ValueError("--workers must be positive")
     args.output_dir.mkdir(parents=True, exist_ok=True)
     if client is None:
+        import httpx
         from openai import OpenAI
 
-        client = OpenAI(timeout=args.request_timeout)
+        # Long paired judgments can outlive an upstream keep-alive connection.
+        # Open a fresh connection for each request so a stale pooled socket
+        # cannot stall every worker in a resumable benchmark run.
+        client = OpenAI(
+            timeout=args.request_timeout,
+            http_client=httpx.Client(
+                limits=httpx.Limits(
+                    max_connections=workers,
+                    max_keepalive_connections=0,
+                )
+            ),
+        )
     rows, calls = run_judgments(
         ordered_ids,
         aspects=aspects,
@@ -924,6 +1114,7 @@ def evaluate(args: argparse.Namespace, *, client: Any | None = None) -> dict[str
         reasoning_effort=args.reasoning_effort,
         resume=bool(args.resume),
         workers=workers,
+        question_from_rollout=mixed_generation,
     )
     incremental_calls = [row for row in calls if not row["resumed"]]
     report = {
@@ -962,6 +1153,22 @@ def evaluate(args: argparse.Namespace, *, client: Any | None = None) -> dict[str
             "resumed_judgments": sum(row["resumed"] for row in calls),
         },
     }
+    if mixed_generation:
+        assert captured_inputs is not None and question_linkage is not None
+        _assert_mixed_inputs_unchanged(captured_inputs)
+        report |= {
+            "comparison_design": "mixed_generation_sensitivity",
+            "confirmatory": False,
+            "fresh_paired_judge_calls": True,
+            "question_linkage": question_linkage,
+            "provenance": _mixed_generation_provenance(captured_inputs, rollout_lists),
+            "limitations": [
+                "The corrected filesystem trajectories use the current skill, runtime, and verified searchable-workspace preflight; the hybrid and Neo4j trajectories use explicitly hash-pinned retained artifacts.",
+                "All three anonymous answers are judged together in fresh paired calls, which aligns judge generation but not trajectory generation.",
+                f"For {question_linkage['appended_image_evidence']} image-bearing cases, the judge uses the same appended image-derived question evidence seen by every agent; the frozen aspects remain unchanged.",
+                "Arm differences are descriptive sensitivity results and cannot isolate the causal effect of retrieval architecture.",
+            ],
+        }
     (args.output_dir / "report.json").write_text(
         json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
@@ -1038,6 +1245,15 @@ def _arm_arg(value: str) -> tuple[str, Path]:
     return arm, Path(path)
 
 
+def _rollout_sha_arg(value: str) -> tuple[str, str]:
+    if "=" not in value:
+        raise argparse.ArgumentTypeError("rollout SHA must be ARM=SHA256")
+    arm, digest = value.split("=", 1)
+    if len(digest) != 64 or any(character not in "0123456789abcdef" for character in digest):
+        raise argparse.ArgumentTypeError("rollout SHA must be a lowercase SHA-256 digest")
+    return arm, digest
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--aspects", type=Path)
@@ -1074,11 +1290,38 @@ def main() -> None:
         action="store_true",
         help="Reuse per-question judgments only when rubric, prompt, model, and reasoning match.",
     )
+    parser.add_argument(
+        "--mixed-generation-sensitivity",
+        action="store_true",
+        help=(
+            "Run fresh paired judgments over current corrected filesystem rollouts and "
+            "persisted historical indexed rollouts; results are non-confirmatory."
+        ),
+    )
+    parser.add_argument(
+        "--expected-rollout-sha256",
+        type=_rollout_sha_arg,
+        action="append",
+        default=[],
+        help="Pin a retained rollout artifact as ARM=SHA256 (required for hybrid and neo4j).",
+    )
+    parser.add_argument(
+        "--fs-preflight",
+        type=Path,
+        help="Official-tool corpus-visibility preflight paired with the corrected filesystem run.",
+    )
     args = parser.parse_args()
     if args.artifact_replay_dir is not None:
-        if args.aspects is not None or args.corpus is not None or args.arm:
+        if (
+            args.aspects is not None
+            or args.corpus is not None
+            or args.arm
+            or args.mixed_generation_sensitivity
+            or args.expected_rollout_sha256
+            or args.fs_preflight is not None
+        ):
             raise SystemExit(
-                "--artifact-replay-dir cannot be combined with --aspects, --corpus, or --arm"
+                "--artifact-replay-dir cannot be combined with live-evaluation inputs or modes"
             )
         print(
             json.dumps(
@@ -1088,6 +1331,12 @@ def main() -> None:
             )
         )
         return
+    if not args.mixed_generation_sensitivity and (
+        args.expected_rollout_sha256 or args.fs_preflight is not None
+    ):
+        raise SystemExit(
+            "--expected-rollout-sha256 and --fs-preflight require --mixed-generation-sensitivity"
+        )
     if args.aspects is None or args.corpus is None or not args.arm:
         raise SystemExit("live evaluation requires --aspects, --corpus, and three --arm values")
     if len({arm for arm, _ in args.arm}) != len(args.arm):

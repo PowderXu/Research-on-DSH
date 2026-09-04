@@ -47,7 +47,7 @@ does not change runtime behavior.
 | [`plugin/SERVICE_CONTRACT.md`](plugin/SERVICE_CONTRACT.md) | The wire contract between the TypeScript DSH adapter and the local Python backend: health, search, graph expansion, and evidence fetch endpoints; request fields; response envelope; URI scope; evidence budget; and error shape. | Implementing a new backend, changing a tool payload, or debugging an adapter/backend mismatch. |
 | [`plugin/GRAPH_SCHEMA.md`](plugin/GRAPH_SCHEMA.md) | The Neo4j v2 representation: projects, documents, sections, text-enriched image units, KGGen entities/predicates/claims, typed structural relationships, indexes, degree bounds, and evidence provenance. | Changing graph ingestion or expansion while keeping graph behavior query-blind and evidence-backed. |
 | [`../docs/PLUGIN_DESIGN.md`](../docs/PLUGIN_DESIGN.md) | The system-level architecture: DocsQA as the stable capability, filesystem/hybrid/Neo4j as candidate implementations, DSH plugin and skill roles, build/profile boundaries, tool flow, and evaluation invariants. | Understanding how the entire DSH package is composed or introducing another retrieval candidate. |
-| [`../docs/ASPECT_EVALUATION.md`](../docs/ASPECT_EVALUATION.md) | The question-specific aspect constructor, weak-supervision controls, GWAC answer metric, retrieval aspect metrics, and full-agent judge command. | Validating or running final-answer evaluation. |
+| [`../docs/RULE_OPTIMIZATION.md`](../docs/RULE_OPTIMIZATION.md) | The benchmark's question-specific aspect construction, shared-rule optimization, frozen-rule boundary, and C-GWAC handoff. | Understanding how answer-evaluation aspects are created before agent scoring. |
 
 These documents deliberately do not duplicate one another:
 
@@ -69,10 +69,9 @@ The actual runtime inputs are `plugin/package.json`, compiled `plugin/lib/*.js`
 exports, `plugin/cordis.patch.yml`, the selected Markdown skill, and the matching
 patch under `harness/`.
 
-The authored skills are `plugin/skills/{fs,hybrid,neo4j}/initial_skill.md`.
-They are loaded directly during integrated evaluation. No SkillOpt optimizer,
-training script, candidate-skill directory, or duplicated optimizer split is
-part of this repository.
+The authored retrieval skills are `plugin/skills/{fs,hybrid,neo4j}/initial_skill.md`.
+They are loaded directly during integrated evaluation. They are never optimized
+with the benchmark's separate aspect-rule optimizer.
 
 ## Build and runtime workflow
 
@@ -138,7 +137,7 @@ Each arm owns a separate runtime store below `plugin/data/`:
 
 ```text
 data/<arm>/
-├── documents/   copied Markdown/MDX repositories and their assets
+├── documents/   exact normalized corpus text and generated .ignore
 ├── corpus/      prepared corpus, manifest, and evaluation splits
 ├── indexes/     embeddings and sparse/dense index caches
 ├── assets/      derived image assets
@@ -156,20 +155,46 @@ for arm in fs hybrid neo4j; do
   PYTHONPATH=evaluation:. evaluation/.venv/bin/python \
     -m dsh_plugin.backend.prepare_plugin_data \
     --arm "$arm" \
-    --source-dataset evaluation/dataset/evaluation_data/normalized \
-    --source-documents evaluation/dataset/docs \
-    --copy-documents
+    --source-dataset evaluation/dataset/evaluation_data/normalized
 done
 ```
 
-Preparation first copies the authored workspace, then overwrites each canonical
-page with the normalized corpus `rendered_text`. This makes local image-derived
-text and all other searchable content identical across filesystem, hybrid, and
-Neo4j. The hybrid and Neo4j paths additionally emit the same query-blind neutral
-retrieval-unit and image-provenance records. Image-derived text is already part
+Preparation materializes only the normalized corpus `rendered_text` at each
+canonical `source_path`, plus a generated root `.ignore`. It does not copy raw
+repository pages, assets, or metadata into the searchable workspace. The
+optional `--source-documents` path records provenance only;
+`--copy-documents` is a deprecated compatibility flag with no copying effect.
+Existing canonical pages may be refreshed, but stale extra files or directories
+are rejected, never deleted automatically. Use a clean destination or explicitly
+relocate stale data before preparing it again.
+
+The generated `.ignore` explicitly re-includes the corpus directories and pages
+so official filesystem searches can traverse them beneath the Git-ignored
+plugin-data directory. This is a search-visibility policy, not a security or
+filesystem-access boundary: tool glob overrides can bypass file exclusions.
+The exact on-disk inventory and content checks are therefore required as well.
+
+This makes local image-derived text and all other searchable content identical
+across filesystem, hybrid, and Neo4j. The hybrid and Neo4j paths additionally
+emit the same query-blind neutral retrieval-unit and image-provenance records.
+Image-derived text is already part
 of its owning page before BM25/HNSW chunking; it is not indexed again as a
 standalone image vector. Neo4j projects the occurrence and asset provenance
 into the plugin-owned graph schema without changing the shared text index.
+
+At startup, before model episodes, the integrated runner validates the workspace bytes
+and inventory and performs a no-model health check through the installed
+official DSH filesystem tools. It checks searchable and glob-visible document
+counts and corpus-only search/read probes, without using questions, qrels, or
+answer labels. Every arm writes the successful startup check to
+`<output-dir>/preflight.json`; a failed check prevents model execution. This
+startup work is excluded from per-episode agent latency and token metrics.
+
+The filesystem-visibility repair must be evaluated in fresh matched runs under
+`results/runs/agents/fs-visibility-fix/pilot/` and then
+`results/runs/agents/fs-visibility-fix/full/`. Historical filesystem results
+were affected by Git-ignore directory-skipping and are not a clean comparison
+of retrieval algorithms; see [`../docs/RESULTS.md`](../docs/RESULTS.md).
 
 KGGen is optional and runs offline in an isolated environment because its
 dependency range conflicts with the benchmark embedding environment:
@@ -182,8 +207,6 @@ PYTHONPATH=evaluation:. evaluation/.venv/bin/python \
   -m dsh_plugin.backend.prepare_plugin_data \
   --arm neo4j \
   --source-dataset evaluation/dataset/evaluation_data/normalized \
-  --source-documents evaluation/dataset/docs \
-  --copy-documents \
   --run-kggen \
   --kggen-python dsh_plugin/.venv-kggen/bin/python
 ```

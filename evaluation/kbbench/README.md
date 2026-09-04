@@ -21,10 +21,10 @@ receives no gain because the accepted-answer qrels are sparse; this does not
 prove that page is irrelevant.
 
 When `retrieval.py` or `plugin_eval.py` receives `--aspects`, it evaluates only
-questions in that frozen model-reviewed silver annotation file and additionally
-reports Weighted Aspect Recall@5/10 and alpha-nDCG@10. Answer-only aspects are
-not retrieval targets. The construction and full-agent scoring contract is in
-[`../../docs/ASPECT_EVALUATION.md`](../../docs/ASPECT_EVALUATION.md).
+questions in that frozen silver annotation file and additionally reports
+Weighted Aspect Recall@5/10 and alpha-nDCG@10. Answer-only aspects are not
+retrieval targets. Aspect construction and the freeze boundary are documented
+in [`../../docs/RULE_OPTIMIZATION.md`](../../docs/RULE_OPTIMIZATION.md).
 
 For a fair plugin comparison, keep the corpus revision, question IDs, top-k,
 filesystem binary, embedding model, cache state, and Neo4j schema fixed. Change

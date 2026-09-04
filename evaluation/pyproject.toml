@@ -25,6 +25,11 @@ judge = [
   "Pillow>=10,<13",
   "pydantic>=2,<3",
 ]
+rule-optimization = [
+  "openai>=2,<3",
+  "pydantic>=2,<3",
+  "skillopt==0.2.0",
+]
 test = [
   "pytest>=8,<10",
 ]
@@ -35,6 +40,7 @@ all = [
   "openai>=2,<3",
   "Pillow>=10,<13",
   "pydantic>=2,<3",
+  "skillopt==0.2.0",
 ]
 
 [project.scripts]
@@ -45,7 +51,7 @@ docsqa-plugin-eval = "kbbench.plugin_eval:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["kbbench*", "dataset*", "dataset_analysis*"]
+include = ["kbbench*", "dataset*", "dataset_analysis*", "rule_optimization*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "../dsh_plugin/tests"]

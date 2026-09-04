@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import threading
 import time
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+
+import dsh_plugin.agent_eval.aspect_judge as aspect_judge_module
 
 from dsh_plugin.agent_eval.aspect_judge import (
     AspectBatchJudgment,
@@ -23,6 +27,11 @@ from dsh_plugin.agent_eval.aspect_judge import (
     summarize,
     summarize_by,
     _usage_totals,
+    _jsonl,
+    _assert_mixed_inputs_unchanged,
+    _capture_mixed_inputs,
+    _validate_fs_preflight,
+    _validate_question_linkage,
     _unique_index,
     _load_cached_call,
     _write_cached_call,
@@ -531,6 +540,261 @@ def test_evaluate_requires_exact_three_arms_before_any_api_call(tmp_path) -> Non
     )
     with pytest.raises(ValueError, match="arms must be exactly"):
         evaluate(args)
+
+
+def test_mixed_generation_mode_runs_fresh_and_records_provenance(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    rubric, rubric_sha = load_judge_rubric()
+    record = _record()
+    record.update(
+        split="test",
+        status="accepted",
+        project="github-docs",
+        rubric_version=rubric["rubric_version"],
+        rubric_sha256=rubric_sha,
+    )
+    aspects_path = tmp_path / "aspects.jsonl"
+    aspects_path.write_text(json.dumps(record) + "\n", encoding="utf-8")
+    corpus_path = tmp_path / "corpus.jsonl"
+    corpus_path.write_text(
+        "".join(
+            json.dumps({"doc_id": doc_id, "title": doc_id, "rendered_text": doc_id}) + "\n"
+            for doc_id in ("d1", "d2")
+        ),
+        encoding="utf-8",
+    )
+    split_path = tmp_path / "test.json"
+    split_path.write_text(json.dumps([{"question_id": "q1"}]), encoding="utf-8")
+    workspace = {
+        "protocol": "exact-corpus-official-fs-v1",
+        "document_count": 2,
+        "corpus_sha256": "c" * 64,
+        "workspace_sha256": "w" * 64,
+        "ignore_sha256": "i" * 64,
+    }
+    preflight_path = tmp_path / "preflight.json"
+    preflight_path.write_text(
+        json.dumps(
+            {
+                **workspace,
+                "official_tools": {
+                    "ok": True,
+                    "expected_document_count": 2,
+                    "searchable_document_count": 2,
+                    "glob_document_count": 2,
+                    "model_calls": 0,
+                    "probes": [{"path": "example.md"}],
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(aspect_judge_module, "CANONICAL_TEST_SPLIT", split_path)
+    monkeypatch.setattr(aspect_judge_module, "EXPECTED_FULL_QUESTIONS", 1)
+
+    _, memory_rows, _ = _judgment_inputs(["q1"])
+    paths: dict[str, Path] = {}
+    loaded: dict[Path, list[dict]] = {}
+    for arm in ("fs", "hybrid", "neo4j"):
+        path = tmp_path / f"{arm}.json"
+        path.write_text(f"{arm}\n", encoding="utf-8")
+        paths[arm] = path
+        row = memory_rows[arm]["q1"]
+        row.update(
+            id="q1",
+            arm=arm,
+            question=record["question"],
+            target_user_prompt=f"Prompt\nQuestion:\n{record['question']}",
+            skill_path=f"/{arm}/initial_skill.md",
+            skill_sha256=hashlib.sha256(arm.encode()).hexdigest(),
+            evaluation_contract={
+                "corpus": {
+                    "corpus": {"sha256": hashlib.sha256(corpus_path.read_bytes()).hexdigest()},
+                    "searchable_workspace": workspace,
+                },
+                "split": {"file": {"sha256": hashlib.sha256(split_path.read_bytes()).hexdigest()}},
+                "runtime": {"sha256": "a" * 64},
+                "compiled_plugin": {"sha256": "b" * 64},
+                "dependencies": {"locked_files": {"sha256": "c" * 64}},
+            },
+        )
+        loaded[path] = [row]
+    monkeypatch.setattr(aspect_judge_module, "load_arm_rollouts", lambda path: loaded[path])
+    validation: dict[str, object] = {}
+
+    def fake_validate(*args, **kwargs):
+        validation.update(kwargs)
+        return {"q1"}
+
+    monkeypatch.setattr(aspect_judge_module, "validate_arm_rollouts", fake_validate)
+    output_dir = tmp_path / "output"
+    args = argparse.Namespace(
+        rubric=aspect_judge_module.DEFAULT_RUBRIC,
+        aspects=aspects_path,
+        corpus=corpus_path,
+        arm=[(arm, paths[arm]) for arm in ("fs", "hybrid", "neo4j")],
+        output_dir=output_dir,
+        model="gpt-5.6-luna",
+        reasoning_effort="medium",
+        request_timeout=120.0,
+        workers=1,
+        limit=None,
+        question_id=[],
+        small_trial=False,
+        resume=False,
+        mixed_generation_sensitivity=True,
+        fs_preflight=preflight_path,
+        expected_rollout_sha256=[
+            (arm, hashlib.sha256(paths[arm].read_bytes()).hexdigest())
+            for arm in ("hybrid", "neo4j")
+        ],
+    )
+    client = _FakeClient(delay_seconds=0)
+
+    report = evaluate(args, client=client)
+
+    assert client.call_ids == ["q1"]
+    assert validation["mixed_generation"] is True
+    assert report["comparison_design"] == "mixed_generation_sensitivity"
+    assert report["confirmatory"] is False
+    assert report["fresh_paired_judge_calls"] is True
+    assert report["question_linkage"]["exact_frozen_question"] == 1
+    assert report["question_linkage"]["appended_image_evidence"] == 0
+    assert report["provenance"]["arms"]["fs"]["rollouts_sha256"] == hashlib.sha256(
+        paths["fs"].read_bytes()
+    ).hexdigest()
+    assert all(not row["resumed"] for row in _jsonl(output_dir / "judge_calls.jsonl"))
+
+    corpus_path.write_text(corpus_path.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+    args.output_dir = tmp_path / "changed-corpus-output"
+    with pytest.raises(ValueError, match="corpus bytes differ"):
+        evaluate(args, client=client)
+    assert client.call_ids == ["q1"]
+
+
+@pytest.mark.parametrize(
+    ("changes", "message"),
+    [
+        ({"resume": True}, "fresh paired judge calls"),
+        ({"small_trial": True}, "full 361-question test split"),
+        ({"question_id": ["q1"]}, "full 361-question test split"),
+        ({"limit": 1}, "full 361-question test split"),
+    ],
+)
+def test_mixed_generation_mode_rejects_nonfinal_options(
+    tmp_path: Path, changes: dict, message: str
+) -> None:
+    aspects = tmp_path / "aspects.jsonl"
+    corpus = tmp_path / "corpus.jsonl"
+    aspects.write_text(json.dumps(_record()) + "\n", encoding="utf-8")
+    corpus.write_text(json.dumps({"doc_id": "d1"}) + "\n", encoding="utf-8")
+    values = {
+        "rubric": aspect_judge_module.DEFAULT_RUBRIC,
+        "aspects": aspects,
+        "corpus": corpus,
+        "arm": [(arm, tmp_path / f"{arm}.json") for arm in ("fs", "hybrid", "neo4j")],
+        "output_dir": tmp_path / "output",
+        "mixed_generation_sensitivity": True,
+        "small_trial": False,
+        "question_id": [],
+        "limit": None,
+        "resume": False,
+    }
+    values.update(changes)
+    args = argparse.Namespace(**values)
+    with pytest.raises(ValueError, match=message):
+        evaluate(args)
+
+
+def test_mixed_generation_mode_rejects_nonempty_output(tmp_path: Path) -> None:
+    aspects = tmp_path / "aspects.jsonl"
+    corpus = tmp_path / "corpus.jsonl"
+    output = tmp_path / "output"
+    output.mkdir()
+    (output / "stale.json").write_text("{}", encoding="utf-8")
+    aspects.write_text(json.dumps(_record()) + "\n", encoding="utf-8")
+    corpus.write_text(json.dumps({"doc_id": "d1"}) + "\n", encoding="utf-8")
+    args = argparse.Namespace(
+        rubric=aspect_judge_module.DEFAULT_RUBRIC,
+        aspects=aspects,
+        corpus=corpus,
+        arm=[(arm, tmp_path / f"{arm}.json") for arm in ("fs", "hybrid", "neo4j")],
+        output_dir=output,
+        mixed_generation_sensitivity=True,
+        small_trial=False,
+        question_id=[],
+        limit=None,
+        resume=False,
+        model="gpt-5.6-luna",
+        reasoning_effort="medium",
+    )
+    with pytest.raises(ValueError, match="new or empty"):
+        evaluate(args)
+
+
+def test_mixed_helpers_bind_inputs_preflight_and_enriched_question(tmp_path: Path) -> None:
+    rollout = tmp_path / "rollouts.json"
+    aspects = tmp_path / "aspects.jsonl"
+    rollout.write_text("[]", encoding="utf-8")
+    aspects.write_text("{}\n", encoding="utf-8")
+    captured = _capture_mixed_inputs([("fs", rollout)], {"aspects": aspects})
+    _assert_mixed_inputs_unchanged(captured)
+    rollout.write_text("[{}]", encoding="utf-8")
+    with pytest.raises(ValueError, match="changed during evaluation"):
+        _assert_mixed_inputs_unchanged(captured)
+
+    workspace = {
+        "protocol": "exact-corpus-official-fs-v1",
+        "document_count": 1,
+        "corpus_sha256": "c" * 64,
+        "workspace_sha256": "w" * 64,
+        "ignore_sha256": "i" * 64,
+    }
+    preflight = tmp_path / "preflight.json"
+    preflight.write_text(
+        json.dumps(
+            {
+                **workspace,
+                "official_tools": {
+                    "ok": True,
+                    "expected_document_count": 1,
+                    "searchable_document_count": 1,
+                    "glob_document_count": 1,
+                    "model_calls": 0,
+                    "probes": [{"path": "a.md"}],
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    _validate_fs_preflight(preflight, {"corpus": {"searchable_workspace": workspace}})
+    bad = json.loads(preflight.read_text(encoding="utf-8"))
+    bad["official_tools"]["glob_document_count"] = 0
+    preflight.write_text(json.dumps(bad), encoding="utf-8")
+    with pytest.raises(ValueError, match="complete official-tool visibility"):
+        _validate_fs_preflight(preflight, {"corpus": {"searchable_workspace": workspace}})
+
+    base = "Question text"
+    arms = {
+        arm: {
+            "q1": {
+                "question": base + "\n\nImage-derived question evidence:\n- visible text",
+                "target_user_prompt": (
+                    "Prompt\nQuestion:\n"
+                    + base
+                    + "\n\nImage-derived question evidence:\n- visible text"
+                ),
+                "question_has_image": True,
+            }
+        }
+        for arm in ("fs", "hybrid", "neo4j")
+    }
+    linkage = _validate_question_linkage({"q1": {"question": base}}, arms, ["q1"])
+    assert linkage["appended_image_evidence"] == 1
+    arms["fs"]["q1"]["question"] = "Different question"
+    with pytest.raises(ValueError, match="question linkage mismatch"):
+        _validate_question_linkage({"q1": {"question": base}}, arms, ["q1"])
 
 
 def test_replay_artifact_report_recomputes_without_model_calls(tmp_path) -> None:

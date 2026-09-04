@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -9,6 +10,7 @@ from kbbench.scoring import GitHubDocsSourceResolver
 
 from dsh_plugin.agent_eval.runner import (
     DshCommandConfig,
+    DshCommandRunner,
     _dsh_invocation,
     _files_sha256,
     _stable_service_identity,
@@ -17,6 +19,7 @@ from dsh_plugin.agent_eval.runner import (
     _visible_sources,
     load_split_items,
     parse_agent_json,
+    preflight_corpus_workspace,
     run_batch,
 )
 
@@ -638,7 +641,7 @@ def test_agent_json_and_command_contract(tmp_path: Path) -> None:
         parse_agent_json('```json\n{"answer":"ok","sources":[]}\n```')
     files = {
         name: tmp_path / name
-        for name in ("dsh", "home", "workspace", "model.yml", "common.yml", "arm.yml")
+        for name in ("dsh", "home", "workspace", "model.yml", "common.yml", "arm.yml", "corpus.jsonl")
     }
     for path in files.values():
         path.mkdir() if path.name in {"home", "workspace"} else path.write_text("")
@@ -652,6 +655,7 @@ def test_agent_json_and_command_contract(tmp_path: Path) -> None:
         model_patch=files["model.yml"],
         common_patch=files["common.yml"],
         arm_patch=files["arm.yml"],
+        corpus_path=files["corpus.jsonl"],
     )
     command = _dsh_invocation(
         config,
@@ -662,3 +666,85 @@ def test_agent_json_and_command_contract(tmp_path: Path) -> None:
     assert command.count("--patch") == 4
     assert command[-1].count("Question:\nHow?") == 1
     assert "(fs," not in command[-1]
+
+
+def _preflight_config(tmp_path: Path) -> DshCommandConfig:
+    from dsh_plugin.backend.corpus_workspace import materialize_corpus_workspace
+
+    corpus = [{"source_path": "project/nested/guide.md", "rendered_text": "Guide evidence."}]
+    workspace = tmp_path / "documents"
+    materialize_corpus_workspace(corpus, workspace)
+    corpus_path = tmp_path / "corpus.jsonl"
+    corpus_path.write_text(json.dumps(corpus[0]) + "\n", encoding="utf-8")
+    return DshCommandConfig(
+        arm="fs", dsh_binary=corpus_path, dsh_home=tmp_path,
+        workspace=workspace, model_patch=corpus_path, common_patch=corpus_path,
+        arm_patch=corpus_path, corpus_path=corpus_path,
+    )
+
+
+def test_preflight_passes_only_corpus_content_to_official_tools(tmp_path: Path, monkeypatch) -> None:
+    config = _preflight_config(tmp_path)
+    requests = []
+
+    def official_check(command, **kwargs):
+        requests.append((command, json.loads(kwargs["input"])))
+        return subprocess.CompletedProcess(command, 0, json.dumps({
+            "ok": True, "expected_document_count": 1, "searchable_document_count": 1,
+            "glob_document_count": 1, "probe_count": 1,
+        }), "")
+
+    monkeypatch.setattr("dsh_plugin.agent_eval.runner.subprocess.run", official_check)
+    result = preflight_corpus_workspace(config)
+    assert result["document_count"] == 1
+    assert result["protocol"] == "exact-corpus-official-fs-v1"
+    assert len(requests) == 1
+    assert requests[0][0][-1].endswith("scripts/preflight_fs.ts")
+    assert requests[0][1] == {
+        "workspace": str(config.workspace.resolve()),
+        "documents": [{"path": "project/nested/guide.md", "text": "Guide evidence."}],
+    }
+
+
+@pytest.mark.parametrize("payload", [
+    {"ok": False},
+    {"ok": True, "expected_document_count": 1, "searchable_document_count": 0,
+     "glob_document_count": 1, "probe_count": 1},
+    {"ok": True, "expected_document_count": 1, "searchable_document_count": 1,
+     "glob_document_count": 1, "probe_count": 0},
+])
+def test_preflight_fails_closed_on_tool_visibility_failure(tmp_path: Path, monkeypatch, payload) -> None:
+    config = _preflight_config(tmp_path)
+    monkeypatch.setattr(
+        "dsh_plugin.agent_eval.runner.subprocess.run",
+        lambda command, **kwargs: subprocess.CompletedProcess(command, 0, json.dumps(payload), ""),
+    )
+    with pytest.raises(ValueError, match="preflight"):
+        preflight_corpus_workspace(config)
+
+
+def test_runner_rejects_workspace_drift_before_any_subprocess(tmp_path: Path, monkeypatch) -> None:
+    config = _preflight_config(tmp_path)
+    (config.workspace / "answers.json").write_text("hidden answer data", encoding="utf-8")
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("no tools or model should run after workspace validation fails")
+
+    monkeypatch.setattr("dsh_plugin.agent_eval.runner.subprocess.run", forbidden)
+    with pytest.raises(ValueError, match="extra file"):
+        DshCommandRunner(config)
+
+
+def test_preflight_rejects_post_probe_content_change(tmp_path: Path, monkeypatch) -> None:
+    config = _preflight_config(tmp_path)
+
+    def changed(command, **kwargs):
+        (config.workspace / "project/nested/guide.md").write_text("Changed", encoding="utf-8")
+        return subprocess.CompletedProcess(command, 0, json.dumps({
+            "ok": True, "expected_document_count": 1, "searchable_document_count": 1,
+            "glob_document_count": 1, "probe_count": 1,
+        }), "")
+
+    monkeypatch.setattr("dsh_plugin.agent_eval.runner.subprocess.run", changed)
+    with pytest.raises(ValueError, match="content mismatch"):
+        preflight_corpus_workspace(config)

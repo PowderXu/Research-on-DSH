@@ -17,6 +17,7 @@ from typing import Any, Callable, Iterable, Mapping
 import yaml
 
 from kbbench.scoring import GitHubDocsSourceResolver, score_ranked_sources
+from dsh_plugin.backend.corpus_workspace import validate_corpus_workspace
 from dsh_plugin.backend.retrieval_policy import retrieval_contract
 
 from .credentials import load_openai_key_from_configured_env
@@ -578,6 +579,7 @@ class DshCommandConfig:
     model_patch: Path
     common_patch: Path
     arm_patch: Path
+    corpus_path: Path
     timeout_seconds: int = 180
     profile: str = "headless"
 
@@ -591,9 +593,58 @@ class DshCommandConfig:
             self.model_patch,
             self.common_patch,
             self.arm_patch,
+            self.corpus_path,
         ):
             if not path.exists():
                 raise FileNotFoundError(path)
+
+
+def preflight_corpus_workspace(config: DshCommandConfig) -> dict[str, Any]:
+    """Verify corpus bytes and actual official tools without a model or QA labels."""
+    corpus = [
+        json.loads(line)
+        for line in config.corpus_path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    snapshot = validate_corpus_workspace(corpus, config.workspace)
+    script = Path(__file__).resolve().parents[1] / "scripts/preflight_fs.ts"
+    try:
+        completed = subprocess.run(
+            ["node", "--experimental-strip-types", str(script)],
+            input=json.dumps({
+                "workspace": str(config.workspace.resolve()),
+                "documents": [
+                    {"path": row["source_path"], "text": row["rendered_text"]}
+                    for row in corpus
+                ],
+            }),
+            cwd=script.parent.parent,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=120,
+        )
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise ValueError(f"official FS workspace preflight could not run: {error}") from error
+    if completed.returncode:
+        detail = (completed.stderr or completed.stdout).strip()[-4000:]
+        raise ValueError(f"official FS workspace preflight failed: {detail}")
+    try:
+        tool_check = json.loads(completed.stdout)
+    except json.JSONDecodeError as error:
+        raise ValueError("official FS workspace preflight returned invalid JSON") from error
+    if not isinstance(tool_check, dict) or tool_check.get("ok") is not True:
+        raise ValueError("official FS workspace preflight did not confirm success")
+    count = snapshot["document_count"]
+    for field in ("expected_document_count", "searchable_document_count", "glob_document_count"):
+        if tool_check.get(field) != count:
+            raise ValueError(f"official FS workspace preflight inventory mismatch: {field}")
+    if not isinstance(tool_check.get("probe_count"), int) or tool_check["probe_count"] < 1:
+        raise ValueError("official FS workspace preflight did not verify search/read probes")
+    # Recheck after probing to catch content changes during the startup check.
+    if validate_corpus_workspace(corpus, config.workspace) != snapshot:
+        raise ValueError("corpus workspace changed during preflight")
+    return {"protocol": "exact-corpus-official-fs-v1", **snapshot, "official_tools": tool_check}
 
 
 class DshCommandRunner:
@@ -605,6 +656,7 @@ class DshCommandRunner:
         trace_provider: Callable[[], list[dict[str, Any]]] | None = None,
     ) -> None:
         config.validate()
+        self.preflight = preflight_corpus_workspace(config)
         self.config = config
         self.trace_provider = trace_provider
 
@@ -1075,10 +1127,6 @@ def main() -> None:
     workspace = args.workspace or layout.documents
     cache_dir = args.cache_dir or layout.indexes
 
-    if not load_openai_key_from_configured_env():
-        raise SystemExit(
-            "OPENAI_API_KEY is unset; set it directly or point KBBENCH_OPENAI_ENV_FILE to an env file"
-        )
     split_path = dataset_dir / "splits" / f"{args.split}.json"
     corpus_path = dataset_dir / "corpus.jsonl"
     items = load_split_items(
@@ -1095,8 +1143,18 @@ def main() -> None:
         model_patch=args.model_patch,
         common_patch=project_root / "dsh_plugin/harness/docsqa_dsh_common.patch.yml",
         arm_patch=project_root / f"dsh_plugin/harness/docsqa_{args.arm}_system.patch.yml",
+        corpus_path=corpus_path,
         timeout_seconds=args.timeout_seconds,
     )
+    command_runner = DshCommandRunner(config)
+    args.output_dir.mkdir(parents=True, exist_ok=True)
+    (args.output_dir / "preflight.json").write_text(
+        json.dumps(command_runner.preflight, indent=2) + "\n", encoding="utf-8"
+    )
+    if not load_openai_key_from_configured_env():
+        raise SystemExit(
+            "OPENAI_API_KEY is unset; set it directly or point KBBENCH_OPENAI_ENV_FILE to an env file"
+        )
 
     service_host = None
     trace_provider = None
@@ -1128,6 +1186,7 @@ def main() -> None:
         )
         service_host.start()
         trace_provider = lambda: list(service.events)
+        command_runner.trace_provider = trace_provider
         service_identity = _stable_service_identity(service.health())
 
     try:
@@ -1140,6 +1199,9 @@ def main() -> None:
             )
         runtime_files = [
             Path(__file__),
+            project_root / "dsh_plugin/backend/corpus_workspace.py",
+            project_root / "dsh_plugin/backend/prepare_plugin_data.py",
+            project_root / "dsh_plugin/scripts/preflight_fs.ts",
             project_root / "dsh_plugin/backend/http_contract.py",
             project_root / "dsh_plugin/backend/retrieval_policy.py",
             project_root / "dsh_plugin/backend/service.py",
@@ -1163,6 +1225,10 @@ def main() -> None:
         manifest_path = dataset_dir / "manifest.json"
         corpus_identity: dict[str, object] = {
             "corpus": _file_identity(corpus_path, "dataset/corpus.jsonl"),
+            "searchable_workspace": {
+                field: command_runner.preflight[field]
+                for field in ("protocol", "document_count", "corpus_sha256", "workspace_sha256", "ignore_sha256")
+            },
         }
         if manifest_path.is_file():
             corpus_identity["manifest"] = _file_identity(
@@ -1175,7 +1241,7 @@ def main() -> None:
             out_root=str(args.output_dir),
             arm=args.arm,
             resolver=GitHubDocsSourceResolver(corpus_path),
-            runner=DshCommandRunner(config, trace_provider=trace_provider),
+            runner=command_runner,
             resume=args.resume,
             evaluation_contract={
                 "retrieval": retrieval_contract(args.arm),

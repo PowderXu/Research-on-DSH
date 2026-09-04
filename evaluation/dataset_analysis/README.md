@@ -1,40 +1,22 @@
-# Dataset and answer-quality analysis
+# Dataset and answer normalization
 
-This package turns structurally valid support discussions into the local
-DocsQA-Repo benchmark and validates the frozen answer judge under the paper's
-weak-supervision assumption. It contains no retrieval implementation and writes
-generated artifacts only under `results/` or
-`evaluation/dataset/evaluation_data/`.
+This package converts structurally valid support discussions into a local,
+standalone QA package. It does not implement retrieval or optimize the
+answer-evaluation rule.
 
 ```text
-validate_sources.py               resolve local documentation and linked-QA evidence
-materialize_images.py             reproduce images and record provenance
-image_evidence.py                 build conservative image-to-text evidence
-normalize_dataset.py              construct standalone local QA records
-build_aspects.py                  construct and review question-specific aspects
-merge_aspect_runs.py              validate and merge the 467 aspect records
-build_weak_supervision_splits.py  create the 60/20/20 evaluator overlay
-question_partitions.py            validate evaluator partition membership
-calibrate_aspect_judge.py         construct controls and apply acceptance gates
-describe_benchmark.py             reproduce corpus and evidence statistics
-audit_integrity.py                check duplicate and split-overlap diagnostics
-llm_runtime.py                    shared credential, usage, and percentile helpers
-rubrics/                          hash-frozen domain-neutral rules
-test_*.py                         deterministic contracts and regression tests
+validate_sources.py   resolve internal documentation and linked-QA evidence
+materialize_images.py reproduce images and record their provenance
+image_evidence.py     convert reproducible pixels to conservative local text
+normalize_dataset.py  build standalone answers, claims, requirements, and evidence IDs
+describe_benchmark.py reproduce corpus and evidence statistics
+audit_integrity.py    check duplicate and split-overlap diagnostics
+llm_runtime.py        shared credential, usage, and percentile helpers
+rubrics/              versioned normalization and final-answer judging rules
 ```
 
-The weak-supervision assumption is that most platform-selected answers, together
-with their resolved internal documentation, are sufficiently correct and
-complete to resolve the original question. These are noisy positive references,
-not human gold labels.
-
-## Reproduce the paper artifacts
-
-Run commands from the repository root with `PYTHONPATH=evaluation:.`.
-
-The reported dataset is v14. Its exact generation prompt is not a versioned
-input in the current tree, so reproduce it from the retained frozen work state;
-this makes no model call:
+The paper's v14 normalized package is materialized from retained local work
+state without a model call:
 
 ```bash
 PYTHONPATH=evaluation:. evaluation/.venv/bin/python \
@@ -49,49 +31,12 @@ PYTHONPATH=evaluation:. evaluation/.venv/bin/python \
   --materialize-only
 ```
 
-Rebuild the deterministic evaluator overlay:
+This produces 467 accepted local-evidence records from 556 structurally
+eligible sources. The normalization score and `>0.90` gate belong only to
+dataset construction; they are not the final-answer metric and are not used by
+the aspect-rule optimizer.
 
-```bash
-PYTHONPATH=evaluation:. evaluation/.venv/bin/python \
-  -m dataset_analysis.build_weak_supervision_splits \
-  --questions evaluation/dataset/evaluation_data/normalized/questions.jsonl \
-  --output evaluation/dataset/evaluation_data/normalized/weak_supervision_split.json \
-  --seed 20260901
-```
-
-Validate the frozen final-test report without an API call:
-
-```bash
-PYTHONPATH=evaluation:. evaluation/.venv/bin/python \
-  -m dataset_analysis.calibrate_aspect_judge \
-  --aspects results/runs/dataset-analysis/aspects-v2-all/aspects.jsonl \
-  --output-dir results/runs/dataset-analysis/aspect-calibration-v2-final-test \
-  --model gpt-5.6-luna \
-  --reasoning-effort medium \
-  --question-manifest evaluation/dataset/evaluation_data/normalized/weak_supervision_split.json \
-  --manifest-partition final_test \
-  --rubric-role frozen \
-  --max-variant-repairs 2 \
-  --min-source-answer-complete-recall 0.80 \
-  --min-partial-recall 0.80 \
-  --min-incorrect-recall 0.80 \
-  --max-incorrect-false-complete-rate 0.05 \
-  --min-macro-f1 0.80 \
-  --min-balanced-case-rate 0.98 \
-  --report-only
-```
-
-`--report-only` requires the retained calibration cases, per-candidate labels,
-and judge-call metadata. It verifies their hashes and recomputes the report; it
-does not call a model. A mismatch requires a new output directory.
-
-The current `rubrics/normalization_v1.json` is the later v15 clean-generation
-rubric. Running it is a new dataset-construction experiment and must use new
-work and output directories; it is not an exact reproduction of the paper's
-v14 package.
-
-Full commands, contracts, and maintained numbers are in:
-
-- [`../../docs/NORMALIZED_DATASET.md`](../../docs/NORMALIZED_DATASET.md)
-- [`../../docs/ASPECT_EVALUATION.md`](../../docs/ASPECT_EVALUATION.md)
-- [`../../docs/RESULTS.md`](../../docs/RESULTS.md)
+The current clean-generation rubric is `rubrics/normalization_v1.json`.
+Running it is a new dataset-construction experiment and must use a new work
+directory. General aspect-rule optimization is documented separately in
+[`../rule_optimization/README.md`](../rule_optimization/README.md).

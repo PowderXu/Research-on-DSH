@@ -33,6 +33,12 @@ TOKEN_FIELDS = ("input_fresh", "input_cached", "input_total", "output", "total")
 EXPECTED_ARMS = ("fs", "hybrid", "neo4j")
 EXPECTED_FULL_QUESTIONS = 361
 MATCHED_DEVELOPMENT_MODEL = "gpt-5.6-luna"
+DSH_LOCK_PATHS = set(("dsh_plugin/package-lock.json dsh_plugin/package.json "
+                      "dsh_plugin/plugin/package-lock.json dsh_plugin/plugin/package.json").split())
+MIXED_SHARED_ROW_FIELDS = (
+    "question qrel_ids project task_type intent_category evidence_structure qrel_count "
+    "question_has_image target_user_prompt task_description"
+).split()
 
 
 def percentile(values: Iterable[float], quantile: float) -> float:
@@ -231,6 +237,9 @@ def current_runtime_identity(project_root: Path, arm: str) -> dict[str, Any]:
         )
     paths = [
         project_root / "dsh_plugin/agent_eval/runner.py",
+        project_root / "dsh_plugin/backend/corpus_workspace.py",
+        project_root / "dsh_plugin/backend/prepare_plugin_data.py",
+        project_root / "dsh_plugin/scripts/preflight_fs.ts",
         project_root / "dsh_plugin/backend/http_contract.py",
         project_root / "dsh_plugin/backend/retrieval_policy.py",
         project_root / "dsh_plugin/backend/service.py",
@@ -312,6 +321,7 @@ def validate_arm_rollouts(
     arm_skills: dict[str, Path] | None = None,
     small_trial: bool = False,
     artifact_replay: bool = False,
+    mixed_generation: bool = False,
 ) -> set[str]:
     """Validate either a current run or an explicitly frozen artifact replay.
 
@@ -359,13 +369,12 @@ def validate_arm_rollouts(
             (arm_skills or {}).get(arm)
             or project_root / f"dsh_plugin/plugin/skills/{arm}/initial_skill.md"
         )
-        current_skill_sha = (
-            None
-            if artifact_replay
-            else hashlib.sha256(skill_path.read_bytes()).hexdigest()
-        )
+        recorded_identity = artifact_replay or (mixed_generation and arm != "fs")
+        current_skill_sha = None if recorded_identity else hashlib.sha256(
+            skill_path.read_bytes()
+        ).hexdigest()
         current_runtime = (
-            None if artifact_replay else current_runtime_identity(project_root, arm)
+            None if recorded_identity else current_runtime_identity(project_root, arm)
         )
         contracts: list[dict[str, Any]] = []
         recorded_skill_shas: set[str] = set()
@@ -382,7 +391,9 @@ def validate_arm_rollouts(
                 )
             recorded_skill_shas.add(recorded_skill_sha)
             recorded_skill_paths.add(str(row.get("skill_path") or ""))
-            if not artifact_replay and recorded_skill_sha != current_skill_sha:
+            if recorded_identity and not row.get("skill_path"):
+                raise ValueError(f"artifact rollout lacks skill path: {arm}/{row.get('id')}")
+            if not recorded_identity and recorded_skill_sha != current_skill_sha:
                 raise ValueError(
                     f"stored/current skill mismatch for {arm} rollout {row.get('id')}"
                 )
@@ -402,7 +413,7 @@ def validate_arm_rollouts(
                 raise ValueError(
                     f"stored/current retrieval contract mismatch for {arm}/{row.get('id')}"
                 )
-            if artifact_replay:
+            if recorded_identity:
                 for field in ("runtime", "compiled_plugin"):
                     identity = contract.get(field)
                     if not isinstance(identity, dict):
@@ -411,7 +422,13 @@ def validate_arm_rollouts(
                         )
                     digest = str(identity.get("sha256") or "")
                     files = identity.get("files")
-                    if len(digest) != 64 or not isinstance(files, list) or not files:
+                    valid_files = isinstance(files, list) and bool(files) and all(
+                        isinstance(item, dict)
+                        and bool(item.get("path"))
+                        and len(str(item.get("sha256") or "")) == 64
+                        for item in files or []
+                    )
+                    if len(digest) != 64 or not valid_files:
                         raise ValueError(
                             f"artifact contract has invalid {field} identity: "
                             f"{arm}/{row.get('id')}"
@@ -423,24 +440,37 @@ def validate_arm_rollouts(
                         raise ValueError(
                             f"stored/current {field} mismatch for {arm}/{row.get('id')}"
                         )
-            for field in (
-                "embedding_model",
-                "device",
-                "corpus",
-                "split",
-                "scoring",
-                "dependencies",
-                "provider",
-            ):
+            fields = (
+                "embedding_model", "device", "corpus", "split", "scoring",
+                "dependencies", "provider",
+            )
+            for field in fields:
                 raw_value = contract.get(field)
                 if raw_value is None or raw_value == "":
                     raise ValueError(
                         f"evaluation contract lacks {field}: {arm}/{row.get('id')}"
                     )
-                value = (
-                    str(raw_value or "")
-                    if field in {"embedding_model", "device"}
-                    else json.dumps(raw_value, sort_keys=True, separators=(",", ":"))
+                if mixed_generation and field == "corpus":
+                    value_source = {
+                        key: raw_value.get(key) for key in ("corpus", "manifest")
+                    }
+                    if not all(value_source.values()):
+                        raise ValueError(f"evaluation contract lacks canonical corpus identity: {arm}/{row.get('id')}")
+                elif mixed_generation and field == "dependencies":
+                    locked = raw_value.get("locked_files") or {}
+                    files = locked.get("files") or []
+                    value_source = {
+                        str(item.get("path") or ""): str(item.get("sha256") or "")
+                        for item in files if str(item.get("path") or "") in DSH_LOCK_PATHS
+                    }
+                    if len(str(locked.get("sha256") or "")) != 64 or set(value_source) != DSH_LOCK_PATHS or any(
+                        len(digest) != 64 for digest in value_source.values()
+                    ):
+                        raise ValueError(f"evaluation contract lacks complete DSH lock identity: {arm}/{row.get('id')}")
+                else:
+                    value_source = raw_value
+                value = str(value_source) if field in {"embedding_model", "device"} else json.dumps(
+                    value_source, sort_keys=True, separators=(",", ":")
                 )
                 previous = shared_contract_fields.setdefault(field, (arm, value))
                 if previous[1] != value:
@@ -455,6 +485,21 @@ def validate_arm_rollouts(
         canonical_contract = json.dumps(contracts[0], sort_keys=True)
         if any(json.dumps(value, sort_keys=True) != canonical_contract for value in contracts[1:]):
             raise ValueError(f"evaluation contract varies within the {arm} arm")
+    if mixed_generation:
+        indexed = {
+            arm: {str(row.get("id") or row.get("question_id")): row for row in rows}
+            for arm, rows in by_arm.items()
+        }
+        for question_id in expected:
+            for field in MIXED_SHARED_ROW_FIELDS:
+                if any(field not in indexed[arm][question_id] for arm in EXPECTED_ARMS):
+                    raise ValueError(f"mixed-generation row lacks field {field}: {question_id}")
+                values = {
+                    json.dumps(indexed[arm][question_id].get(field), sort_keys=True)
+                    for arm in EXPECTED_ARMS
+                }
+                if len(values) != 1:
+                    raise ValueError(f"mixed-generation row field {field} differs for {question_id}")
     return expected
 
 

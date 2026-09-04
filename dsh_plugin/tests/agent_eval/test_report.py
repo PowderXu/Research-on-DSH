@@ -7,12 +7,14 @@ from pathlib import Path
 import pytest
 
 from dsh_plugin.agent_eval.report import (
+    DSH_LOCK_PATHS,
     METRICS,
     _attach_primary_metrics,
     build_report,
     current_runtime_identity,
     load_arm_rollouts,
     percentile,
+    validate_arm_rollouts,
 )
 from dsh_plugin.agent_eval.runner import _repo_file_bundle_identity
 from dsh_plugin.backend.retrieval_policy import retrieval_contract
@@ -50,11 +52,16 @@ def _row(item_id: str, score: float, *, expand: bool = False) -> dict:
         tools.append("docsqa_expand")
     return {
         "id": item_id,
+        "question": f"Question {item_id}",
+        "project": "github-docs",
         "task_type": "multi_page_linked",
         "intent_category": "troubleshooting",
         "evidence_structure": "linked",
         "qrel_count": 1,
         "qrel_ids": ["/docs/example"],
+        "question_has_image": False,
+        "target_user_prompt": f"Prompt {item_id}",
+        "task_description": f"Question {item_id}",
         "ranked_ids": ["/docs/example"],
         "citation_ranked_ids": ["/docs/example"] if score else ["/docs/other"],
         "tool_sequence": tools,
@@ -218,6 +225,96 @@ def test_artifact_replay_uses_recorded_identity_without_current_runtime(
     assert any("artifact replay" in value.lower() for value in report["limitations"])
 
 
+def _mixed_generation_runs(tmp_path: Path) -> dict[str, Path]:
+    roots = {arm: tmp_path / arm for arm in ("fs", "hybrid", "neo4j")}
+    dsh_files = [
+        {"path": path, "sha256": hashlib.sha256(path.encode()).hexdigest()}
+        for path in sorted(DSH_LOCK_PATHS)
+    ]
+    for arm, root in roots.items():
+        _write_run(root, arm, [_row("q1", 1.0)])
+        path = root / "rollouts.json"
+        rows = json.loads(path.read_text(encoding="utf-8"))
+        contract = rows[0]["evaluation_contract"]
+        contract["corpus"] = {
+            "corpus": {"path": "dataset/corpus.jsonl", "sha256": "c" * 64},
+            "manifest": {"path": "dataset/manifest.json", "sha256": "m" * 64},
+        }
+        if arm == "fs":
+            contract["corpus"]["searchable_workspace"] = {"sha256": "w" * 64}
+        contract["dependencies"] = {
+            "locked_files": {
+                "sha256": hashlib.sha256(arm.encode()).hexdigest(),
+                "files": [*dsh_files, {"path": f"{arm}.txt", "sha256": "x" * 64}],
+            },
+            "python_packages": {"generation": arm},
+        }
+        if arm != "fs":
+            rows[0]["skill_path"] = f"/historical/{arm}/initial_skill.md"
+            rows[0]["skill_sha256"] = hashlib.sha256(f"old:{arm}".encode()).hexdigest()
+            contract["runtime"] = {
+                "sha256": hashlib.sha256(f"old-runtime:{arm}".encode()).hexdigest(),
+                "files": [{"path": "old.py", "sha256": "a" * 64}],
+            }
+            contract["compiled_plugin"] = {
+                "sha256": hashlib.sha256(f"old-plugin:{arm}".encode()).hexdigest(),
+                "files": [{"path": "old.js", "sha256": "b" * 64}],
+            }
+        path.write_text(json.dumps(rows), encoding="utf-8")
+    return roots
+
+
+def test_mixed_generation_validation_keeps_fs_current_and_allows_recorded_indexed_identities(
+    tmp_path: Path,
+) -> None:
+    roots = _mixed_generation_runs(tmp_path)
+    rows = {arm: load_arm_rollouts(root) for arm, root in roots.items()}
+
+    assert validate_arm_rollouts(
+        rows,
+        project_root=PROJECT_ROOT,
+        expected_question_ids=["q1"],
+        small_trial=True,
+        mixed_generation=True,
+    ) == {"q1"}
+    with pytest.raises(ValueError, match="stored/current skill mismatch"):
+        validate_arm_rollouts(
+            rows,
+            project_root=PROJECT_ROOT,
+            expected_question_ids=["q1"],
+            small_trial=True,
+        )
+
+
+def test_mixed_generation_validation_rejects_row_or_dsh_lock_mismatch(
+    tmp_path: Path,
+) -> None:
+    roots = _mixed_generation_runs(tmp_path)
+    hybrid_path = roots["hybrid"] / "rollouts.json"
+    hybrid = json.loads(hybrid_path.read_text(encoding="utf-8"))
+    hybrid[0]["question"] = "A different question"
+    hybrid_path.write_text(json.dumps(hybrid), encoding="utf-8")
+    rows = {arm: load_arm_rollouts(root) for arm, root in roots.items()}
+    with pytest.raises(ValueError, match="row field question differs"):
+        validate_arm_rollouts(
+            rows, project_root=PROJECT_ROOT, expected_question_ids=["q1"],
+            small_trial=True, mixed_generation=True,
+        )
+
+    roots = _mixed_generation_runs(tmp_path / "locks")
+    hybrid_path = roots["hybrid"] / "rollouts.json"
+    hybrid = json.loads(hybrid_path.read_text(encoding="utf-8"))
+    files = hybrid[0]["evaluation_contract"]["dependencies"]["locked_files"]["files"]
+    next(row for row in files if row["path"] == "dsh_plugin/package.json")["sha256"] = "z" * 64
+    hybrid_path.write_text(json.dumps(hybrid), encoding="utf-8")
+    rows = {arm: load_arm_rollouts(root) for arm, root in roots.items()}
+    with pytest.raises(ValueError, match="dependencies differs by arm"):
+        validate_arm_rollouts(
+            rows, project_root=PROJECT_ROOT, expected_question_ids=["q1"],
+            small_trial=True, mixed_generation=True,
+        )
+
+
 def test_attach_primary_metrics_scores_visible_ranking_independently() -> None:
     row = {
         "id": "q1",
@@ -245,6 +342,9 @@ def test_attach_primary_metrics_scores_visible_ranking_independently() -> None:
 def _write_fake_runtime(project_root: Path, arm: str) -> tuple[list[Path], list[Path]]:
     relative_runtime_paths = [
         "dsh_plugin/agent_eval/runner.py",
+        "dsh_plugin/backend/corpus_workspace.py",
+        "dsh_plugin/backend/prepare_plugin_data.py",
+        "dsh_plugin/scripts/preflight_fs.ts",
         "dsh_plugin/backend/http_contract.py",
         "dsh_plugin/backend/retrieval_policy.py",
         "dsh_plugin/backend/service.py",

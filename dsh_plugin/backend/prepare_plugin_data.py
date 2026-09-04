@@ -6,9 +6,10 @@ import argparse
 import json
 import shutil
 import subprocess
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import Any
 
+from .corpus_workspace import materialize_corpus_workspace
 from .data_paths import arm_data_layout
 from .graph_records import build_graph_records
 
@@ -33,16 +34,7 @@ def _materialize_searchable_documents(
 ) -> int:
     """Write the exact corpus representation used by every retrieval arm."""
 
-    written = 0
-    for row in corpus:
-        relative = PurePosixPath(str(row.get("source_path") or ""))
-        if not relative.parts or relative.is_absolute() or ".." in relative.parts:
-            raise ValueError(f"unsafe corpus source_path: {relative}")
-        target = destination.joinpath(*relative.parts)
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(str(row.get("rendered_text") or ""), encoding="utf-8")
-        written += 1
-    return written
+    return int(materialize_corpus_workspace(corpus, destination)["document_count"])
 
 
 def prepare(
@@ -53,23 +45,22 @@ def prepare(
     data_root: Path | None,
     copy_documents: bool,
 ) -> dict[str, Any]:
-    layout = arm_data_layout(arm, data_root).ensure()
+    layout = arm_data_layout(arm, data_root)
     source_dataset = source_dataset.resolve()
-    shutil.copytree(source_dataset, layout.corpus, dirs_exist_ok=True)
-    corpus = _jsonl(layout.corpus / "corpus.jsonl")
+    corpus = _jsonl(source_dataset / "corpus.jsonl")
+
+    # Validate manifest paths and existing workspace inventory before copying
+    # artifacts or overwriting documents. Raw source trees are never searchable.
+    workspace = materialize_corpus_workspace(corpus, layout.documents)
+    layout.ensure()
+    if source_dataset != layout.corpus.resolve():
+        shutil.copytree(source_dataset, layout.corpus, dirs_exist_ok=True)
 
     if source_documents is not None:
         source_documents = source_documents.resolve()
-        if copy_documents:
-            shutil.copytree(source_documents, layout.documents, dirs_exist_ok=True)
-        else:
-            (layout.root / "documents.path").write_text(
-                str(source_documents) + "\n", encoding="utf-8"
-            )
-
-    materialized_documents = _materialize_searchable_documents(
-        corpus, layout.documents
-    )
+        (layout.root / "documents.path").write_text(
+            str(source_documents) + "\n", encoding="utf-8"
+        )
 
     artifact_counts: dict[str, int] = {}
     if arm in {"hybrid", "neo4j"}:
@@ -97,7 +88,10 @@ def prepare(
         "indexes": str(layout.indexes),
         "assets": str(layout.assets),
         "artifacts": str(layout.artifacts),
-        "materialized_documents": materialized_documents,
+        "materialized_documents": workspace["document_count"],
+        "corpus_workspace": workspace,
+        "copy_documents": False,
+        "copy_documents_requested": copy_documents,
         **artifact_counts,
     }
 
@@ -106,9 +100,15 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--arm", choices=("fs", "hybrid", "neo4j"), required=True)
     parser.add_argument("--source-dataset", type=Path, required=True)
-    parser.add_argument("--source-documents", type=Path)
+    parser.add_argument(
+        "--source-documents", type=Path,
+        help="Optional provenance path; raw source files are never copied into search.",
+    )
     parser.add_argument("--data-root", type=Path)
-    parser.add_argument("--copy-documents", action="store_true")
+    parser.add_argument(
+        "--copy-documents", action="store_true",
+        help="Deprecated compatibility flag; search always contains corpus rendered_text only.",
+    )
     parser.add_argument("--run-kggen", action="store_true")
     parser.add_argument("--kggen-python", type=Path)
     parser.add_argument("--kggen-model", default="openai/gpt-5.6-luna")
