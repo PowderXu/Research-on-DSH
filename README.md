@@ -60,6 +60,13 @@ there is no SkillOpt training or optimization layer.
 Do not combine the two latency scopes. See [docs/RESULTS.md](docs/RESULTS.md) for
 separate run commands and current results.
 
+## Research and evaluation contributions
+
+[Kevin11Kaikai](https://github.com/Kevin11Kaikai) contributed evaluation-contract
+review, failure-mode analysis, and synthetic regression-case design for
+final-source scoring, failed-episode accounting, and paired-cohort integrity.
+See the [rationale and executable examples](docs/EVALUATION_PROTOCOL.md#executable-checks-of-the-agent-evaluation-contract).
+
 ## Setup and verification
 
 ```bash
