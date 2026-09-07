@@ -389,15 +389,17 @@ def run_batch(
             ]
         visible_ranked_ids = resolver.resolve_ranked(visible_sources)
         ranked_ids = resolver.resolve_ranked(execution.get("sources") or [])
-        metrics = score_ranked_sources(ranked_ids, item["qrel_ids"])
         agent_ok = (
             execution.get("return_code") == 0
             and not execution.get("parse_error")
             and bool(execution.get("skill_loaded"))
         )
-        if not agent_ok:
-            metrics["hard"] = 0.0
-            metrics["soft"] = 0.0
+        abstained = str(execution.get("answer") or "").strip().casefold() == "not found"
+        # Preserve attempted sources and execution status, while giving all
+        # primary metrics (not just hard/soft) zero gain for ineligible answers.
+        metrics = score_ranked_sources(
+            ranked_ids if agent_ok and not abstained else [], item["qrel_ids"]
+        )
 
         conversation = execution.get("conversation") or [
             {"type": "assistant/output", "content": execution.get("answer", "")}

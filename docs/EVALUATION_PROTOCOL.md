@@ -34,6 +34,52 @@ latency, tool calls, model steps, failure rate, actual model ID, and graph-tool
 application rate. If models differ, the result is descriptive and cannot support
 a causal plugin comparison.
 
+## Executable checks of the agent evaluation contract
+
+The research question determines what receives credit: the primary metrics ask
+whether the **final answer cites the reference pages**, not whether those pages
+appeared somewhere in a tool trace. Likewise, a paired mean should give each
+question one contribution per arm, including unsuccessful episodes. Otherwise,
+reporting choices can change the apparent comparison without improving an agent.
+
+The following synthetic counterexamples make these distinctions testable. Page A
+is the only reference page; none of these examples is a benchmark measurement.
+
+| Case | Expected behavior | Why it matters |
+|---|---|---|
+| A is visible, but the explicit final citation list is empty | Primary Hit@10 = 0; visible Hit@10 = 1 | Exposure to evidence is not final evidence selection. |
+| A is cited, but `agent_ok` is false | All primary gains = 0; retain the row, attempted citations, cost, and visible evidence | A partially failed episode must not receive successful-answer credit. |
+| The answer is exactly `NOT FOUND`, even with a citation to A | All primary gains = 0; retain the episode | An abstention does not become a supported answer merely by carrying a source. |
+| One arm contains q1 twice while all arms have the same set of IDs | Reject the report with the arm and duplicate ID | Set equality alone does not guarantee equal per-question weighting. |
+
+**Compatibility and diagnostics.** An absent `citation_ranked_ids` field retains
+the legacy `ranked_ids` fallback; an explicitly empty or null field does not.
+That fallback preserves compatibility, not proof that an old ranking represents
+final citations. When `visible_ranked_ids` is present, visible metrics are scored
+from that list, including an empty list. Otherwise, historical unprefixed metrics
+remain the visible diagnostics. Attempted citation IDs are retained even when the
+episode receives zero primary gain.
+
+**Failure versus abstention.** The runner and reporter apply the existing
+`agent_ok` status and an exact `NOT FOUND` sentinel, ignoring case and surrounding
+whitespace. A normal sentence containing those words is not an abstention.
+`failure_rate` continues to measure `agent_ok` failures; a successfully executed
+abstention receives zero gain without being reclassified as an execution failure.
+These checks do not provide full validation of every malformed answer schema.
+
+The self-contained regression suite uses temporary synthetic questions, pages,
+skills, and a fake runner. It needs neither a model, a graph service, nor real
+benchmark data. From the repository root, in an environment with pytest and
+PyYAML installed:
+
+```bash
+python -m pytest -c evaluation/pyproject.toml dsh_plugin/agent_eval/test_evaluation_contracts.py
+```
+
+These checks validate reporting behavior, not label quality, answer quality, or
+the impact on historical results. No benchmark rerun or result-table revision is
+implied by them.
+
 ## Graph construction and expansion
 
 The graph is built before queries from corpus-only structure:

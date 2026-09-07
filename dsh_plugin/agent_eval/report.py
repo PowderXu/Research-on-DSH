@@ -7,7 +7,7 @@ import hashlib
 import json
 import math
 import statistics
-from collections import defaultdict
+from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -79,21 +79,33 @@ def _attach_primary_metrics(
     Older rollout files stored first-visible tool results in ``ranked_ids`` and
     final answer citations in ``citation_ranked_ids``. Preserve the former as a
     diagnostic, then normalize all primary metric fields to final citations.
+    Only an absent final-citation field permits the legacy ranking fallback;
+    an explicitly empty final answer must not inherit tool-visible evidence.
     """
 
     for row in rows:
-        for metric in METRICS:
-            row[f"visible_{metric}"] = float(row.get(metric, 0.0))
         question = questions.get(str(row.get("id"))) or {}
         qrels = question.get("qrel_ids") or row.get("qrel_ids") or []
-        final_ranked = row.get("citation_ranked_ids") or row.get("ranked_ids") or []
+        # Current runner rows carry explicit visible IDs; older rows stored
+        # visible metrics in the unprefixed metric fields instead.
+        visible_ranked = row.get("visible_ranked_ids", row.get("ranked_ids")) or []
+        visible_scored = (
+            score_ranked_sources(visible_ranked, qrels)
+            if "visible_ranked_ids" in row else row
+        )
+        for metric in METRICS:
+            row[f"visible_{metric}"] = float(visible_scored.get(metric, 0.0))
+        final_ranked = row.get("citation_ranked_ids", row.get("ranked_ids")) or []
+        abstained = str(row.get("predicted_answer") or "").strip().casefold() == "not found"
+        # Keep attempted citations for inspection, but do not award primary
+        # gain to failed episodes or the answer contract's abstention sentinel.
         scored = score_ranked_sources(
-            final_ranked, qrels
+            final_ranked if row.get("agent_ok") and not abstained else [], qrels
         )
         for metric in METRICS:
             row[metric] = float(scored.get(metric, 0.0))
             row[f"citation_{metric}"] = float(scored.get(metric, 0.0))
-        row["visible_ranked_ids"] = row.get("visible_ranked_ids") or row.get("ranked_ids") or []
+        row["visible_ranked_ids"] = list(visible_ranked)
         row["ranked_ids"] = list(final_ranked)
         row["citation_ranked_ids"] = list(final_ranked)
         row["evidence_structure"] = question.get(
@@ -164,6 +176,11 @@ def build_report(
     arm_skills: dict[str, Path] | None = None,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     by_arm = {arm: load_arm_rollouts(root) for arm, root in arm_roots.items()}
+    for arm, rows in by_arm.items():
+        counts = Counter(str(row["id"]) for row in rows)
+        duplicates = sorted(question_id for question_id, count in counts.items() if count > 1)
+        if duplicates:
+            raise ValueError(f"duplicate question IDs in arm {arm!r}: {duplicates}")
     questions = _questions_by_id(project_root)
     for rows in by_arm.values():
         _attach_primary_metrics(rows, questions)
