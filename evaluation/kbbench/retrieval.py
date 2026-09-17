@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import math
 import statistics
 import time
 from collections import defaultdict
@@ -14,6 +13,8 @@ from typing import Any, Iterable
 import hnswlib
 import numpy as np
 
+from dataset.scripts.records import load_records, read_jsonl as _load_jsonl
+
 from dsh_plugin.backend.retrieval_policy import (
     FINAL_RESULT_LIMIT,
     GRAPH_CANDIDATES_PER_SEED,
@@ -23,6 +24,10 @@ from dsh_plugin.backend.retrieval_policy import (
 )
 
 from .indexes import BM25Index
+from .scoring import (
+    aspect_retrieval_metrics as aspect_retrieval_metrics,
+    retrieval_metrics as retrieval_metrics,
+)
 
 
 METHODS = (
@@ -95,106 +100,6 @@ def rrf(rankings: Iterable[list[str]], constant: int = 60) -> tuple[list[str], d
             scores[doc_id] += 1.0 / (constant + rank)
     ordered = sorted(scores, key=lambda doc_id: (-scores[doc_id], doc_id))
     return ordered, dict(scores)
-
-
-def retrieval_metrics(ranked_ids: list[str], relevant_ids: set[str]) -> dict[str, float]:
-    output: dict[str, float] = {}
-    for cutoff in (1, 5, 10, 20):
-        found = sum(doc_id in relevant_ids for doc_id in ranked_ids[:cutoff])
-        output[f"recall_at_{cutoff}"] = found / max(1, len(relevant_ids))
-        output[f"hit_at_{cutoff}"] = float(found > 0)
-    dcg = sum(
-        1.0 / math.log2(rank + 1)
-        for rank, doc_id in enumerate(ranked_ids[:10], start=1)
-        if doc_id in relevant_ids
-    )
-    ideal = sum(
-        1.0 / math.log2(rank + 1)
-        for rank in range(1, min(10, len(relevant_ids)) + 1)
-    )
-    output["ndcg_at_10"] = dcg / ideal if ideal else 0.0
-    return output
-
-
-def aspect_retrieval_metrics(
-    ranked_ids: list[str],
-    aspects: list[dict[str, Any]],
-    *,
-    alpha: float = 0.5,
-) -> dict[str, float]:
-    """Score coverage and novelty over frozen evidence-backed answer aspects.
-
-    Aspects without a retrievable documentation ID are excluded from retrieval
-    denominators but remain available to the final-answer judge. A document may
-    support multiple aspects and receives the corresponding marginal gain.
-    """
-
-    if not 0.0 <= alpha < 1.0:
-        raise ValueError("alpha must be in [0, 1)")
-    eligible: list[dict[str, Any]] = []
-    for row in aspects:
-        doc_ids = set(map(str, row.get("retrieval_doc_ids") or []))
-        if not doc_ids:
-            continue
-        eligible.append(
-            {
-                "aspect_id": str(row["aspect_id"]),
-                "weight": float(row.get("weight") or row.get("importance") or 1.0),
-                "doc_ids": doc_ids,
-            }
-        )
-    total_weight = sum(row["weight"] for row in eligible)
-    unique_ranked = list(dict.fromkeys(map(str, ranked_ids)))
-    output: dict[str, float] = {
-        "aspect_count": float(len(aspects)),
-        "retrieval_eligible_aspect_count": float(len(eligible)),
-    }
-    for cutoff in (1, 5, 10, 20):
-        found = set(unique_ranked[:cutoff])
-        covered_weight = sum(
-            row["weight"] for row in eligible if row["doc_ids"] & found
-        )
-        output[f"weighted_aspect_recall_at_{cutoff}"] = (
-            covered_weight / total_weight if total_weight else 0.0
-        )
-
-    def dcg(order: list[str]) -> float:
-        counts = {row["aspect_id"]: 0 for row in eligible}
-        score = 0.0
-        for rank, doc_id in enumerate(order[:10], start=1):
-            gain = 0.0
-            for row in eligible:
-                if doc_id in row["doc_ids"]:
-                    gain += row["weight"] * (1.0 - alpha) ** counts[row["aspect_id"]]
-                    counts[row["aspect_id"]] += 1
-            score += gain / math.log2(rank + 1)
-        return score
-
-    candidates = sorted({doc_id for row in eligible for doc_id in row["doc_ids"]})
-    ideal_order: list[str] = []
-    ideal_counts = {row["aspect_id"]: 0 for row in eligible}
-    remaining = set(candidates)
-    for _ in range(min(10, len(remaining))):
-        def marginal(doc_id: str) -> float:
-            return sum(
-                row["weight"] * (1.0 - alpha) ** ideal_counts[row["aspect_id"]]
-                for row in eligible
-                if doc_id in row["doc_ids"]
-            )
-
-        selected = min(remaining, key=lambda doc_id: (-marginal(doc_id), doc_id))
-        ideal_order.append(selected)
-        remaining.remove(selected)
-        for row in eligible:
-            if selected in row["doc_ids"]:
-                ideal_counts[row["aspect_id"]] += 1
-    ideal = dcg(ideal_order)
-    output["alpha_ndcg_at_10"] = dcg(unique_ranked) / ideal if ideal else 0.0
-    return output
-
-
-def _load_jsonl(path: Path) -> list[dict[str, Any]]:
-    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
 
 
 def _text_hash(chunks: list[Chunk], model_name: str) -> str:
@@ -684,11 +589,32 @@ def summarize(rows: list[dict[str, Any]], group_keys: tuple[str, ...]) -> list[d
     return output
 
 
+def summary_tables(
+    rows: list[dict[str, Any]],
+    *,
+    extra_slices: tuple[tuple[str, str], ...] = (),
+) -> dict[str, list[dict[str, Any]]]:
+    """Build the shared retrieval report tables without recomputing overall."""
+    overall = summarize(rows, ("method",))
+    slices = (
+        ("evidence_category", "evidence_category"),
+        ("intent_category", "intent_category"),
+        ("evidence_structure", "evidence_structure"),
+        ("qrel_count", "qrel_count_group"),
+        *extra_slices,
+    )
+    return {
+        "overall": overall,
+        "evaluated_overall": overall,  # Retain the existing report field.
+        **{f"by_{label}": summarize(rows, (field, "method")) for label, field in slices},
+    }
+
+
 def evaluate(args: argparse.Namespace) -> dict[str, Any]:
     from sentence_transformers import SentenceTransformer
 
     corpus_rows = _load_jsonl(args.dataset_dir / "corpus.jsonl")
-    questions = _load_jsonl(args.dataset_dir / "questions.jsonl")
+    questions = load_records(args.dataset_dir)
     aspects_by_id = (
         {
             str(row["question_id"]): row
@@ -700,12 +626,10 @@ def evaluate(args: argparse.Namespace) -> dict[str, Any]:
     )
     if aspects_by_id:
         questions = [row for row in questions if str(row["question_id"]) in aspects_by_id]
-    if args.split != "all":
-        questions = [question for question in questions if question["split"] == args.split]
     if args.limit:
         questions = questions[: args.limit]
     if not questions:
-        raise ValueError("no questions remain after split and aspect filters")
+        raise ValueError("no questions remain after aspect and limit filters")
     chunks = build_chunks(corpus_rows)
     print(f"Loading embedding model {args.embedding_model}", flush=True)
     embedding_model = SentenceTransformer(
@@ -755,7 +679,6 @@ def evaluate(args: argparse.Namespace) -> dict[str, Any]:
                     "schema_version": args.schema_version,
                     "method": method,
                     "question_id": question["question_id"],
-                    "split": question["split"],
                     "intent_category": question["intent_category"],
                     "evidence_category": question["evidence_category"],
                     "evidence_structure": question.get(
@@ -789,7 +712,6 @@ def evaluate(args: argparse.Namespace) -> dict[str, Any]:
     with (args.output_dir / "per_query.jsonl").open("w", encoding="utf-8") as handle:
         for row in rows:
             handle.write(json.dumps(row, ensure_ascii=False) + "\n")
-    test_rows = [row for row in rows if row["split"] == "test"]
     report = {
         "iteration": args.iteration,
         "schema_version": args.schema_version,
@@ -799,27 +721,11 @@ def evaluate(args: argparse.Namespace) -> dict[str, Any]:
         "aspect_annotation_file": str(args.aspects) if args.aspects else None,
         "aspect_aware_metrics": bool(aspects_by_id),
         "methods": list(methods),
-        "split_filter": args.split,
         "graph_weight": args.graph_weight,
         "graph_max_hops": args.graph_max_hops,
         "graph_max_candidates": args.graph_max_candidates,
         "graph_hop_decay": args.graph_hop_decay,
-        "test_overall": summarize(test_rows, ("method",)),
-        "evaluated_overall": summarize(rows, ("method",)),
-        "test_by_evidence_category": summarize(
-            test_rows, ("evidence_category", "method")
-        ),
-        "test_by_intent_category": summarize(test_rows, ("intent_category", "method")),
-        "test_by_evidence_structure": summarize(
-            test_rows, ("evidence_structure", "method")
-        ),
-        "test_by_qrel_count": summarize(
-            test_rows, ("qrel_count_group", "method")
-        ),
-        "dev_by_evidence_category": summarize(
-            [row for row in rows if row["split"] == "dev"],
-            ("evidence_category", "method"),
-        ),
+        **summary_tables(rows),
         "latency_scope": "Warm per-query retrieval including query embedding and reranking; index build excluded.",
     }
     (args.output_dir / "report.json").write_text(
@@ -860,13 +766,12 @@ def main() -> None:
     )
     parser.add_argument("--graph-hop-decay", type=float, default=0.5)
     parser.add_argument("--top-k", type=int, default=FINAL_RESULT_LIMIT)
-    parser.add_argument("--split", choices=("all", "dev", "test"), default="all")
     parser.add_argument("--graph-weight", type=float, default=0.25)
     parser.add_argument("--limit", type=int)
     parser.add_argument("--methods", nargs="*")
     args = parser.parse_args()
     report = evaluate(args)
-    print(json.dumps(report["test_overall"], indent=2))
+    print(json.dumps(report["overall"], indent=2))
 
 
 if __name__ == "__main__":

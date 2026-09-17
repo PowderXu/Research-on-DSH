@@ -1,5 +1,11 @@
 # DocsQA-Repo: A Benchmark for Evidence-Complete Question Answering over Linked Documentation Repositories
 
+> Current release note (2026-09-16): all 467 questions form one evaluation pool.
+> Train/validation/test assignments and the executable optimizer have been
+> removed. Rule-selection and 361-question results discussed below describe
+> earlier experiments and are retained as historical annotation/result provenance.
+
+
 ## Abstract
 
 Technical documentation is commonly organized as many small Markdown or MDX
@@ -425,13 +431,14 @@ multi-page cases; 23 of the latter connect through an authored documentation
 link and 29 are dispersed. These labels describe the pinned data and are not
 predicted by an evaluated agent.
 
-### A.4 Physical and rule-optimization splits
+### A.4 Current question pool and historical annotation cohorts
 
-The retained physical split contains 33 construction, 73 historical
-validation, and 361 development/evaluation records. It preserves existing
-artifacts and is not a sealed system test.
+The current release stores all 467 questions in one pool. Question inputs and
+reference answers are separate files joined by question_id. Old physical
+partition labels are no longer stored or used. The following table describes
+only the earlier annotation-preparation experiment.
 
-The rule-optimization overlay is separate:
+Historical annotation cohorts:
 
 | Project | Train | Validation | Held-out test |
 |---|---:|---:|---:|

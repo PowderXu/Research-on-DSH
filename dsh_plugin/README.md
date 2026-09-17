@@ -28,9 +28,9 @@ dsh_plugin/
 └── scripts/                     typed build/dependency verification
 ```
 
-Python test source is kept under `tests/`, separate from the backend and agent
-implementation. The TypeScript package keeps its existing `plugin/test/`
-directory. From the repository root, run DSH Python tests with:
+Software checks stay local in the Git-ignored `tests/` and `plugin/test/`
+directories. They are optional development tools and are not included in a
+fresh clone. When the local sources are present, run DSH Python checks with:
 
 ```bash
 evaluation/.venv/bin/python -m pytest -c evaluation/pyproject.toml dsh_plugin/tests
@@ -112,14 +112,15 @@ Install and verify the DSH runtime from the repository root:
 ```bash
 npm ci --prefix dsh_plugin
 npm run --prefix dsh_plugin setup:dsh-profile
-npm run --prefix dsh_plugin verify:dsh
+npm run --prefix dsh_plugin check:dsh-dependencies
 ```
 
 `setup:dsh-profile` expands to three ordered operations: install the plugin's
 development dependencies without running lifecycle scripts, build with
 `tsc` then `tsdown`, and install the built local package into the headless
-profile. `verify:dsh` checks compiled exports, declarations, DSH dependency
-versions, the installed profile package, strict types, and all plugin tests.
+profile. `check:dsh-dependencies` verifies the installed runtime dependencies.
+When the local TypeScript check sources are present, `verify:dsh` additionally
+runs their type checks and plugin tests.
 
 Agent execution also imports the retrieval implementation from
 `evaluation/kbbench/`, but all DSH orchestration, profile configuration, service
@@ -138,7 +139,7 @@ Each arm owns a separate runtime store below `plugin/data/`:
 ```text
 data/<arm>/
 ├── documents/   exact normalized corpus text and generated .ignore
-├── corpus/      prepared corpus, manifest, and evaluation splits
+├── corpus/      prepared corpus, manifest, questions, and separate answers
 ├── indexes/     embeddings and sparse/dense index caches
 ├── assets/      derived image assets
 ├── artifacts/   neutral retrieval units and optional KGGen graph JSON
@@ -238,3 +239,16 @@ to `plugin/data/neo4j/database` and `plugin/data/neo4j/traces/neo4j`. The ingest
 command creates text/full-text indexes, all schema-v2 document/image-text nodes
 and structural edges, and the semantic nodes and KGGen
 claims when `kggen_graph.json` exists.
+
+## Pinned dataset repository
+
+Baseline preparation downloads and verifies `PowderXu/docsqa-data` by default:
+
+```sh
+PYTHONPATH=evaluation:. evaluation/.venv/bin/python -m dsh_plugin.backend.prepare_plugin_data --arm hybrid
+```
+
+Use `--source-dataset PATH` for an explicit local package. The repository commit
+and manifest hash are pinned in `evaluation/dataset/templates/dataset_source.json`.
+Private downloads use an authenticated GitHub CLI. Questions and reference
+answers remain separate in the local package.

@@ -47,37 +47,6 @@ def _revision(repo_root: Path) -> str:
     ).strip()
 
 
-def _materialize_frozen_splits(
-    dataset_dir: Path, candidates: list[dict[str, Any]]
-) -> dict[str, int]:
-    membership = {
-        str(row["source_url"]).rstrip("/"): str(row["benchmark_split"])
-        for row in candidates
-    }
-    questions = _load_jsonl(dataset_dir / "questions.jsonl")
-    grouped: dict[str, list[dict[str, Any]]] = {
-        "train": [],
-        "validation": [],
-        "test": [],
-    }
-    for question in questions:
-        source_url = str(question.get("source_url") or "").rstrip("/")
-        split = membership.get(source_url)
-        if split not in grouped:
-            raise ValueError(
-                f"missing or invalid frozen split for {source_url}: {split!r}"
-            )
-        grouped[split].append(question)
-    split_dir = dataset_dir / "splits"
-    split_dir.mkdir(exist_ok=True)
-    for split, rows in grouped.items():
-        (split_dir / f"{split}.json").write_text(
-            json.dumps(rows, ensure_ascii=False, indent=2) + "\n",
-            encoding="utf-8",
-        )
-    return {split: len(rows) for split, rows in grouped.items()}
-
-
 def _discussion_config(project_root: Path, dataset: str) -> CorpusConfig:
     default = CONFIG_DEFAULTS[dataset]
     repo_root = project_root / str(default["repo"])
@@ -184,9 +153,6 @@ def build_all(args: argparse.Namespace) -> dict[str, Any]:
     project_manifests["github-docs"] = github_build.prepare(
         github_repo, github_cache, github_output, _revision(github_repo)
     )
-    project_manifests["github-docs"]["frozen_splits"] = _materialize_frozen_splits(
-        github_output, by_dataset["github_docs"]
-    )
     project_manifests["github-docs"]["fetch_failures"] = github_failures
     discussion_dirs["github_docs"] = github_cache
 
@@ -201,9 +167,6 @@ def build_all(args: argparse.Namespace) -> dict[str, Any]:
             output_dir=projects_root / project,
             workers=args.workers,
             refresh=args.refresh,
-        )
-        project_manifests[project]["frozen_splits"] = _materialize_frozen_splits(
-            projects_root / project, by_dataset[dataset]
         )
         discussion_dirs[dataset] = project_root / "results/cache/discussions" / dataset
 
@@ -257,13 +220,14 @@ def main() -> None:
     parser.add_argument(
         "--source-file",
         type=Path,
-        default=project_root
-        / "evaluation/dataset/templates/discussion_sources.jsonl",
+        required=True,
+        help="Path to docsqa-data/provenance/discussion_sources.jsonl",
     )
     parser.add_argument(
         "--config",
         type=Path,
-        default=project_root / "evaluation/dataset/templates/public_sources.json",
+        required=True,
+        help="Path to docsqa-data/sources.json",
     )
     parser.add_argument(
         "--output-root",

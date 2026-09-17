@@ -20,7 +20,7 @@ from kbbench.retrieval import (
     build_chunks,
     build_or_load_embeddings,
 )
-from kbbench.plugin_eval import Neo4jGitHubDocsGraphRAG
+from kbbench.backends import Neo4jGitHubDocsGraphRAG
 from .data_paths import arm_data_layout
 from .graph_records import build_graph_snapshot
 from .http_contract import (

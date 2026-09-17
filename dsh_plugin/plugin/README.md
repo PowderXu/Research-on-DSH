@@ -22,12 +22,15 @@ context exposure, session traces, and agent execution.
 ```bash
 npm ci --prefix dsh_plugin
 npm run --prefix dsh_plugin setup:dsh-profile
-npm run --prefix dsh_plugin verify:dsh
+npm run --prefix dsh_plugin check:dsh-dependencies
 ```
 
 Run these commands from the repository root. The outer DSH install provides the
 host-side peer graph; `setup:dsh-profile` installs this package's build tools,
 builds it, and connects it to the pinned profile.
+
+Software checks in `test/` are local and Git-ignored. When present, run them
+with `npm run --prefix dsh_plugin verify:dsh`; they are optional for setup.
 
 ## TypeScript package layout
 

@@ -10,7 +10,8 @@ materialize_images.py reproduce images and record their provenance
 image_evidence.py     convert reproducible pixels to conservative local text
 normalize_dataset.py  build standalone answers, claims, requirements, and evidence IDs
 describe_benchmark.py reproduce corpus and evidence statistics
-audit_integrity.py    check duplicate and split-overlap diagnostics
+audit_integrity.py    check exact and lexical duplicate diagnostics
+aspect_construction.py validate frozen aspect records and evidence bindings
 llm_runtime.py        shared credential, usage, and percentile helpers
 rubrics/              versioned normalization and final-answer judging rules
 ```
@@ -33,10 +34,9 @@ PYTHONPATH=evaluation:. evaluation/.venv/bin/python \
 
 This produces 467 accepted local-evidence records from 556 structurally
 eligible sources. The normalization score and `>0.90` gate belong only to
-dataset construction; they are not the final-answer metric and are not used by
-the aspect-rule optimizer.
+dataset construction; they are not the final-answer metric and do not partition the evaluation pool.
 
 The current clean-generation rubric is `rubrics/normalization_v1.json`.
 Running it is a new dataset-construction experiment and must use a new work
-directory. General aspect-rule optimization is documented separately in
-[`../rule_optimization/README.md`](../rule_optimization/README.md).
+directory. Evaluation uses frozen aspects from the dataset release. Their historical
+construction is recorded in [`../../docs/RULE_OPTIMIZATION.md`](../../docs/RULE_OPTIMIZATION.md).

@@ -25,14 +25,6 @@ judge = [
   "Pillow>=10,<13",
   "pydantic>=2,<3",
 ]
-rule-optimization = [
-  "openai>=2,<3",
-  "pydantic>=2,<3",
-  "skillopt==0.2.0",
-]
-test = [
-  "pytest>=8,<10",
-]
 all = [
   "sentence-transformers>=3,<4",
   "neo4j>=5.26,<7",
@@ -40,10 +32,10 @@ all = [
   "openai>=2,<3",
   "Pillow>=10,<13",
   "pydantic>=2,<3",
-  "skillopt==0.2.0",
 ]
 
 [project.scripts]
+docsqa-download-dataset = "dataset.scripts.download_dataset:main"
 docsqa-combine-datasets = "dataset.scripts.combine_datasets:main"
 docsqa-prepare-corpus = "dataset.scripts.prepare_unified_corpus:main"
 docsqa-build = "dataset.scripts.build:main"
@@ -51,7 +43,7 @@ docsqa-plugin-eval = "kbbench.plugin_eval:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["kbbench*", "dataset*", "dataset_analysis*", "rule_optimization*"]
+include = ["kbbench*", "dataset*", "dataset_analysis*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "../dsh_plugin/tests"]

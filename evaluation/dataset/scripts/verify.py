@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+from dataset.scripts.records import PARTITION_FIELDS, load_records
+
 import argparse
 import hashlib
 import json
@@ -42,7 +44,7 @@ def verify_dataset(data_dir: Path) -> dict[str, int]:
             raise ValueError(f"hash mismatch: {relative}")
 
     corpus = _load_jsonl(data_dir / "corpus.jsonl")
-    questions = _load_jsonl(data_dir / "questions.jsonl")
+    questions = load_records(data_dir)
     doc_ids = {str(row["doc_id"]) for row in corpus}
     question_ids = {str(row["question_id"]) for row in questions}
     if len(doc_ids) != len(corpus):
@@ -72,23 +74,10 @@ def verify_dataset(data_dir: Path) -> dict[str, int]:
     if missing_qrels:
         raise ValueError(f"qrels missing from corpus: {missing_qrels[:5]}")
 
-    split_members: dict[str, set[str]] = {}
-    for split in ("train", "validation", "test"):
-        path = data_dir / "splits" / f"{split}.json"
-        if not path.exists():
-            continue
-        rows = json.loads(path.read_text(encoding="utf-8"))
-        split_members[split] = {str(row["question_id"]) for row in rows}
-        expected = (manifest.get("splits") or manifest.get("split_counts") or {}).get(split)
-        if expected is not None and int(expected) != len(rows):
-            raise ValueError(f"{split} count mismatch")
-    names = list(split_members)
-    for index, left in enumerate(names):
-        for right in names[index + 1 :]:
-            if not split_members[left].isdisjoint(split_members[right]):
-                raise ValueError(f"{left} and {right} splits overlap")
-    if split_members and set().union(*split_members.values()) != question_ids:
-        raise ValueError("split membership does not exactly cover questions")
+    if (data_dir / "splits").exists() or any(key in manifest for key in ("splits", "split_counts", "questions_by_split")):
+        raise ValueError("evaluation package must not contain dataset partitions")
+    if manifest.get("partitioning", "none") != "none" or any(set(row) & PARTITION_FIELDS for row in questions):
+        raise ValueError("evaluation records must belong to one unpartitioned pool")
 
     return {
         "documents": len(corpus),
@@ -103,7 +92,7 @@ def main() -> None:
     parser.add_argument(
         "--dataset-dir",
         type=Path,
-        default=project_root / "evaluation/dataset/evaluation_data/combined",
+        default=project_root / "evaluation/dataset/evaluation_data/normalized",
     )
     args = parser.parse_args()
     counts = verify_dataset(args.dataset_dir)

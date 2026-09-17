@@ -11,8 +11,11 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Iterable
 
+from dataset.scripts.records import load_records, read_jsonl
 from kbbench.scoring import score_ranked_sources
 from dsh_plugin.backend.retrieval_policy import retrieval_contract
+
+from .runtime import current_runtime_identity
 
 
 METRICS = (
@@ -31,7 +34,6 @@ CITATION_METRICS = tuple(f"citation_{metric}" for metric in METRICS)
 VISIBLE_METRICS = tuple(f"visible_{metric}" for metric in METRICS)
 TOKEN_FIELDS = ("input_fresh", "input_cached", "input_total", "output", "total")
 EXPECTED_ARMS = ("fs", "hybrid", "neo4j")
-EXPECTED_FULL_QUESTIONS = 361
 MATCHED_DEVELOPMENT_MODEL = "gpt-5.6-luna"
 DSH_LOCK_PATHS = set(("dsh_plugin/package-lock.json dsh_plugin/package.json "
                       "dsh_plugin/plugin/package-lock.json dsh_plugin/plugin/package.json").split())
@@ -165,10 +167,10 @@ def load_arm_rollouts(run_root: Path) -> list[dict[str, Any]]:
 
 
 def load_expected_question_ids(path: Path) -> list[str]:
-    """Load an explicit expected set from a split JSON or aspects JSONL."""
+    """Load an explicit expected set from questions JSONL or aspects JSONL."""
 
     if path.suffix == ".jsonl":
-        values = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        values = read_jsonl(path)
     else:
         values = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(values, list):
@@ -182,81 +184,6 @@ def load_expected_question_ids(path: Path) -> list[str]:
     return ids
 
 
-def _logical_relative_path(path: Path, root: Path) -> str:
-    try:
-        return path.resolve().relative_to(root.resolve()).as_posix()
-    except ValueError as error:
-        raise ValueError(f"runtime file is outside logical root: {path}") from error
-
-
-def _files_sha256(paths: Iterable[Path], *, logical_root: Path) -> str:
-    """Hash the same logical paths and bytes persisted by the runner."""
-
-    digest = hashlib.sha256()
-    resolved = sorted(
-        (value.resolve() for value in paths),
-        key=lambda path: _logical_relative_path(path, logical_root),
-    )
-    for path in resolved:
-        digest.update(_logical_relative_path(path, logical_root).encode("utf-8"))
-        digest.update(b"\0")
-        digest.update(path.read_bytes())
-        digest.update(b"\0")
-    return digest.hexdigest()
-
-
-def _file_identity(path: Path, logical_root: Path) -> dict[str, str]:
-    return {
-        "path": _logical_relative_path(path, logical_root),
-        "sha256": hashlib.sha256(path.resolve().read_bytes()).hexdigest(),
-    }
-
-
-def _repo_file_bundle_identity(
-    paths: Iterable[Path], project_root: Path
-) -> dict[str, Any]:
-    """Mirror ``runner._repo_file_bundle_identity`` exactly."""
-
-    files = sorted(
-        (path.resolve() for path in paths),
-        key=lambda path: _logical_relative_path(path, project_root),
-    )
-    return {
-        "sha256": _files_sha256(files, logical_root=project_root),
-        "files": [_file_identity(path, project_root) for path in files],
-    }
-
-
-def current_runtime_identity(project_root: Path, arm: str) -> dict[str, Any]:
-    """Reproduce the runtime identity stored by ``agent_eval.runner``."""
-
-    compiled = sorted((project_root / "dsh_plugin/plugin/lib").rglob("*.js"))
-    if not compiled:
-        raise FileNotFoundError(
-            "compiled DSH plugin runtime is missing; run npm run build in dsh_plugin/plugin"
-        )
-    paths = [
-        project_root / "dsh_plugin/agent_eval/runner.py",
-        project_root / "dsh_plugin/backend/corpus_workspace.py",
-        project_root / "dsh_plugin/backend/prepare_plugin_data.py",
-        project_root / "dsh_plugin/scripts/preflight_fs.ts",
-        project_root / "dsh_plugin/backend/http_contract.py",
-        project_root / "dsh_plugin/backend/retrieval_policy.py",
-        project_root / "dsh_plugin/backend/service.py",
-        project_root / "dsh_plugin/plugin/package.json",
-        project_root / "evaluation/kbbench/plugin_eval.py",
-        project_root / "evaluation/kbbench/retrieval.py",
-        project_root / "dsh_plugin/harness/model-openai.patch.yml",
-        project_root / "dsh_plugin/harness/docsqa_dsh_common.patch.yml",
-        project_root / f"dsh_plugin/harness/docsqa_{arm}_system.patch.yml",
-        *compiled,
-    ]
-    return {
-        "runtime": _repo_file_bundle_identity(paths, project_root),
-        "compiled_plugin": _repo_file_bundle_identity(compiled, project_root),
-    }
-
-
 def _questions_by_id(project_root: Path) -> dict[str, dict[str, Any]]:
     path = project_root / "evaluation/dataset/evaluation_data/combined/questions.jsonl"
     if not path.is_file():
@@ -265,9 +192,7 @@ def _questions_by_id(project_root: Path) -> dict[str, dict[str, Any]]:
         return {}
     return {
         str(row["question_id"]): row
-        for line in path.read_text(encoding="utf-8").splitlines()
-        if line.strip()
-        for row in [json.loads(line)]
+        for row in load_records(path.parent)
     }
 
 
@@ -344,11 +269,14 @@ def validate_arm_rollouts(
     expected = set(expected_list)
     if not expected:
         raise ValueError("expected question IDs cannot be empty")
-    if not small_trial and len(expected) != EXPECTED_FULL_QUESTIONS:
-        raise ValueError(
-            f"complete matched development run requires exactly {EXPECTED_FULL_QUESTIONS} expected IDs; "
-            f"got {len(expected)} (use explicit small_trial=True only for a pilot)"
-        )
+    if not small_trial and not artifact_replay:
+        canonical_path = project_root / "evaluation/dataset/evaluation_data/normalized/questions.jsonl"
+        canonical = set(load_expected_question_ids(canonical_path))
+        if expected != canonical:
+            raise ValueError(
+                f"complete evaluation requires the full canonical question pool ({len(canonical)} IDs); "
+                "use explicit small_trial=True for a subset"
+            )
 
     shared_contract_fields: dict[str, tuple[str, str]] = {}
     for arm in EXPECTED_ARMS:
@@ -441,7 +369,7 @@ def validate_arm_rollouts(
                             f"stored/current {field} mismatch for {arm}/{row.get('id')}"
                         )
             fields = (
-                "embedding_model", "device", "corpus", "split", "scoring",
+                "embedding_model", "device", "corpus", "question_pool", "scoring",
                 "dependencies", "provider",
             )
             for field in fields:
@@ -783,12 +711,12 @@ def main() -> None:
         "--expected-ids",
         type=Path,
         required=True,
-        help="Frozen split JSON or aspects JSONL defining the exact expected question IDs.",
+        help="Frozen questions JSONL or aspects JSONL defining the exact expected question IDs.",
     )
     parser.add_argument(
         "--small-trial",
         action="store_true",
-        help="Explicitly label a non-361 expected-ID subset as an engineering pilot rather than a complete matched development run.",
+        help="Explicitly label a question-pool subset as an engineering pilot rather than a complete matched development run.",
     )
     parser.add_argument(
         "--artifact-replay",

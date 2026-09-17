@@ -2,19 +2,16 @@
 
 ## Dataset boundary
 
-`evaluation/dataset/` contains exactly four directories:
+The canonical release and all source manifests live in
+[PowderXu/docsqa-data](https://github.com/PowderXu/docsqa-data): separate questions,
+answers, frozen aspects, image text, the compressed corpus, source revisions and
+798 construction-candidate records with collection lineage.
 
-```text
-docs/             generated public Markdown/MDX workspace
-templates/        source configuration and JSON data contracts
-scripts/          construction, combination, and verification code
-evaluation_data/  generated per-project and combined QA packages
-```
-
-The documentation and evaluation data are local generated artifacts. Public
-source configuration and data contracts live in `templates/`; executable
-construction logic lives in `scripts/`. Source repository and downloaded
-Discussion caches live under `results/cache/`, outside the dataset.
+The benchmark keeps the pinned downloader, JSON schemas and construction/evaluation
+code. Its `evaluation/dataset/docs/` and `evaluation_data/` directories are ignored
+local caches. Source repository and Discussion caches are also ignored under
+`results/cache/`. Normal evaluation downloads the pinned release; rebuilding a
+new release requires explicitly supplied paths from the data repository.
 
 ## Unified public source corpus
 
@@ -61,7 +58,7 @@ the agent's documentation workspace.
 `evaluation/dataset/scripts/combine_datasets.py` constructs the corresponding unified
 evaluation package only after the deterministic source-package validator has
 accepted a QA case. It namespaces canonical document IDs, graph edges, question
-IDs, and qrels by project; preserves the original frozen split membership; and
+IDs, and qrels by project; keeps all selected questions in one pool; and
 replaces the raw accepted answer with its recursively expanded validated
 reference package. The pre-normalization result is 5,392 source-document
 records, 556 questions, and 627 qrels under `evaluation_data/combined/`. The stricter
@@ -88,7 +85,7 @@ local corpus. The construction stages are therefore:
 5. resolve at least one link to the pinned corpus, preserving unresolved links
    for the stricter source-package gate;
 6. freeze only public identifiers, permalinks, direct documentation links where
-   retained, and split membership in `templates/discussion_sources.jsonl`.
+   retained in `docsqa-data/provenance/discussion_sources.jsonl`.
 
 `dataset.scripts.candidate_discovery discover` implements stages 1--4 for new
 collections. It fails closed when any date partition returns 950 or more unique
@@ -108,7 +105,7 @@ The existing 798-row freeze predates that guard. Its retained lineage is:
 For Prisma, Supabase, and Tailwind CSS, every frozen row is present in the
 archived 2026-08-24 host screen, and its source URL, accepted-answer permalink,
 and exact-filtered documentation links agree. The archived screens and their
-hashes are summarized in `templates/candidate_discovery.json`; the large raw
+hashes are summarized in `docsqa-data/provenance/candidate_discovery.json`; the large raw
 screens remain outside this clean repository. The exact historical post-screen
 selection procedure, including the resolver and redirect snapshot, that reduced
 227/132/202 screened rows to 213/90/167 was not retained. One Tailwind exclusion
@@ -122,11 +119,14 @@ deterministic source gate accepts 556. The original listing population and all
 candidate-to-freeze decisions are not fully reproducible. Current benchmark
 claims must not describe the collection as exhaustive or unbiased.
 
-Run the offline lineage and pinned-qrel audit with:
+Set `DOCSQA_DATA_DIR` to the external dataset checkout, then run the offline
+lineage and pinned-qrel audit with:
 
 ```bash
 PYTHONPATH=evaluation:. evaluation/.venv/bin/python \
-  -m dataset.scripts.candidate_discovery audit
+  -m dataset.scripts.candidate_discovery audit \
+  --frozen-manifest "$DOCSQA_DATA_DIR/provenance/discussion_sources.jsonl" \
+  --lineage "$DOCSQA_DATA_DIR/provenance/candidate_discovery.json"
 ```
 
 ## Questions and relevance judgments
@@ -174,27 +174,17 @@ The deterministic gate does not decide whether the remaining evidence is
 factually correct or complete. Those checks happen after reproducible images
 have been converted to provenance-bearing local text.
 
-## Physical split labels and evaluation roles
+## One evaluation pool
 
-| Physical source label | Questions | Current role |
-|---|---:|---|
-| Train | 39 | construction examples |
-| Validation | 85 | legacy dataset validation/development |
-| Test | 432 | legacy source label; not currently a sealed test cohort |
+The normalized release contains 467 questions with no train, validation, or
+test partitions. Inputs live in `questions.jsonl`; reference answers and
+scoring metadata live in `answers.jsonl`, joined by `question_id`.
+The 798-source candidate manifest also has no partition assignments.
 
-These source-package labels sum to 556. Normalization retains 467 cases and
-preserves their inherited filenames, yielding 33 construction examples, 73
-legacy physical-validation records, and 361 records physically named `test`.
-The latter records have been inspected while retrievers and evaluation code were
-developed, so current reports call them the **development/evaluation
-partition**, not held-out or final evidence.
-
-The intended formal benchmark remains zero-shot: a submitted system receives
-the pinned corpus and each newly sealed question, but no answer, qrel, aspect,
-supervised update, or in-context benchmark example. A formal result therefore
-requires a new temporal or source-disjoint cohort collected after the system and
-judge are frozen. `graph_opportunity` is intentionally excluded because it was
-a model/heuristic label rather than factual evaluation evidence.
+All systems receive the same pinned corpus and question pool. Existing
+results remain exploratory because these cases were inspected during
+benchmark development. Removing old partition labels does not make historical
+results independent or change their recorded sample size.
 
 ## Factual slices
 

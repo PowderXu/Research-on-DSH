@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DocsQA reference answer and scoring metadata",
+  "type": "object",
+  "required": [
+    "question_id"
+  ],
+  "properties": {
+    "question_id": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "not": {
+    "anyOf": [
+      {
+        "required": [
+          "source_question_id"
+        ]
+      },
+      {
+        "required": [
+          "project"
+        ]
+      },
+      {
+        "required": [
+          "dataset"
+        ]
+      },
+      {
+        "required": [
+          "title"
+        ]
+      },
+      {
+        "required": [
+          "query"
+        ]
+      },
+      {
+        "required": [
+          "source_url"
+        ]
+      },
+      {
+        "required": [
+          "community_category"
+        ]
+      },
+      {
+        "required": [
+          "question_images"
+        ]
+      },
+      {
+        "required": [
+          "question_modalities"
+        ]
+      },
+      {
+        "required": [
+          "split"
+        ]
+      },
+      {
+        "required": [
+          "benchmark_split"
+        ]
+      }
+    ]
+  },
+  "additionalProperties": true
+}

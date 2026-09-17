@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import html
 import json
 import re
@@ -13,6 +12,8 @@ from typing import Any, Iterable
 from urllib.parse import unquote, urlsplit
 
 import yaml
+
+from .records import RECORD_LAYOUT, write_records
 
 
 LOCALE_RE = re.compile(r"^[a-z]{2}(?:-[a-z]{2})?$", re.IGNORECASE)
@@ -180,7 +181,6 @@ class DiscussionQuestion:
     intent_category: str
     evidence_category: str
     evidence_flags: list[str]
-    split: str
 
 
 class GitHubDocsCorpus:
@@ -474,11 +474,6 @@ def _evidence_shape(
     return category, sorted(flags)
 
 
-def _split(question_id: str, evidence_category: str) -> str:
-    digest = hashlib.sha256(f"github-docs-v1:{evidence_category}:{question_id}".encode()).digest()
-    return "dev" if int.from_bytes(digest[:4], "big") % 4 == 0 else "test"
-
-
 def parse_discussion(path: Path, corpus: GitHubDocsCorpus) -> DiscussionQuestion | None:
     text = path.read_text(encoding="utf-8", errors="replace")
     data = _extract_json_ld(text)
@@ -534,7 +529,6 @@ def parse_discussion(path: Path, corpus: GitHubDocsCorpus) -> DiscussionQuestion
         intent_category=_intent(title, query, ordered_qrels),
         evidence_category=evidence_category,
         evidence_flags=flags,
-        split=_split(question_id, evidence_category),
     )
 
 
@@ -588,10 +582,7 @@ def prepare(
         )
         return row
 
-    _write_jsonl(
-        output_dir / "questions.jsonl",
-        (question_record(question) for question in questions),
-    )
+    write_records(output_dir, (question_record(question) for question in questions))
     _write_jsonl(
         output_dir / "corpus.jsonl",
         (
@@ -620,7 +611,8 @@ def prepare(
         "corpus_revision": revision,
         "documents": len(corpus.pages),
         "questions": len(questions),
-        "questions_by_split": Counter(question.split for question in questions),
+        "record_layout": RECORD_LAYOUT,
+        "partitioning": "none",
         "questions_by_intent": Counter(question.intent_category for question in questions),
         "questions_by_evidence_category": Counter(
             question.evidence_category for question in questions

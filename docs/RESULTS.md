@@ -1,11 +1,56 @@
 # Current results
 
-Status date: **2026-09-04**.
+> The current dataset is one 467-question pool with no dataset partitions.
+> The retrieval-only comparison below uses that full pool. Later agent and
+> annotation tables retain their original historical sample sizes and settings.
 
-This file is the only maintained result index. Generated datasets, model
-outputs, trajectories, indexes, and per-run reports remain under ignored local
-paths. The 361-question system results are exploratory because that physical
-split was inspected during development.
+Status date: **2026-09-16**.
+
+This file is the maintained result index. Generated datasets, model outputs,
+trajectories, indexes and detailed reports remain in ignored local directories.
+Current results are exploratory because the question pool was used in development.
+See [the research plan](RESEARCH_ANALYSIS.md) for completed and pending steps.
+
+## Current-release retrieval comparison
+
+Five existing methods were run on all 467 questions (2,335 evaluations), each
+restricted to its product's documentation. All use the same corpus and chunker,
+50 chunk candidates per base retriever and a final top 10. Hybrid uses RRF;
+the reranker scores up to 45 hybrid pages with `ms-marco-MiniLM-L-6-v2`.
+Dense retrieval uses `all-MiniLM-L6-v2`. Native-link expansion uses the existing
+offline graph baseline: five seeds, two hops, at most 50 discovered non-seed
+pages, weight 0.25 and hop decay 0.5. This is separate from the Neo4j agent arm.
+No new retrieval method, API call or parameter tuning was introduced.
+
+| Method | Recall@10 | Hit@10 | nDCG@10 | AllSupport@10 |
+|---|---:|---:|---:|---:|
+| BM25 | 0.4718 | 0.5096 | 0.2895 | 0.4347 |
+| Dense | 0.6294 | 0.6788 | 0.4044 | 0.5803 |
+| Hybrid | 0.6070 | 0.6510 | 0.3911 | 0.5653 |
+| Hybrid + reranker | 0.5164 | 0.5589 | 0.3135 | 0.4775 |
+| Hybrid + native links | 0.6104 | 0.6488 | 0.3799 | 0.5739 |
+
+Hybrid recovers 329 of the 601 annotated question–page pairs in its top 10;
+147 are absent from its candidate pool and 125 rank below 10. Native links
+reduce candidate misses to 108, but increase ranking misses to 164; the total
+recovered pairs stays at 329. Its per-question Recall@10 change is only
++0.34 percentage points (descriptive paired 95% bootstrap interval
+−1.66 to +2.39). The reranker reduces mean recall by 9.06 points
+(interval −13.13 to −5.07); these outcomes were not tuned away.
+
+There are 366 single-citation and 101 multiple-citation questions. Hybrid
+Recall@10 is 0.669 versus 0.381; native-link hybrid is 0.680 versus 0.357.
+Multiple citations do not prove necessary multi-file reasoning. Product and
+intent slices are retained, but do not isolate the effect of document topology.
+
+Input/code fingerprints stayed unchanged throughout the run. All 2,335 scores
+passed independent Recall, Hit and nDCG recomputation. Detailed rankings,
+candidate traces, failure slices and frozen settings are retained in the ignored
+local `phase11_research_plan` research directory. The evaluated release files
+have the same manifest hash as the newly pinned data commit `19af578`.
+These metrics measure cited-page recovery, not full answer correctness; unjudged
+pages may be useful. Step 1 is deferred as requested. The matched fixed-RAG
+versus adaptive-agent answer comparison remains pending.
 
 ## Dataset construction
 
@@ -44,7 +89,7 @@ PYTHONPATH=evaluation:. evaluation/.venv/bin/python \
 
 ## Aspect-rule optimization
 
-The current implementation creates a deterministic project-stratified split
+The historical annotation experiment created a deterministic project-stratified split
 from all 467 normalized records:
 
 | Partition | GitHub Docs | Prisma | Supabase | Tailwind CSS | Total |
@@ -81,19 +126,10 @@ This is weak-supervision compatibility, not human-agreement evidence. The
 completed final-answer results below use only this optimized rule and its
 frozen aspects; superseded judge artifacts remain excluded.
 
-Run the real optimization and aspect freeze with:
-
-```bash
-export KBBENCH_OPENAI_ENV_FILE=/absolute/path/to/private.env
-PYTHONPATH=evaluation:. evaluation/.venv/bin/python \
-  -m rule_optimization.run \
-  --config evaluation/rule_optimization/config.yaml
-```
-
-The run is accepted only if `rule_eligibility.json` reports validation pass
-rate at least 0.80, a completed held-out test, and all 467 frozen aspect
-records. The completed local run satisfies these conditions. Outputs are written to
-`results/runs/rule-optimization/skillopt-sol-luna/`.
+The completed annotation-run artifacts remain under
+`results/runs/rule-optimization/skillopt-sol-luna/` for provenance. The active
+optimizer has been retired; current evaluation downloads frozen annotations
+with the dataset. See [annotation provenance](RULE_OPTIMIZATION.md).
 
 ## Trajectory retrieval evaluation
 
@@ -134,13 +170,12 @@ sequential execution for simplicity; the reported run used isolated DSH homes
 and separate indexed services so the three arms could run contemporaneously:
 
 ```bash
-RUN_ROOT=results/runs/agents/current-matched
+RUN_ROOT=results/runs/agents/whole-pool
 for arm in fs hybrid neo4j; do
   KBBENCH_OPENAI_ENV_FILE=/absolute/path/to/private.env \
   PYTHONPATH=evaluation:. evaluation/.venv/bin/python \
     -m dsh_plugin.agent_eval.runner \
     --arm "$arm" \
-    --split test \
     --output-dir "$RUN_ROOT/$arm" \
     --resume
 done
@@ -150,7 +185,7 @@ PYTHONPATH=evaluation:. evaluation/.venv/bin/python \
   --fs "$RUN_ROOT/fs" \
   --hybrid "$RUN_ROOT/hybrid" \
   --neo4j "$RUN_ROOT/neo4j" \
-  --expected-ids evaluation/dataset/evaluation_data/normalized/splits/test.json \
+  --expected-ids evaluation/dataset/evaluation_data/normalized/questions.jsonl \
   --out-dir "$RUN_ROOT/trajectory-report"
 ```
 
@@ -183,12 +218,12 @@ hallucination diagnostics must therefore be interpreted together. The 361
 persisted judge calls use 5,511,339 total tokens; median judge-call latency is
 23.05 seconds.
 
-After a successful rule-optimization run has written all 467 frozen aspects,
-judge the matched agent answers as follows:
+After downloading the pinned dataset and running all three agents on the full
+question pool, judge their matched answers as follows:
 
 ```bash
-RUN_ROOT=results/runs/agents/current-matched
-ASPECTS=$RUN_ROOT/test_frozen_aspects.jsonl
+RUN_ROOT=results/runs/agents/whole-pool
+ASPECTS=evaluation/dataset/evaluation_data/normalized/aspects.jsonl
 
 KBBENCH_OPENAI_ENV_FILE=/absolute/path/to/private.env \
 PYTHONPATH=evaluation:. evaluation/.venv/bin/python \
@@ -206,10 +241,10 @@ PYTHONPATH=evaluation:. evaluation/.venv/bin/python \
   --resume
 ```
 
-`test_frozen_aspects.jsonl` is the exact question-ID intersection of the 467
-all-record frozen aspects and the 361-question physical test split. The report
-contains WAC, critical-aspect success, unsupported
-claims, citation integrity, and paired bootstrap intervals.
+The downloaded annotation file covers all 467 questions. The historical table
+above used 361 questions and is not a result of these whole-pool commands.
+New reports contain WAC, critical-aspect success, unsupported claims,
+citation integrity, and paired bootstrap intervals.
 
 ## Publication boundary
 

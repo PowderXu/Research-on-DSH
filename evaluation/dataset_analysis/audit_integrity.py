@@ -1,4 +1,4 @@
-"""Audit deterministic duplicate and split-overlap risks in the local dataset.
+"""Audit deterministic duplicate risks in the local dataset.
 
 This module intentionally performs only exact and lexical checks.  Its
 near-duplicate output is a diagnostic candidate list, not a semantic-duplicate
@@ -7,20 +7,21 @@ decision.
 
 from __future__ import annotations
 
+from dataset.scripts.records import load_records
+
 import argparse
 import hashlib
 import json
 import re
 import unicodedata
-from collections import Counter, defaultdict
+from collections import defaultdict
 from itertools import combinations
 from pathlib import Path
 from typing import Any, Iterable
 from urllib.parse import SplitResult, urlsplit, urlunsplit
 
 
-SCHEMA_VERSION = "dataset-integrity-v1"
-DEVELOPMENT_SPLIT_ALIASES = {"test": "development"}
+SCHEMA_VERSION = "dataset-integrity-v2"
 LEXICAL_SHINGLE_SIZE = 3
 LEXICAL_MIN_TOKENS = 8
 LEXICAL_JACCARD_THRESHOLD = 0.80
@@ -41,11 +42,6 @@ def _sha256(path: Path) -> str:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
-
-
-def canonical_split(value: Any) -> str:
-    normalized = unicodedata.normalize("NFKC", str(value or "")).strip().casefold()
-    return DEVELOPMENT_SPLIT_ALIASES.get(normalized, normalized or "unknown")
 
 
 def normalize_identifier(value: Any) -> str:
@@ -114,7 +110,6 @@ def _record(row: dict[str, Any], index: int) -> dict[str, Any]:
     return {
         "record_index": index,
         "question_id": str(row.get("question_id") or ""),
-        "split": canonical_split(row.get("split")),
         "project": str(row.get("project") or ""),
         "query": str(row.get("query") or ""),
         "normalized_question_id": normalize_identifier(row.get("question_id")),
@@ -148,15 +143,12 @@ def _group_duplicates(
             members,
             key=lambda item: (item["question_id"], item["record_index"]),
         )
-        splits = sorted({str(item["split"]) for item in ordered})
         groups.append(
             {
                 "normalized_value": value,
                 "record_count": len(ordered),
                 "question_ids": [item["question_id"] for item in ordered],
                 "record_indices": [item["record_index"] for item in ordered],
-                "splits": splits,
-                "cross_split": len(splits) > 1,
             }
         )
     groups.sort(
@@ -169,7 +161,6 @@ def _group_duplicates(
     return {
         "group_count": len(groups),
         "record_count": sum(group["record_count"] for group in groups),
-        "cross_split_group_count": sum(group["cross_split"] for group in groups),
         "groups": groups,
     }
 
@@ -197,14 +188,11 @@ def _lexical_pairs(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
             {
                 "left_question_id": left["question_id"],
                 "left_record_index": left["record_index"],
-                "left_split": left["split"],
                 "right_question_id": right["question_id"],
                 "right_record_index": right["record_index"],
-                "right_split": right["split"],
                 "jaccard": round(similarity, 6),
                 "left_token_count": len(left_tokens),
                 "right_token_count": len(right_tokens),
-                "cross_split": left["split"] != right["split"],
             }
         )
     pairs.sort(
@@ -219,35 +207,9 @@ def _lexical_pairs(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return pairs
 
 
-def _pairwise_split_counts(
-    duplicate_sections: dict[str, dict[str, Any]],
-    lexical_pairs: list[dict[str, Any]],
-    splits: Iterable[str],
-) -> list[dict[str, Any]]:
-    rows: list[dict[str, Any]] = []
-    for left, right in combinations(sorted(set(splits)), 2):
-        section_counts: dict[str, int] = {}
-        for name, section in duplicate_sections.items():
-            section_counts[name] = sum(
-                left in group["splits"] and right in group["splits"]
-                for group in section["groups"]
-            )
-        rows.append(
-            {
-                "splits": [left, right],
-                **section_counts,
-                "lexical_candidate_pairs": sum(
-                    {pair["left_split"], pair["right_split"]} == {left, right}
-                    for pair in lexical_pairs
-                ),
-            }
-        )
-    return rows
-
-
 def audit(dataset_dir: Path) -> dict[str, Any]:
     questions_path = dataset_dir / "questions.jsonl"
-    rows = _read_jsonl(questions_path)
+    rows = load_records(dataset_dir)
     records = [_record(row, index) for index, row in enumerate(rows)]
 
     duplicate_sections = {
@@ -264,7 +226,6 @@ def audit(dataset_dir: Path) -> dict[str, Any]:
         ),
     }
     lexical_pairs = _lexical_pairs(records)
-    split_counts = dict(sorted(Counter(record["split"] for record in records).items()))
 
     return {
         "schema_version": SCHEMA_VERSION,
@@ -273,10 +234,9 @@ def audit(dataset_dir: Path) -> dict[str, Any]:
             "questions_path": str(questions_path),
             "questions_sha256": _sha256(questions_path),
             "question_count": len(records),
-            "split_counts": split_counts,
+            "partitioning": "none",
         },
         "method": {
-            "split_aliases": DEVELOPMENT_SPLIT_ALIASES,
             "exact_question": "Python string equality on the normalized dataset's query field.",
             "identifier_normalization": (
                 "Unicode NFKC, trim, Unicode case-fold, then remove all whitespace. "
@@ -303,21 +263,7 @@ def audit(dataset_dir: Path) -> dict[str, Any]:
         "duplicates": duplicate_sections,
         "lexical_near_duplicate_diagnostic": {
             "candidate_pair_count": len(lexical_pairs),
-            "cross_split_candidate_pair_count": sum(
-                pair["cross_split"] for pair in lexical_pairs
-            ),
             "pairs": lexical_pairs,
-        },
-        "split_overlap": {
-            "pairwise": _pairwise_split_counts(
-                duplicate_sections,
-                lexical_pairs,
-                split_counts,
-            ),
-            "note": (
-                "The legacy input label 'test' is reported as 'development' because "
-                "the current cohort has been inspected during benchmark development."
-            ),
         },
         "limitations": [
             "This deterministic audit cannot establish that no semantic duplicates exist.",
@@ -339,18 +285,12 @@ def render_markdown(report: dict[str, Any]) -> str:
         "",
         f"- Questions: {input_info['question_count']}",
         f"- SHA-256: `{input_info['questions_sha256']}`",
-        "- Splits: "
-        + ", ".join(
-            f"{name}={count}" for name, count in input_info["split_counts"].items()
-        ),
-        "",
-        "The legacy `test` label is reported as `development` because this cohort has "
-        "been inspected during benchmark development.",
+        "- Question pool: all records, without partitions.",
         "",
         "## Exact and normalized duplicates",
         "",
-        "| Check | Duplicate groups | Records in groups | Cross-split groups |",
-        "|---|---:|---:|---:|",
+        "| Check | Duplicate groups | Records in groups |",
+        "|---|---:|---:|",
     ]
     labels = {
         "exact_question": "Exact query string",
@@ -362,8 +302,7 @@ def render_markdown(report: dict[str, Any]) -> str:
     for key, label in labels.items():
         section = report["duplicates"][key]
         lines.append(
-            f"| {label} | {section['group_count']} | {section['record_count']} | "
-            f"{section['cross_split_group_count']} |"
+            f"| {label} | {section['group_count']} | {section['record_count']} |"
         )
 
     lexical = report["lexical_near_duplicate_diagnostic"]
@@ -373,8 +312,7 @@ def render_markdown(report: dict[str, Any]) -> str:
             "",
             "## Lexical near-duplicate diagnostic",
             "",
-            f"Candidate pairs: {lexical['candidate_pair_count']} total, "
-            f"{lexical['cross_split_candidate_pair_count']} cross-split.",
+            f"Candidate pairs: {lexical['candidate_pair_count']}.",
             "",
             "Method: Unicode NFKC + case-folding, Unicode word tokens, contiguous "
             f"{method['shingle_size_tokens']}-token shingle sets, Jaccard "
@@ -385,39 +323,18 @@ def render_markdown(report: dict[str, Any]) -> str:
             "",
             "These are lexical review candidates only, not semantic-duplicate labels.",
             "",
-            "| Left | Left split | Right | Right split | Jaccard |",
-            "|---|---|---|---|---:|",
+            "| Left | Right | Jaccard |",
+            "|---|---|---:|",
         ]
     )
     if lexical["pairs"]:
         for pair in lexical["pairs"]:
             lines.append(
-                f"| `{pair['left_question_id']}` | {pair['left_split']} | "
-                f"`{pair['right_question_id']}` | {pair['right_split']} | "
+                f"| `{pair['left_question_id']}` | `{pair['right_question_id']}` | "
                 f"{pair['jaccard']:.6f} |"
             )
     else:
-        lines.append("| _None at the fixed threshold_ |  |  |  |  |")
-
-    lines.extend(
-        [
-            "",
-            "## Cross-split overlap",
-            "",
-            "| Splits | Exact query | Question ID | Source ID | Source URL | "
-            "Accepted-answer URL | Lexical candidates |",
-            "|---|---:|---:|---:|---:|---:|---:|",
-        ]
-    )
-    for row in report["split_overlap"]["pairwise"]:
-        lines.append(
-            f"| {' / '.join(row['splits'])} | {row['exact_question']} | "
-            f"{row['normalized_question_id']} | "
-            f"{row['normalized_source_question_id']} | "
-            f"{row['normalized_source_url']} | "
-            f"{row['normalized_accepted_answer_url']} | "
-            f"{row['lexical_candidate_pairs']} |"
-        )
+        lines.append("| _None at the fixed threshold_ |  |  |")
 
     lines.extend(
         [

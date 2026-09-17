@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataset.scripts.records import load_records
+
 import argparse
 import json
 from collections import Counter
@@ -27,13 +29,12 @@ def _aspect_has_document_support(aspect: dict[str, Any]) -> bool:
 
 def describe(dataset_dir: Path, aspects_path: Path | None = None) -> dict[str, Any]:
     corpus = _jsonl(dataset_dir / "corpus.jsonl")
-    questions = _jsonl(dataset_dir / "questions.jsonl")
+    questions = load_records(dataset_dir)
     report: dict[str, Any] = {
         "dataset": str(dataset_dir),
         "documents": len(corpus),
         "questions": len(questions),
         "projects": _counts([row.get("project") for row in questions]),
-        "splits": _counts([row.get("split") for row in questions]),
         "qrel_count": _counts([row.get("qrel_count") for row in questions]),
         "qrels": sum(int(row.get("qrel_count") or 0) for row in questions),
         "evidence_structure": _counts(

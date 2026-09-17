@@ -7,6 +7,8 @@ accepted-answer text are downloaded later into an ignored cache by
 
 from __future__ import annotations
 
+from dataset.scripts.records import load_records
+
 import argparse
 import concurrent.futures
 import hashlib
@@ -309,7 +311,7 @@ def _question_resolution_report(
 ) -> dict[str, Any]:
     if not (project_dir / "questions.jsonl").exists():
         return {"status": "not_available"}
-    questions = _load_jsonl(project_dir / "questions.jsonl")
+    questions = load_records(project_dir)
     question_urls = {
         str(row.get("source_url") or "").rstrip("/") for row in questions
     }
@@ -519,14 +521,14 @@ def main() -> None:
     audit_parser.add_argument(
         "--frozen-manifest",
         type=Path,
-        default=project_root
-        / "evaluation/dataset/templates/discussion_sources.jsonl",
+        required=True,
+        help="Path to docsqa-data/provenance/discussion_sources.jsonl",
     )
     audit_parser.add_argument(
         "--lineage",
         type=Path,
-        default=project_root
-        / "evaluation/dataset/templates/candidate_discovery.json",
+        required=True,
+        help="Path to docsqa-data/provenance/candidate_discovery.json",
     )
     audit_parser.add_argument(
         "--project-data-root",

@@ -3,38 +3,44 @@
 ```text
 dataset/            build and verify the four pinned corpora and QA records
 dataset_analysis/   validate evidence and construct the normalized local package
-rule_optimization/  optimize one general aspect-construction rule with SkillOpt
 kbbench/            shared retrieval implementations and ranking metrics
-tests/              deterministic software and contract tests
+tests/              local software checks (ignored by Git)
 ```
 
 Dataset construction never imports a retriever, retrieval never mutates the
 dataset, and every generated artifact is written under `../results/` or the
 ignored `dataset/evaluation_data/` tree.
 
-The normalized package retains 467 records. Its historical physical split
-(33/73/361) reproduces existing development experiments. Rule optimization has
-an independent deterministic 60/20/20 split (280/94/93) generated under the
-run directory. That split changes neither agent inputs nor agent behavior.
+The normalized package contains one pool of 467 questions, with no train,
+validation, or test partitions. `questions.jsonl` contains only question inputs;
+`answers.jsonl` contains reference answers, evidence labels, and grading metadata.
+Both files use `question_id` as their join key. Evaluators join them internally;
+agent prompts receive the question and permitted documentation.
+
+The dataset is published separately at https://github.com/PowderXu/docsqa-data.
+Download the pinned commit from the benchmark root:
+
+```bash
+PYTHONPATH=evaluation:. evaluation/.venv/bin/python -m dataset.scripts.download_dataset
+```
+
+The lock is `dataset/templates/dataset_source.json`. Private downloads use your
+existing `gh auth login`; cached packages are hash-verified without network
+access. The corpus is decompressed into the ordinary evaluation package.
 
 Install and verify from the repository root:
 
 ```bash
 python3 -m venv evaluation/.venv
 evaluation/.venv/bin/pip install -e './evaluation[all]'
-evaluation/.venv/bin/pip install -e \
-  'git+https://github.com/microsoft/SkillOpt.git@51d0a4d96e88558c84dee637f98e24e3fb2d1547#egg=skillopt'
 PYTHONPATH=evaluation:. evaluation/.venv/bin/python -m dataset.scripts.verify
-evaluation/.venv/bin/python -m pytest -c evaluation/pyproject.toml
 ```
 
-The pytest command covers `evaluation/tests/` and `../dsh_plugin/tests/`.
-TypeScript DSH checks run through `npm run --prefix dsh_plugin verify:dsh`.
-These are software checks, not real-model benchmark runs.
+Software-check sources stay local and are ignored by Git. When present,
+run the Python checks with
+`evaluation/.venv/bin/python -m pytest -c evaluation/pyproject.toml` and the
+TypeScript checks with `npm run --prefix dsh_plugin verify:dsh`.
+These optional development checks are not required to run the benchmark.
 
-The second install uses the official SkillOpt v0.2.0 source commit. Its
-published wheel omits Markdown prompts required by the aggregation stage; the
-wrapper detects that incomplete package before making model calls.
-
-See [the protocol](../docs/EVALUATION_PROTOCOL.md), [rule optimization](../docs/RULE_OPTIMIZATION.md),
+See [the protocol](../docs/EVALUATION_PROTOCOL.md), [annotation provenance](../docs/RULE_OPTIMIZATION.md),
 and [maintained results](../docs/RESULTS.md).

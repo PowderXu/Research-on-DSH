@@ -2,16 +2,25 @@
 
 This directory evaluates the already-built package under
 `../dataset/evaluation_data/normalized/`. It does not construct or mutate the
-dataset. Final arm comparisons use the plugin-owned filesystem workspace
+dataset. Question inputs are in `questions.jsonl`; reference answers and qrels
+are in `answers.jsonl`, joined by `question_id`. All questions form one pool.
+Final arm comparisons use the plugin-owned filesystem workspace
 materialized from that same corpus, so every arm sees identical image-derived
 text and canonical pages.
 
 ## Evaluation paths
 
-- `plugin_eval.py`: matched filesystem, BM25+HNSW, and Neo4j retrieval arms;
+- `plugin_eval.py`: run and report the matched three-arm retrieval comparison;
+- `backends.py`: filesystem and Neo4j engines, also used by the live service;
 - `retrieval.py`: retrieval-component and graph-expansion ablations;
-- `scoring.py`: canonical source resolution and shared IR metrics;
+- `scoring.py`: source resolution, binary IR scores, and aspect coverage;
+- `provenance.py`: file fingerprints and redacted execution metadata;
 - `indexes.py`: the BM25 index used by the local retrieval implementation.
+
+The agent runner and report validator share their runtime manifest through
+`../../dsh_plugin/agent_eval/runtime.py`. Moved implementations remain covered
+by the run fingerprint. Older imports of retrieval metrics and plugin engines
+remain available, and report fields retain their existing names.
 
 The primary metrics are Recall@5/10, Hit@1/5/10, nDCG@10, AllSupport@10, and
 warm p50 retrieval latency. p95 latency and offline construction costs are

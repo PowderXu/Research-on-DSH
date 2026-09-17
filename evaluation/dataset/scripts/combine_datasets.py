@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+from dataset.scripts.records import RECORD_LAYOUT, load_records, write_records
+
 import argparse
 import hashlib
 import json
@@ -89,29 +91,10 @@ def _namespace_corpus(
     return output
 
 
-def _split_membership(dataset_dir: Path) -> dict[str, str]:
-    membership: dict[str, str] = {}
-    for split in ("train", "validation", "test"):
-        path = dataset_dir / "splits" / f"{split}.json"
-        if not path.exists():
-            continue
-        payload = json.loads(path.read_text(encoding="utf-8"))
-        for row in payload:
-            question_id = str(row["question_id"])
-            previous = membership.get(question_id)
-            if previous and previous != split:
-                raise ValueError(
-                    f"question {question_id} appears in both {previous} and {split}"
-                )
-            membership[question_id] = split
-    return membership
-
-
 def _namespace_question(
     project: str,
     source: dict[str, Any],
     eligible: dict[str, Any],
-    split: str,
     corpus_ids: set[str],
 ) -> dict[str, Any]:
     source_question_id = str(source["question_id"])
@@ -122,7 +105,7 @@ def _namespace_question(
         raise ValueError(
             f"validated question {source_question_id} has missing namespaced qrels: {missing}"
         )
-    row = {key: value for key, value in source.items() if key != "graph_opportunity"}
+    row = {key: value for key, value in source.items() if key not in {"graph_opportunity", "split", "benchmark_split"}}
     anchors = source.get("qrel_anchors") or {}
     document_images = eligible.get("document_images") or {}
     row.update(
@@ -131,7 +114,6 @@ def _namespace_question(
             "source_question_id": source_question_id,
             "project": project,
             "dataset": project,
-            "split": split,
             "reference_answer": str(eligible["expanded_reference_answer"]),
             "question_images": eligible.get("question_images") or [],
             "reference_answer_images": eligible.get("answer_images") or [],
@@ -207,9 +189,8 @@ def combine_datasets(
         corpus_ids = {str(row["doc_id"]) for row in project_corpus}
         source_questions = {
             str(row["question_id"]): row
-            for row in _load_jsonl(dataset_dir / "questions.jsonl")
+            for row in load_records(dataset_dir)
         }
-        split_membership = _split_membership(dataset_dir)
         validation_name = VALIDATION_DATASET_NAMES[project]
         accepted_for_project = {
             question_id: row
@@ -222,14 +203,8 @@ def combine_datasets(
                 raise ValueError(
                     f"eligible question is absent from {project} source package: {question_id}"
                 )
-            split = split_membership.get(question_id)
-            if split is None:
-                original = str(source.get("split") or "")
-                split = "validation" if original == "dev" else original
-            if split not in {"train", "validation", "test"}:
-                raise ValueError(f"question {question_id} has invalid split: {split!r}")
             questions.append(
-                _namespace_question(project, source, eligible, split, corpus_ids)
+                _namespace_question(project, source, eligible, corpus_ids)
             )
         project_summaries.append(
             {
@@ -253,19 +228,11 @@ def combine_datasets(
     completed = False
     try:
         _write_jsonl(staging / "corpus.jsonl", corpus)
-        _write_jsonl(staging / "questions.jsonl", questions)
-        split_dir = staging / "splits"
-        split_dir.mkdir()
-        split_counts: dict[str, int] = {}
-        for split in ("train", "validation", "test"):
-            rows = [row for row in questions if row["split"] == split]
-            split_counts[split] = len(rows)
-            (split_dir / f"{split}.json").write_text(
-                json.dumps(rows, ensure_ascii=False, indent=2) + "\n",
-                encoding="utf-8",
-            )
+        write_records(staging, questions)
         manifest = {
-            "schema_version": 1,
+            "schema_version": 3,
+            "record_layout": RECORD_LAYOUT,
+            "partitioning": "none",
             "name": "docsqa-unified-validated",
             "description": "Four public documentation corpora with structurally validated accepted-answer QA cases.",
             "document_id_format": "<project>::<canonical-source-document-id>",
@@ -274,7 +241,6 @@ def combine_datasets(
             "documents": len(corpus),
             "questions": len(questions),
             "qrels": sum(int(row["qrel_count"]) for row in questions),
-            "splits": split_counts,
             "question_count_by_project": dict(
                 sorted(Counter(str(row["project"]) for row in questions).items())
             ),
@@ -310,7 +276,8 @@ def main() -> None:
     parser.add_argument(
         "--config",
         type=Path,
-        default=project_root / "evaluation/dataset/templates/public_sources.json",
+        required=True,
+        help="Path to docsqa-data/sources.json",
     )
     parser.add_argument(
         "--eligible",

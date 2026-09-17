@@ -247,7 +247,7 @@ All 556 work-state rows have a final verdict and the same pipeline-contract and
 image-use fields. The accepted/rejected split reconciles exactly, all accepted
 scores are strictly above `0.90`, all stored document citations resolve to the
 pinned local corpus, technical URL literals are non-clickable/code-scoped, the
-three split files reconcile to the accepted questions, and image vectors remain
+separate question and answer files reconcile by question_id, and image vectors remain
 disabled. The requested 95% prior was not supported: 63 of the 86 semantic
 rejections ended with both `partially_solves` and incomplete primary-requirement
 coverage. Treating those as passes would change the meaning of the label rather

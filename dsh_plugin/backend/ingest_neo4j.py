@@ -48,7 +48,7 @@ def main() -> None:
 
     from sentence_transformers import SentenceTransformer
 
-    from kbbench.plugin_eval import Neo4jGitHubDocsGraphRAG
+    from kbbench.backends import Neo4jGitHubDocsGraphRAG
     from kbbench.retrieval import build_chunks, build_or_load_embeddings
 
     layout = arm_data_layout("neo4j", args.data_root).ensure()

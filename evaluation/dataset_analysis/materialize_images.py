@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataset.scripts.records import load_records
+
 import argparse
 import json
 from collections import Counter
@@ -24,7 +26,7 @@ def _load_jsonl(path: Path) -> list[dict[str, Any]]:
 
 
 def materialize(args: argparse.Namespace) -> dict[str, Any]:
-    questions = _load_jsonl(args.dataset_dir / "questions.jsonl")
+    questions = load_records(args.dataset_dir)
     if args.question_id:
         wanted = set(args.question_id)
         questions = [row for row in questions if str(row["question_id"]) in wanted]
@@ -132,7 +134,8 @@ def main() -> None:
     parser.add_argument(
         "--source-config",
         type=Path,
-        default=PROJECT_ROOT / "evaluation/dataset/templates/public_sources.json",
+        required=True,
+        help="Path to docsqa-data/sources.json",
     )
     parser.add_argument(
         "--source-root",

@@ -2,7 +2,6 @@
   "name": "docsqa-linked-docs-v5-development",
   "task": "rank canonical technical-documentation pages and answer real support questions from pinned local evidence",
   "evaluation_unit": "canonical documentation page",
-  "default_split": "test",
   "required_top_k": 10,
   "primary_retrieval_metrics": [
     "Recall@10",
@@ -22,37 +21,11 @@
   ],
   "system_setting": {
     "regime": "corpus-aware zero-shot",
-    "scored_split": "test (historical physical name; development status)",
-    "scored_questions": 361,
+    "scored_questions": 467,
     "evaluation_status": "exploratory because this pool was reused during system development",
-    "publication_test_requirement": "evaluate a newly collected disjoint post-freeze cohort once",
     "system_training_from_benchmark": false,
-    "benchmark_examples_in_prompt": false
-  },
-  "aspect_rule_optimization": {
-    "purpose": "select one general aspect-construction rule before freezing question-specific aspects; it does not alter evaluated agents",
-    "implementation": "SkillOpt 0.2.0 with a local environment adapter",
-    "normalized_record_count": 467,
-    "split": {
-      "ratio": "60:20:20",
-      "seed": 20260901,
-      "train": 280,
-      "validation": 94,
-      "test": 93,
-      "stratification": "project",
-      "duplicate_policy": "duplicate source questions remain in one partition",
-      "materialization": "generated under the ignored rule-optimization run directory"
-    },
-    "target_model": "gpt-5.6-luna",
-    "target_reasoning_effort": "medium",
-    "optimizer_model": "gpt-5.6-sol",
-    "optimizer_reasoning_effort": "xhigh",
-    "editable_state": "evaluation/rule_optimization/initial_rule.md only",
-    "validation_gate": "the fraction of records with importance-weighted source-answer aspect coverage at least 0.80 must improve",
-    "source_coverage_threshold": 0.8,
-    "minimum_validation_pass_rate": 0.8,
-    "test_policy": "evaluate once after the rule is frozen; no optimizer feedback from test",
-    "status": "completed; selected rule passed validation and one-time held-out evaluation, and frozen aspects were generated for all 467 normalized records"
+    "benchmark_examples_in_prompt": false,
+    "scored_pool": "all canonical questions"
   },
   "frozen_retrieval_parameters": {
     "policy_id": "production-window-v1",
@@ -92,5 +65,19 @@
     "same language model and non-retrieval tools for agent comparisons",
     "retrieved canonical IDs logged before answer generation",
     "all failures retained in the denominator"
-  ]
+  ],
+  "record_layout": {
+    "questions": "questions.jsonl",
+    "answers": "answers.jsonl",
+    "join_key": "question_id",
+    "partitioning": "none"
+  },
+  "aspect_annotations": {
+    "source": "aspects.jsonl in the pinned dataset release",
+    "records": 467,
+    "generation_model": "gpt-5.6-luna",
+    "optimization_during_evaluation": false,
+    "partitioning": "none",
+    "historical_provenance": "docs/RULE_OPTIMIZATION.md"
+  }
 }

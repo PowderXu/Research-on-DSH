@@ -2,23 +2,66 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "DocsQA combined dataset manifest",
   "type": "object",
-  "required": ["name", "documents", "questions", "qrels", "splits", "projects"],
+  "required": [
+    "name",
+    "documents",
+    "questions",
+    "qrels",
+    "projects",
+    "record_layout",
+    "partitioning"
+  ],
   "properties": {
-    "name": {"type": "string", "minLength": 1},
-    "documents": {"type": "integer", "minimum": 1},
-    "questions": {"type": "integer", "minimum": 1},
-    "qrels": {"type": "integer", "minimum": 1},
-    "splits": {
-      "type": "object",
-      "required": ["train", "validation", "test"],
-      "properties": {
-        "train": {"type": "integer", "minimum": 0},
-        "validation": {"type": "integer", "minimum": 0},
-        "test": {"type": "integer", "minimum": 0}
-      },
-      "additionalProperties": false
+    "name": {
+      "type": "string",
+      "minLength": 1
     },
-    "projects": {"type": "array", "minItems": 1}
+    "documents": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "questions": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "qrels": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "projects": {
+      "type": "array",
+      "minItems": 1
+    },
+    "record_layout": {
+      "const": "separate-questions-answers-v1"
+    },
+    "partitioning": {
+      "const": "none"
+    }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "not": {
+    "anyOf": [
+      {
+        "required": [
+          "splits"
+        ]
+      },
+      {
+        "required": [
+          "split_counts"
+        ]
+      },
+      {
+        "required": [
+          "questions_by_split"
+        ]
+      },
+      {
+        "required": [
+          "frozen_splits"
+        ]
+      }
+    ]
+  }
 }

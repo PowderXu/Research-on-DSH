@@ -1,174 +1,87 @@
-# Dataset pipeline
+# Dataset download and construction tools
 
-`evaluation/dataset/` has exactly four responsibilities:
+All released data and source manifests belong to
+[PowderXu/docsqa-data](https://github.com/PowderXu/docsqa-data).
+This benchmark keeps the code, schemas and `../templates/dataset_source.json`
+download pin. Generated documentation, data packages and source caches are ignored.
 
-```text
-dataset/
-├── docs/             generated public documentation workspace
-├── templates/        source configuration and data-shape contracts
-├── scripts/          dataset construction and verification code
-└── evaluation_data/  generated QA packages ready for evaluation
+## Normal evaluation
+
+```sh
+PYTHONPATH=evaluation:. evaluation/.venv/bin/python -m dataset.scripts.download_dataset
+PYTHONPATH=evaluation:. evaluation/.venv/bin/python -m dataset.scripts.verify
 ```
 
-The generated directories contain their own `.gitignore`; they stay local.
-Source Git checkouts and downloaded Discussion HTML are caches under
-`results/cache/`, not dataset contents.
+The downloader checks the exact commit, manifest and file hashes, including the
+uncompressed corpus. Private downloads use GitHub CLI authentication. Use
+`--repository-dir /path/to/docsqa-data` to read the pinned local Git commit offline.
+A replaced local package is preserved in a sibling backup directory.
 
-## 1. Prepare documentation
+## Constructing a new release
 
-From the repository root:
+These optional authoring commands require an external `docsqa-data` checkout.
+They are not part of benchmark setup and do not regenerate the downloaded release.
+From the benchmark root, set the path to that checkout:
 
-```bash
-evaluation/dataset/scripts/prepare_raw.sh
+```sh
+DOCSQA_DATA_DIR=/absolute/path/to/docsqa-data
 ```
 
-The command reads `templates/public_sources.json`, clones the four public
-repositories into `results/cache/docsqa-source-repos/`, verifies their pinned
-commits, and materializes:
+Prepare documentation from the pinned source configuration:
 
-```text
-docs/
-├── index.md
-├── manifest.json
-├── manifest.jsonl
-├── github-docs/{index.md,content/...,data/...}
-├── tailwind-css/{index.md,src/docs/...}
-├── prisma/{index.md,apps/docs/content/docs/...}
-└── supabase/{index.md,apps/docs/content/...}
+```sh
+evaluation/dataset/scripts/prepare_raw.sh --config "$DOCSQA_DATA_DIR/sources.json"
 ```
 
-Use `--offline` to reuse existing checkouts and `--force` to intentionally
-replace an existing generated `docs/` tree:
+This clones the four upstream repositories into `results/cache/docsqa-source-repos/`
+and materializes the ignored `evaluation/dataset/docs/` tree. Add `--offline` to
+reuse clean pinned checkouts; add `--force` to replace an existing generated tree.
+Original repository paths and declared support files are preserved. Routing and
+noncanonical pages are excluded from default search.
 
-```bash
-evaluation/dataset/scripts/prepare_raw.sh --offline --force
-```
+Audit the 798 frozen source identifiers and their collection lineage:
 
-Original repository-relative paths are preserved. Directly linked local code
-or assets outside a declared content root are copied as support files. Routing
-indexes, support files, and noncanonical duplicate pages are marked
-non-searchable in `manifest.jsonl`. This creates 5,392 source-document records
-in the pre-normalization package. The stricter normalized evaluation
-package removes empty navigation/source rows and supplies the same 4,860
-searchable documents to all retrieval arms.
-
-## 2. Audit or collect Discussion candidates
-
-The benchmark input is the 798-row
-`templates/discussion_sources.jsonl`. It contains only public Discussion
-identifiers, source/accepted-answer permalinks, exact documentation links where
-retained, and frozen split membership; it does not contain copied question or
-answer text. Its collection lineage and historical artifact hashes live in the
-small `templates/candidate_discovery.json` record.
-
-Audit the frozen row counts, duplicate keys, retained historical host screens
-when locally available, and qrel resolution against the generated pinned
-project packages with:
-
-```bash
+```sh
 PYTHONPATH=evaluation:. evaluation/.venv/bin/python \
-  -m dataset.scripts.candidate_discovery audit
+  -m dataset.scripts.candidate_discovery audit \
+  --frozen-manifest "$DOCSQA_DATA_DIR/provenance/discussion_sources.jsonl" \
+  --lineage "$DOCSQA_DATA_DIR/provenance/candidate_discovery.json"
 ```
 
-The audit remains useful in a clean checkout without the legacy host-screen
-files: it reports them as unavailable instead of pretending their selection
-history can be recreated. With this study's older sibling `results/` directory
-present, it also verifies the recorded SHA-256 hashes and proves that every
-Prisma, Supabase, and Tailwind frozen row came from the retained host screen.
+Missing historical host-screen caches are reported as unavailable. The retained
+manifest does not make the original collection exhaustive or fully reproducible;
+see [dataset design](../../../docs/DATASET_DESIGN.md).
 
-For a new collection, enumerate answered Discussions in explicit date
-partitions. For example:
+Build, validate and combine the four project packages:
 
-```bash
+```sh
 PYTHONPATH=evaluation:. evaluation/.venv/bin/python \
-  -m dataset.scripts.candidate_discovery discover \
-  --dataset prisma \
-  --repository prisma/prisma \
-  --docs-host prisma.io \
-  --docs-host www.prisma.io \
-  --docs-path-prefix /docs \
-  --created-range 2020-01-01..2020-12-31 \
-  --created-range 2021-01-01..2021-12-31 \
-  --output results/runs/dataset-discovery/prisma
+  -m dataset.scripts.build_all \
+  --source-file "$DOCSQA_DATA_DIR/provenance/discussion_sources.jsonl" \
+  --config "$DOCSQA_DATA_DIR/sources.json" --force
 ```
 
-Repeat or narrow ranges until each is safely below the listing guard. The tool
-raises an error at 950 unique IDs because GitHub's searchable listing has
-historically stopped around 1,000 results. It writes a direct-link candidate
-screen, not qrels and not a replacement benchmark manifest. Resolve the links
-to the pinned corpus, run the deterministic source-package gate, review the
-collection provenance, and only then intentionally freeze a new manifest.
+Cached public pages and redirect resolutions are reused unless `--refresh` is
+set. The source gate produces 556 eligible questions and 5,392 source documents
+under `evaluation_data/combined/`. The separately published normalized release
+contains 467 questions and 4,860 searchable pages. Questions and answers are
+separate JSONL files joined by `question_id`; neither stage creates partitions.
 
-The current 798-row manifest is only partially collection-reproducible. The
-GitHub Community enumeration/host screen was not retained. The other three
-2026-08-24 screens were unpartitioned and at or near the listing ceiling, and
-their exact historical post-screen selection procedure and redirect/resolver
-snapshot were not retained. These limits are recorded explicitly in
-`docs/DATASET_DESIGN.md`; the current pool must not be described as exhaustive.
+The lower-level `combine_datasets` command also requires `--config`; image
+materialization requires `--source-config`, both pointing to the external
+`sources.json`. `build.py` and `build_discussion_corpus.py` implement project parsers.
+New candidate discovery uses explicit date ranges and an explicit output directory;
+run `python -m dataset.scripts.candidate_discovery discover --help` with the same
+Python environment for its options.
 
-## 3. Build, validate, and combine the QA packages
+## Verification and publication
 
-Build all four per-project packages, download/cache the public pages, resolve
-accepted-answer documentation links to the pinned corpora, apply deterministic
-source validation, and combine accepted cases with:
+`dataset.scripts.verify` checks counts, unique IDs, question/answer separation,
+qrel resolution and absence of dataset partitions. Graph treatment configuration
+belongs to the plugin, never to the data package.
 
-```bash
-PYTHONPATH=evaluation:. evaluation/.venv/bin/python \
-  -m dataset.scripts.build_all --force
-```
-
-Without `--refresh`, cached pages and redirect resolutions are reused. The
-validator rejects unresolved internal documentation URLs, non-document
-external dependencies, and linked issues/discussions whose accepted answer
-cannot be completely recovered. Reference answers and images remain
-evaluation-only.
-
-The source-construction stage writes the pre-normalization package at
-`evaluation_data/combined/` with:
-
-```text
-combined/
-├── corpus.jsonl
-├── questions.jsonl
-├── manifest.json
-└── splits/{train,validation,test}.json
-```
-
-Every document ID, question ID, graph edge, and qrel is project-namespaced. This
-pre-normalization build contains 5,392 source-document records, 556
-structurally accepted questions, and 627 qrels. The evaluated normalized corpus
-is the separate 4,860-document, 467-question package described above. A clean
-cached replay reproduces the combined source files byte-for-byte:
-
-```text
-corpus.jsonl    33177f14dbfdea54793ebdc0c41bf0a6a3a945268f72799009adb2c148e9a6fd
-questions.jsonl 981a1a3cf403d8c252d2b2c4ff8073445d94811138029792afacc39dbf076785
-manifest.json   f224a0f904ecb9027d2238513e8079ba403b9928772734561a93b68f7636d99a
-```
-
-`build.py` and `build_discussion_corpus.py` are the project-specific parsers;
-`build_all.py` is the public entrypoint. `combine_datasets.py` remains usable
-as a lower-level command when validated project packages already exist.
-
-## 4. Verify
-
-```bash
-PYTHONPATH=evaluation evaluation/.venv/bin/python \
-  -m dataset.scripts.verify
-```
-
-Verification checks counts, ID uniqueness, split isolation, qrel resolution,
-oracle-field exclusion, and reference-answer leakage. It also rejects a
-`graph_schema.json` inside evaluation data: the graph treatment contract is
-owned by `dsh_plugin/plugin/graph_schema.json`.
-
-## Handling public-source data
-
-The committed discovery inputs are identifiers and permalinks. Raw public page
-HTML, answer/question text, and images stay in ignored caches or generated
-evaluation data and should not be published without a separate privacy,
-licensing, and sensitive-data review. Public visibility does not guarantee
-correctness, consent for benchmark reuse, or absence of personal data. Preserve
-source attribution, honor removal requests, redact release examples, and follow
-each upstream repository's license rather than assuming one license covers all
-four corpora.
+Use `export_dataset --source ... --destination ... --sources "$DOCSQA_DATA_DIR/sources.json"`
+for a new empty export directory. Publish dataset changes in `docsqa-data`, then
+update the benchmark's pinned commit and manifest hash. Source attribution and
+historical collection limits stay with the data. API work logs, source HTML
+caches and local research experiments are not release files.

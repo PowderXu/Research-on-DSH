@@ -513,7 +513,8 @@ def main() -> None:
     parser.add_argument(
         "--config",
         type=Path,
-        default=project_root / "evaluation/dataset/templates/public_sources.json",
+        required=True,
+        help="Path to docsqa-data/sources.json",
     )
     parser.add_argument(
         "--source-root",

@@ -9,6 +9,8 @@ is rejected. External pages are never imported as documentation evidence.
 
 from __future__ import annotations
 
+from dataset.scripts.records import load_records
+
 import argparse
 import html
 import json
@@ -237,7 +239,7 @@ def validate_datasets(
     manifests: dict[str, dict[str, Any]] = {}
 
     for name, dataset_dir in datasets.items():
-        questions = _load_jsonl(dataset_dir / "questions.jsonl")
+        questions = load_records(dataset_dir)
         corpus = {str(row["doc_id"]): row for row in _load_jsonl(dataset_dir / "corpus.jsonl")}
         manifest_path = dataset_dir / "manifest.json"
         if not manifest_path.exists():

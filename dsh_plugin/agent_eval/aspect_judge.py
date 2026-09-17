@@ -17,10 +17,11 @@ from typing import Any, Iterable, Literal
 
 from pydantic import BaseModel, Field
 
+from dataset.scripts.records import load_records, read_jsonl as _jsonl
+
 from .credentials import load_openai_key_from_configured_env
 from .report import (
     EXPECTED_ARMS,
-    EXPECTED_FULL_QUESTIONS,
     MATCHED_DEVELOPMENT_MODEL,
     load_arm_rollouts,
     load_expected_question_ids,
@@ -33,7 +34,22 @@ DEFAULT_RUBRIC = (
     PROJECT_ROOT / "evaluation/dataset_analysis/rubrics/aspect_judge_generic_v1.json"
 )
 ARM_ORDER = EXPECTED_ARMS
-CANONICAL_TEST_SPLIT = PROJECT_ROOT / "evaluation/dataset/evaluation_data/normalized/splits/test.json"
+CANONICAL_QUESTIONS = PROJECT_ROOT / "evaluation/dataset/evaluation_data/normalized/questions.jsonl"
+
+
+def load_frozen_aspects(path: Path, dataset_dir: Path) -> dict[str, dict[str, Any]]:
+    """Join separated question/reference text only inside the evaluator."""
+    records = _unique_index(_jsonl(path), "question_id", source=path)
+    if any("question" not in record for record in records.values()):
+        questions = {row["question_id"]: row for row in load_records(dataset_dir)}
+        for question_id, record in records.items():
+            if question_id not in questions:
+                raise ValueError(f"aspect record has no matching question: {question_id}")
+            row = questions[question_id]
+            if "question" not in record:
+                record["question"] = row["query"]
+                record["reference_answer"] = row.get("normalized_answer", row.get("reference_answer", ""))
+    return records
 
 
 class AspectScore(BaseModel):
@@ -62,14 +78,6 @@ class CandidateAspectJudgment(BaseModel):
 
 class AspectBatchJudgment(BaseModel):
     candidates: list[CandidateAspectJudgment] = Field(min_length=1)
-
-
-def _jsonl(path: Path) -> list[dict[str, Any]]:
-    return [
-        json.loads(line)
-        for line in path.read_text(encoding="utf-8").splitlines()
-        if line.strip()
-    ]
 
 
 def _unique_index(
@@ -771,7 +779,6 @@ def _judge_one_question(
             {
                 "question_id": question_id,
                 "project": record.get("project"),
-                "split": record.get("split"),
                 "arm": arm,
                 "intent_category": rollout.get("intent_category"),
                 "evidence_structure": rollout.get("evidence_structure"),
@@ -924,7 +931,7 @@ def evaluate(args: argparse.Namespace, *, client: Any | None = None) -> dict[str
     captured_inputs: dict[str, Any] | None = None
     if mixed_generation:
         if small_trial or requested_ids or limit is not None:
-            raise ValueError("mixed-generation sensitivity mode requires the full 361-question test split")
+            raise ValueError("mixed-generation sensitivity mode requires the full canonical question pool")
         if bool(getattr(args, "resume", False)):
             raise ValueError("mixed-generation sensitivity mode requires fresh paired judge calls")
         if (args.model, args.reasoning_effort) != (MATCHED_DEVELOPMENT_MODEL, "medium"):
@@ -946,7 +953,7 @@ def evaluate(args: argparse.Namespace, *, client: Any | None = None) -> dict[str
             dict(
                 aspects=args.aspects,
                 corpus=args.corpus,
-                split=CANONICAL_TEST_SPLIT,
+                questions=CANONICAL_QUESTIONS,
                 rubric=args.rubric,
                 fs_preflight=fs_preflight,
             ),
@@ -955,7 +962,7 @@ def evaluate(args: argparse.Namespace, *, client: Any | None = None) -> dict[str
             if captured_inputs["arms"][arm]["rollouts"]["sha256"] != expected_hash:
                 raise ValueError(f"retained {arm} rollout SHA-256 does not match the pinned value")
     rubric, rubric_sha256 = load_judge_rubric(args.rubric)
-    aspects = _unique_index(_jsonl(args.aspects), "question_id", source=args.aspects)
+    aspects = load_frozen_aspects(args.aspects, args.corpus.parent)
     corpus = _unique_index(_jsonl(args.corpus), "doc_id", source=args.corpus)
     if (requested_ids or limit is not None) and not small_trial:
         raise ValueError(
@@ -971,21 +978,18 @@ def evaluate(args: argparse.Namespace, *, client: Any | None = None) -> dict[str
         ordered_ids = ordered_ids[: int(limit)]
     if not ordered_ids:
         raise ValueError("explicit expected question IDs cannot be empty")
-    if not small_trial and len(ordered_ids) != EXPECTED_FULL_QUESTIONS:
-        raise ValueError(
-            f"complete matched development judge run requires exactly {EXPECTED_FULL_QUESTIONS} frozen aspects; "
-            f"got {len(ordered_ids)}"
-        )
+    if not small_trial and set(ordered_ids) != set(load_expected_question_ids(CANONICAL_QUESTIONS)):
+        raise ValueError("complete evaluation requires frozen aspects for the full canonical question pool")
     if mixed_generation:
-        canonical_ids = load_expected_question_ids(CANONICAL_TEST_SPLIT)
+        canonical_ids = load_expected_question_ids(CANONICAL_QUESTIONS)
         if ordered_ids != sorted(canonical_ids):
-            raise ValueError("mixed-generation aspects do not equal the canonical test split")
-        expected_aspect_contract = ("test", "accepted", rubric["rubric_version"], rubric_sha256)
+            raise ValueError("mixed-generation aspects do not equal the canonical question pool")
+        expected_aspect_contract = ("accepted", rubric["rubric_version"], rubric_sha256)
         for question_id in ordered_ids:
             record = aspects[question_id]
             actual = tuple(
                 record.get(field)
-                for field in ("split", "status", "rubric_version", "rubric_sha256")
+                for field in ("status", "rubric_version", "rubric_sha256")
             )
             if actual != expected_aspect_contract:
                 raise ValueError(f"mixed-generation aspect contract mismatch: {question_id}")
@@ -1018,11 +1022,11 @@ def evaluate(args: argparse.Namespace, *, client: Any | None = None) -> dict[str
     if mixed_generation:
         contract = rollout_lists["fs"][0]["evaluation_contract"]
         corpus_identity = contract["corpus"]["corpus"]
-        split_identity = contract["split"]["file"]
+        question_identity = contract["question_pool"]["file"]
         if _file_sha256(args.corpus) != corpus_identity.get("sha256"):
             raise ValueError("--corpus bytes differ from the rollout corpus identity")
-        if _file_sha256(CANONICAL_TEST_SPLIT) != split_identity.get("sha256"):
-            raise ValueError("canonical test-split bytes differ from the rollout split identity")
+        if _file_sha256(CANONICAL_QUESTIONS) != question_identity.get("sha256"):
+            raise ValueError("canonical question-file bytes differ from the rollout question-pool identity")
     by_arm = {
         arm: _unique_index(
             rows,

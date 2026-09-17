@@ -7,7 +7,6 @@ inserted into the searchable corpus or the agent prompt.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import html
 import json
 import re
@@ -23,6 +22,7 @@ from urllib.request import Request, urlopen
 import yaml
 
 from .build import html_to_text
+from .records import RECORD_LAYOUT, write_records
 
 
 MARKDOWN_LINK_RE = re.compile(r"\[([^\]]*)\]\(([^)\s]+)(?:\s+[^)]*)?\)")
@@ -492,8 +492,6 @@ def build_questions(
                 if target != source
             )
         evidence_structure = "single" if len(qrels) == 1 else "linked" if linked else "dispersed"
-        digest = int(hashlib.sha256(f"{config.name}:{row['discussion_number']}".encode()).hexdigest()[:8], 16)
-        split = "dev" if digest % 5 == 0 else "test"
         questions.append(
             {
                 "question_id": f"{config.name}-{row['discussion_number']}",
@@ -513,7 +511,6 @@ def build_questions(
                 "intent_category": _intent(query),
                 "evidence_category": "single_page" if len(qrels) == 1 else "multi_page_linked" if linked else "multi_page_dispersed",
                 "evidence_structure": evidence_structure,
-                "split": split,
             }
         )
     return questions, {
@@ -548,18 +545,7 @@ def write_dataset(
 ) -> dict[str, Any]:
     output.mkdir(parents=True, exist_ok=True)
     _write_jsonl(output / "corpus.jsonl", corpus)
-    _write_jsonl(output / "questions.jsonl", questions)
-    split_dir = output / "splits"
-    split_dir.mkdir(exist_ok=True)
-    for name, predicate in {
-        "validation": lambda row: row["split"] == "dev",
-        "test": lambda row: row["split"] == "test",
-        "train": lambda row: False,
-    }.items():
-        (split_dir / f"{name}.json").write_text(
-            json.dumps([row for row in questions if predicate(row)], ensure_ascii=False, indent=2) + "\n",
-            encoding="utf-8",
-        )
+    write_records(output, questions)
     manifest = {
         "dataset": config.name,
         "source_revision": config.revision,
@@ -569,10 +555,8 @@ def write_dataset(
         "docs_hosts": list(config.docs_hosts),
         "documents": len(corpus),
         "questions": len(questions),
-        "splits": {
-            "dev": sum(row["split"] == "dev" for row in questions),
-            "test": sum(row["split"] == "test" for row in questions),
-        },
+        "record_layout": RECORD_LAYOUT,
+        "partitioning": "none",
         "qrel_count_distribution": {
             str(count): sum(row["qrel_count"] == count for row in questions)
             for count in sorted({row["qrel_count"] for row in questions})

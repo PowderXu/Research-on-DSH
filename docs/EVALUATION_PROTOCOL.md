@@ -16,32 +16,22 @@ Neo4j-capable DSH configurations are baseline systems used to demonstrate it.
 
 ## Data roles
 
-The normalized package contains 467 questions. It preserves a historical
-physical split used by existing experiments:
+The normalized package contains one pool of 467 questions, without train,
+validation, or test partitions:
 
-| Physical label | Questions | Current role |
-|---|---:|---|
-| Train | 33 | dataset-construction examples |
-| Validation | 73 | historical development |
-| Test | 361 | current development/evaluation pool |
+- `questions.jsonl`: question text, IDs, question provenance, and question images.
+- `answers.jsonl`: reference answers, accepted-answer provenance, qrels, and grading metadata.
+- `corpus.jsonl`: the pinned documentation available to the evaluated system.
 
-The 361-question pool is not held out because it was inspected while the
-systems were developed. A confirmatory system result requires a new temporal or
-source-disjoint cohort collected after systems and the answer evaluator are
-frozen.
+Records are matched by `question_id`; every question has exactly one answer record.
+Evaluators use the entire pool unless an explicit pilot selector is supplied.
+Historical results keep their original evaluated cohorts and do not become
+467-question results after this storage migration. Existing development exposure
+also remains part of their provenance.
 
-Aspect-rule optimization has a separate project-stratified 60/20/20 split over
-all 467 records:
-
-| Rule-optimization partition | Questions | Use |
-|---|---:|---|
-| Train | 280 | produce scored trajectories and rule-edit feedback |
-| Validation | 94 | select the best global rule |
-| Held-out test | 93 | evaluate the frozen rule once |
-
-This second split controls overfitting of the aspect-construction rule. It does
-not train, prompt, or partition evaluated agents. The exact method is in
-[Aspect-rule optimization](RULE_OPTIMIZATION.md).
+The earlier annotation-preparation experiment is documented separately in
+[annotation provenance](RULE_OPTIMIZATION.md). Its optimizer is retired;
+current evaluation reads frozen annotations from the pinned dataset.
 
 ## Zero-shot system protocol
 
@@ -103,30 +93,17 @@ filter; it is not WAC and is not used to rank agent answers. Whether each aspect
 has pinned local-document support is checked as a dataset-quality property; it
 does not change the WAC denominator during agent evaluation.
 
-## Aspect-rule optimization and freeze
+## Frozen aspect annotations
 
-The benchmark assumes that most platform-selected accepted answers are correct
-and sufficiently complete when combined with their internally linked local
-documentation. `gpt-5.6-luna` applies one shared general rule to construct
-per-question aspects and rate source-answer coverage. Deterministic code
-validates mappings and calculates weighted coverage. SkillOpt 0.2.0 uses
-`gpt-5.6-sol` to propose bounded edits to the general rule from train
-trajectories; validation selects the best rule.
+Answer evaluation reads `aspects.jsonl` from the pinned dataset release for
+all 467 questions. It creates no training, validation, or held-out cohorts and
+performs no annotation-rule optimization. Deterministic checks validate aspect
+schemas, IDs, weights, and evidence mappings before scoring.
 
-A source record passes when its aspect schema is valid and weighted source
-coverage is at least 0.80. The frozen rule is eligible for downstream answer
-evaluation only when at least 80% of validation records pass. The held-out rule
-test is run once after freeze and is not returned to the optimizer.
-
-For final materialization, exact evidence IDs are bound deterministically from
-the normalized claims selected by each aspect. This repairs only opaque-ID
-transcription; it cannot change aspect semantics, claim mappings, importance,
-or criticality. Binding uses no fuzzy path resolution, live URL, or outside
-knowledge, and every change is logged beside the retained raw model output.
-
-This procedure creates silver aspects. It is not independent verification that
-accepted answers or aspects are correct. A project-stratified expert audit is
-required before confirmatory publication claims.
+The existing annotations are model-generated silver labels. Their historical
+construction is documented in [annotation provenance](RULE_OPTIMIZATION.md).
+The earlier rule-selection results are historical evidence, not a requirement
+to partition the current dataset or proof of expert agreement.
 
 ## Baseline configurations
 
@@ -162,12 +139,12 @@ sensitivity analyses, not causal architecture comparisons.
 
 - dataset building: [`evaluation/dataset/scripts/README.md`](../evaluation/dataset/scripts/README.md)
 - normalization: [`NORMALIZED_DATASET.md`](NORMALIZED_DATASET.md)
-- rule optimization: [`RULE_OPTIMIZATION.md`](RULE_OPTIMIZATION.md)
+- historical annotation provenance: [`RULE_OPTIMIZATION.md`](RULE_OPTIMIZATION.md)
 - retrieval scoring: [`evaluation/kbbench/README.md`](../evaluation/kbbench/README.md)
 - DSH baseline composition: [`PLUGIN_DESIGN.md`](PLUGIN_DESIGN.md)
 - commands and maintained values: [`RESULTS.md`](RESULTS.md)
 
-Generated corpora, indexes, split manifests, trajectories, aspects, and model
+Generated corpora, indexes, trajectories, aspects, and model
 outputs remain under ignored local paths. A paper release must publish
 license-compatible derived artifacts and hashes needed to verify each reported
 number.

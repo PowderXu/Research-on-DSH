@@ -1,10 +1,9 @@
-"""Run matched real-model DSH episodes over a frozen benchmark split."""
+"""Run matched real-model DSH episodes over an unpartitioned benchmark question pool."""
 
 from __future__ import annotations
 
 import argparse
 import hashlib
-import importlib.metadata
 import json
 import os
 import re
@@ -16,11 +15,19 @@ from typing import Any, Callable, Iterable, Mapping
 
 import yaml
 
+from dataset.scripts.records import load_records
+from kbbench.provenance import installed_dependency_versions as _installed_dependency_versions
 from kbbench.scoring import GitHubDocsSourceResolver, score_ranked_sources
 from dsh_plugin.backend.corpus_workspace import validate_corpus_workspace
 from dsh_plugin.backend.retrieval_policy import retrieval_contract
 
 from .credentials import load_openai_key_from_configured_env
+from .runtime import (
+    current_runtime_identity,
+    file_identity as _file_identity,
+    files_sha256 as _files_sha256,
+    repo_file_bundle_identity as _repo_file_bundle_identity,
+)
 
 
 ARM_SKILL_PLUGIN_IDS = {
@@ -757,53 +764,6 @@ class DshCommandRunner:
 Runner = Callable[[dict[str, Any], Path, Path], dict[str, Any]]
 
 
-def _logical_relative_path(path: Path, root: Path) -> str:
-    try:
-        return path.resolve().relative_to(root.resolve()).as_posix()
-    except ValueError as error:
-        raise ValueError(f"runtime file is outside logical root: {path}") from error
-
-
-def _files_sha256(paths: Iterable[Path], *, logical_root: Path) -> str:
-    """Hash file bytes under stable logical paths, never host-absolute paths."""
-
-    digest = hashlib.sha256()
-    resolved = sorted(
-        (value.resolve() for value in paths),
-        key=lambda path: _logical_relative_path(path, logical_root),
-    )
-    for path in resolved:
-        digest.update(_logical_relative_path(path, logical_root).encode("utf-8"))
-        digest.update(b"\0")
-        digest.update(path.read_bytes())
-        digest.update(b"\0")
-    return digest.hexdigest()
-
-
-def _file_identity(path: Path, logical_path: str) -> dict[str, str]:
-    resolved = path.resolve()
-    return {
-        "path": logical_path,
-        "sha256": hashlib.sha256(resolved.read_bytes()).hexdigest(),
-    }
-
-
-def _repo_file_bundle_identity(
-    paths: Iterable[Path], project_root: Path
-) -> dict[str, object]:
-    files = sorted(
-        (path.resolve() for path in paths),
-        key=lambda path: _logical_relative_path(path, project_root),
-    )
-    return {
-        "sha256": _files_sha256(files, logical_root=project_root),
-        "files": [
-            _file_identity(path, _logical_relative_path(path, project_root))
-            for path in files
-        ],
-    }
-
-
 def _provider_identity(
     model_patch: Path, environment: Mapping[str, str]
 ) -> dict[str, str]:
@@ -826,16 +786,6 @@ def _provider_identity(
         if gateway_url
         else "",
     }
-
-
-def _installed_dependency_versions(names: Iterable[str]) -> dict[str, str]:
-    versions: dict[str, str] = {}
-    for name in names:
-        try:
-            versions[name] = importlib.metadata.version(name)
-        except importlib.metadata.PackageNotFoundError:
-            versions[name] = "not-installed"
-    return versions
 
 
 def _stable_service_identity(health: Mapping[str, Any]) -> dict[str, Any]:
@@ -1048,15 +998,13 @@ def run_batch(
     return results
 
 
-def load_split_items(
-    split_path: Path,
+def load_question_items(
+    dataset_dir: Path,
     *,
     limit: int | None = None,
     question_ids: set[str] | None = None,
 ) -> list[dict[str, Any]]:
-    rows = json.loads(split_path.read_text(encoding="utf-8"))
-    if not isinstance(rows, list):
-        raise ValueError(f"expected a JSON array in {split_path}")
+    rows = load_records(dataset_dir)
     items: list[dict[str, Any]] = []
     for row in rows:
         question_id = str(row["question_id"])
@@ -1075,7 +1023,7 @@ def load_split_items(
     if question_ids:
         missing = sorted(question_ids - {item["id"] for item in items})
         if missing:
-            raise ValueError(f"question IDs not present in {split_path}: {', '.join(missing)}")
+            raise ValueError(f"question IDs not present in {dataset_dir}: {', '.join(missing)}")
     return items
 
 
@@ -1085,14 +1033,13 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--arm", choices=tuple(ARM_SKILL_PLUGIN_IDS), required=True)
-    parser.add_argument("--split", choices=("train", "validation", "test"), default="test")
     parser.add_argument("--limit", type=int)
     parser.add_argument("--question-id", action="append", default=[])
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument(
         "--dataset-dir",
         type=Path,
-        help="Prepared corpus/splits; defaults to this arm's local data/corpus",
+        help="Prepared corpus, questions, and answers; defaults to this arm's local data/corpus",
     )
     parser.add_argument(
         "--workspace",
@@ -1127,10 +1074,9 @@ def main() -> None:
     workspace = args.workspace or layout.documents
     cache_dir = args.cache_dir or layout.indexes
 
-    split_path = dataset_dir / "splits" / f"{args.split}.json"
     corpus_path = dataset_dir / "corpus.jsonl"
-    items = load_split_items(
-        split_path,
+    items = load_question_items(
+        dataset_dir,
         limit=args.limit,
         question_ids=set(args.question_id),
     )
@@ -1190,29 +1136,13 @@ def main() -> None:
         service_identity = _stable_service_identity(service.health())
 
     try:
-        compiled_plugin_files = sorted(
-            (project_root / "dsh_plugin/plugin/lib").rglob("*.js")
+        runtime_identity = current_runtime_identity(
+            project_root,
+            args.arm,
+            model_patch=config.model_patch,
+            common_patch=config.common_patch,
+            arm_patch=config.arm_patch,
         )
-        if not compiled_plugin_files:
-            raise FileNotFoundError(
-                "compiled DSH plugin runtime is missing; run npm run build in dsh_plugin/plugin"
-            )
-        runtime_files = [
-            Path(__file__),
-            project_root / "dsh_plugin/backend/corpus_workspace.py",
-            project_root / "dsh_plugin/backend/prepare_plugin_data.py",
-            project_root / "dsh_plugin/scripts/preflight_fs.ts",
-            project_root / "dsh_plugin/backend/http_contract.py",
-            project_root / "dsh_plugin/backend/retrieval_policy.py",
-            project_root / "dsh_plugin/backend/service.py",
-            project_root / "dsh_plugin/plugin/package.json",
-            project_root / "evaluation/kbbench/plugin_eval.py",
-            project_root / "evaluation/kbbench/retrieval.py",
-            config.model_patch,
-            config.common_patch,
-            config.arm_patch,
-            *compiled_plugin_files,
-        ]
         dependency_files = [
             project_root / "dsh_plugin/package.json",
             project_root / "dsh_plugin/package-lock.json",
@@ -1249,11 +1179,9 @@ def main() -> None:
                 "embedding_model": args.embedding_model,
                 "device": args.device,
                 "corpus": corpus_identity,
-                "split": {
-                    "name": args.split,
-                    "file": _file_identity(
-                        split_path, f"dataset/splits/{args.split}.json"
-                    ),
+                "question_pool": {
+                    "file": _file_identity(dataset_dir / "questions.jsonl", "dataset/questions.jsonl"),
+                    "answers": _file_identity(dataset_dir / "answers.jsonl", "dataset/answers.jsonl"),
                     "questions": len(items),
                 },
                 "scoring": {
@@ -1273,10 +1201,7 @@ def main() -> None:
                     ),
                 },
                 "provider": provider_identity,
-                "runtime": _repo_file_bundle_identity(runtime_files, project_root),
-                "compiled_plugin": _repo_file_bundle_identity(
-                    compiled_plugin_files, project_root
-                ),
+                **runtime_identity,
             },
         )
     finally:

@@ -55,6 +55,8 @@ def prepare(
     layout.ensure()
     if source_dataset != layout.corpus.resolve():
         shutil.copytree(source_dataset, layout.corpus, dirs_exist_ok=True)
+        if (source_dataset / "answers.jsonl").exists() and (layout.corpus / "splits").exists():
+            shutil.rmtree(layout.corpus / "splits")
 
     if source_documents is not None:
         source_documents = source_documents.resolve()
@@ -99,7 +101,7 @@ def prepare(
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--arm", choices=("fs", "hybrid", "neo4j"), required=True)
-    parser.add_argument("--source-dataset", type=Path, required=True)
+    parser.add_argument("--source-dataset", type=Path, help="Use a local package; otherwise download the pinned dataset repository")
     parser.add_argument(
         "--source-documents", type=Path,
         help="Optional provenance path; raw source files are never copied into search.",
@@ -119,6 +121,12 @@ def main() -> None:
     parser.add_argument("--kggen-workers", type=int, default=8)
     parser.add_argument("--kggen-max-cost-usd", type=float)
     args = parser.parse_args()
+
+    if args.source_dataset is None:
+        from dataset.scripts.download_dataset import download_dataset
+
+        downloaded = download_dataset()
+        args.source_dataset = Path(downloaded["destination"])
 
     result = prepare(
         arm=args.arm,

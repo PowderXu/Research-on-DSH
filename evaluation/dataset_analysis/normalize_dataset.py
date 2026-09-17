@@ -15,6 +15,8 @@ image bytes.
 
 from __future__ import annotations
 
+from dataset.scripts.records import RECORD_LAYOUT, load_records, write_records
+
 import argparse
 import difflib
 import hashlib
@@ -1369,7 +1371,6 @@ def _failure_base(question: dict[str, Any], reason: str, details: Any) -> dict[s
     return {
         "question_id": question["question_id"],
         "project": question.get("project") or question.get("dataset"),
-        "split": question.get("split"),
         "status": "rejected",
         "rejection_reason": reason,
         "details": details,
@@ -1588,7 +1589,6 @@ def normalize_one(
     return {
         "question_id": question["question_id"],
         "project": question.get("project") or question.get("dataset"),
-        "split": question.get("split"),
         "status": "accepted",
         "normalized_question": normalized,
         "evidence_package": package,
@@ -1615,6 +1615,7 @@ def _run_contract(args: argparse.Namespace) -> dict[str, Any]:
         "max_repairs": args.max_repairs,
         "source_corpus_sha256": _sha256(args.dataset / "corpus.jsonl"),
         "source_questions_sha256": _sha256(args.dataset / "questions.jsonl"),
+        "source_answers_sha256": _sha256(args.dataset / "answers.jsonl") if (args.dataset / "answers.jsonl").exists() else None,
     }
     if args.image_text_cache and args.image_text_cache.is_file():
         contract["seed_image_text_sha256"] = _sha256(args.image_text_cache)
@@ -1863,7 +1864,7 @@ def _contains_live_prose_url(text: str) -> bool:
 
 def verify_normalized_dataset(dataset: Path, threshold: float) -> dict[str, Any]:
     corpus = _load_jsonl(dataset / "corpus.jsonl")
-    questions = _load_jsonl(dataset / "questions.jsonl")
+    questions = load_records(dataset)
     rejected = _load_jsonl(dataset / "rejected.jsonl")
     errors: list[str] = []
     corpus_by_id = {str(row["doc_id"]): row for row in corpus}
@@ -1925,13 +1926,8 @@ def verify_normalized_dataset(dataset: Path, threshold: float) -> dict[str, Any]
             for key in ("image_embedding", "image_vector_values", "image_vector_id"):
                 if key in json.dumps(question, ensure_ascii=False).casefold():
                     errors.append(f"forbidden image-vector payload: {question['question_id']}")
-    split_rows: dict[str, int] = {}
-    for split in ("train", "validation", "test"):
-        rows = json.loads((dataset / "splits" / f"{split}.json").read_text(encoding="utf-8"))
-        expected = [row for row in questions if row.get("split") == split]
-        split_rows[split] = len(rows)
-        if {row["question_id"] for row in rows} != {row["question_id"] for row in expected}:
-            errors.append(f"split mismatch: {split}")
+    if (dataset / "splits").exists():
+        errors.append("partition directory is not part of the final evaluation package")
     report = {
         "valid": not errors,
         "errors": errors,
@@ -1943,7 +1939,8 @@ def verify_normalized_dataset(dataset: Path, threshold: float) -> dict[str, Any]
         "questions_with_image_derived_text": sum("image_derived_text" in (row.get("retrieval_modalities") or []) for row in questions),
         "corpus_documents_with_image_derived_text": sum(bool(row.get("image_texts")) for row in corpus),
         "image_vector_enabled": False,
-        "splits": split_rows,
+        "record_layout": RECORD_LAYOUT,
+        "answers": len(questions),
     }
     return report
 
@@ -1966,7 +1963,7 @@ def _build_output(
     complete = False
     try:
         _write_jsonl(staging / "corpus.jsonl", normalized_corpus)
-        _write_jsonl(staging / "questions.jsonl", questions)
+        write_records(staging, questions)
         _write_jsonl(staging / "rejected.jsonl", rejected)
         _write_jsonl(staging / "image_text.jsonl", [image_texts[key] for key in sorted(image_texts)])
         anchor_rows = [
@@ -1974,15 +1971,6 @@ def _build_output(
             for row in accepted
         ]
         _write_jsonl(staging / "anchor_resolution.jsonl", anchor_rows)
-        split_dir = staging / "splits"
-        split_dir.mkdir()
-        split_counts: dict[str, int] = {}
-        for split in ("train", "validation", "test"):
-            split_questions = [row for row in questions if row.get("split") == split]
-            split_counts[split] = len(split_questions)
-            (split_dir / f"{split}.json").write_text(
-                json.dumps(split_questions, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-            )
         normalizer_version = getattr(
             args, "materialized_normalizer_version", NORMALIZER_VERSION
         )
@@ -1991,7 +1979,9 @@ def _build_output(
             args, "materialized_image_text_version", IMAGE_TEXT_VERSION
         )
         manifest = {
-            "schema_version": 2,
+            "schema_version": 3,
+            "record_layout": RECORD_LAYOUT,
+            "partitioning": "none",
             "name": "docsqa-unified-local-normalized",
             "description": "Standalone locally grounded answers with local document paths and image-derived text.",
             "source_dataset": str(args.dataset),
@@ -2003,11 +1993,11 @@ def _build_output(
             "documents": len(normalized_corpus),
             "accepted_questions": len(questions),
             "rejected_questions": len(rejected),
-            "splits": split_counts,
             "retrieval_evidence": "modified local dataset only",
             "image_policy": "pixels are converted once to local text; image vectors are disabled",
             "source_corpus_sha256": _sha256(args.dataset / "corpus.jsonl"),
             "source_questions_sha256": _sha256(args.dataset / "questions.jsonl"),
+            "source_answers_sha256": _sha256(args.dataset / "answers.jsonl") if (args.dataset / "answers.jsonl").exists() else None,
         }
         (staging / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         verification = verify_normalized_dataset(staging, args.threshold)
@@ -2144,7 +2134,7 @@ def render_report(report: dict[str, Any], rows: list[dict[str, Any]]) -> str:
 def run(args: argparse.Namespace) -> dict[str, Any]:
     from openai import OpenAI
 
-    questions = _load_jsonl(args.dataset / "questions.jsonl")
+    questions = load_records(args.dataset)
     if args.question_id:
         wanted = set(args.question_id)
         questions = [row for row in questions if str(row["question_id"]) in wanted]
@@ -2265,7 +2255,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
 def materialize_cached_output(args: argparse.Namespace) -> dict[str, Any]:
     """Rebuild the generated dataset from a complete frozen work directory."""
 
-    source_questions = _load_jsonl(args.dataset / "questions.jsonl")
+    source_questions = load_records(args.dataset)
     source_ids = {str(row["question_id"]) for row in source_questions}
     rows = _load_jsonl(args.work_dir / "per_question.jsonl")
     row_ids = {str(row["question_id"]) for row in rows}
