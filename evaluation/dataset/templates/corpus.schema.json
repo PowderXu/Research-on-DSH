@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DocsQA normalized corpus row",
+  "type": "object",
+  "required": [
+    "doc_id",
+    "project",
+    "source_doc_id",
+    "source_path",
+    "title",
+    "route",
+    "rendered_text",
+    "outgoing_ids",
+    "link_edges"
+  ],
+  "properties": {
+    "doc_id": {"type": "string", "pattern": "^[a-z0-9-]+::.+$"},
+    "project": {"type": "string", "minLength": 1},
+    "source_doc_id": {"type": "string", "minLength": 1},
+    "source_path": {"type": "string", "minLength": 1},
+    "title": {"type": "string"},
+    "route": {"type": "string"},
+    "rendered_text": {"type": "string"},
+    "outgoing_ids": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "link_edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["target_id"],
+        "properties": {
+          "target_id": {"type": "string"},
+          "anchor_text": {"type": "string"},
+          "source_section": {"type": "string"},
+          "target_anchor": {"type": "string"},
+          "context": {"type": "string"}
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

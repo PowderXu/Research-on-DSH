@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "rubric_version": "docsqa-generic-aspect-judge-v1",
+  "judge_system": "Act as an impartial evaluator of technical question-answering responses. Compare each anonymous candidate with the supplied question, reference answer, frozen answer aspects, and evidence, then fill the required response schema.",
+  "judge_rules": {
+    "evaluation": "Assess each candidate for correctness, completeness, relevance, and support from the supplied information.",
+    "aspects": "Return exactly one assessment for every supplied frozen aspect, using only the coverage and support values allowed by the response schema.",
+    "claims": "Identify unsupported or contradicted material claims and invalid citations when present.",
+    "independence": "Judge candidates independently and do not infer their system identities."
+  }
+}

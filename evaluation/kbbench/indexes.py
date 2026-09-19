@@ -18,7 +18,7 @@ def _top_indices(scores: np.ndarray, k: int) -> np.ndarray:
 
 
 class BM25Index:
-    """Sparse BM25 index used by the GitHub Docs retrieval backends."""
+    """Sparse BM25 index used by the DocsQA retrieval backends."""
 
     def __init__(
         self,

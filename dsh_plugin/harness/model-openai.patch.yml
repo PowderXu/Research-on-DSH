@@ -1,7 +1,7 @@
 - id: agent-default-model
   config:
     provider: openai
-    model: gpt-5-mini
+    model: gpt-5.6-luna
 
 - id: llm-pi-ai
   config:
@@ -9,6 +9,6 @@
       openai:
         apiKeyEnv: OPENAI_API_KEY
         models:
-          - id: gpt-5-mini
+          - id: gpt-5.6-luna
             contextWindow: 400000
             maxTokens: 4096

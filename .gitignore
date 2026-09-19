@@ -1,9 +1,14 @@
 .env
 .venv/
+dsh_plugin/.venv-kggen/
 node_modules/
 dsh_plugin/plugin/lib/
+dsh_plugin/dsh_home/sessions/
 /data/
-evaluation/dataset/raw/
+# Dataset source records belong to PowderXu/docsqa-data.
+/evaluation/dataset/templates/discussion_sources.jsonl
+/evaluation/dataset/templates/candidate_discovery.json
+/evaluation/dataset/templates/public_sources.json
 results/runs/
 results/tmp/
 results/cache/
@@ -13,4 +18,17 @@ __pycache__/
 *.egg-info/
 .pytest_cache/
 .coverage
+# Local software checks
+/evaluation/tests/
+/dsh_plugin/tests/
+/dsh_plugin/plugin/test/
 .DS_Store
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+/docs/PAPER_DRAFT.tex
+/docs/PAPER_DRAFT.pdf
+/docs/human_review_50/

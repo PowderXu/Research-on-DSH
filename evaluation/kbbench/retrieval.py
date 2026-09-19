@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import math
 import statistics
 import time
 from collections import defaultdict
@@ -14,7 +13,21 @@ from typing import Any, Iterable
 import hnswlib
 import numpy as np
 
+from dataset.scripts.records import load_records, read_jsonl as _load_jsonl
+
+from dsh_plugin.backend.retrieval_policy import (
+    FINAL_RESULT_LIMIT,
+    GRAPH_CANDIDATES_PER_SEED,
+    GRAPH_MAX_HOPS,
+    GRAPH_SEED_LIMIT,
+    RRF_CANDIDATES_PER_RETRIEVER,
+)
+
 from .indexes import BM25Index
+from .scoring import (
+    aspect_retrieval_metrics as aspect_retrieval_metrics,
+    retrieval_metrics as retrieval_metrics,
+)
 
 
 METHODS = (
@@ -24,11 +37,7 @@ METHODS = (
     "bm25_hnsw_rerank",
     "pure_routing_bm25",
     "hybrid_soft_hierarchy_rerank",
-    "hybrid_conditional_graph_rerank",
-    "hybrid_hierarchy_conditional_graph_rerank",
-    "hybrid_edge_graph_rrf",
-    "hybrid_edge_graph_rrf_always",
-    "hybrid_hierarchy_edge_graph_rrf",
+    "hybrid_multihop_link_expansion",
 )
 
 
@@ -93,44 +102,6 @@ def rrf(rankings: Iterable[list[str]], constant: int = 60) -> tuple[list[str], d
     return ordered, dict(scores)
 
 
-def retrieval_metrics(ranked_ids: list[str], relevant_ids: set[str]) -> dict[str, float]:
-    output: dict[str, float] = {}
-    for cutoff in (1, 5, 10, 20):
-        found = sum(doc_id in relevant_ids for doc_id in ranked_ids[:cutoff])
-        output[f"recall_at_{cutoff}"] = found / max(1, len(relevant_ids))
-        output[f"hit_at_{cutoff}"] = float(found > 0)
-    dcg = sum(
-        1.0 / math.log2(rank + 1)
-        for rank, doc_id in enumerate(ranked_ids[:10], start=1)
-        if doc_id in relevant_ids
-    )
-    ideal = sum(
-        1.0 / math.log2(rank + 1)
-        for rank in range(1, min(10, len(relevant_ids)) + 1)
-    )
-    output["ndcg_at_10"] = dcg / ideal if ideal else 0.0
-    return output
-
-
-def graph_trigger(query: str, base_scores: list[float]) -> bool:
-    lowered = query.lower()
-    connectors = sum(
-        lowered.count(value)
-        for value in (" and ", " or ", " but ", " versus ", " vs ", " while ", " between ")
-    )
-    procedural = sum(
-        value in lowered
-        for value in ("workflow", "depends", "inherit", "from ", " to ", "across", "together")
-    )
-    lexical_complexity = len(query.split()) >= 12 and connectors >= 1 and procedural >= 2
-    uncertain = len(base_scores) >= 2 and abs(base_scores[0] - base_scores[1]) < 0.18
-    return lexical_complexity or (len(query.split()) >= 45 and uncertain)
-
-
-def _load_jsonl(path: Path) -> list[dict[str, Any]]:
-    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
-
-
 def _text_hash(chunks: list[Chunk], model_name: str) -> str:
     digest = hashlib.sha256(model_name.encode())
     for chunk in chunks:
@@ -147,14 +118,21 @@ class GitHubDocsRetriever:
         embeddings: np.ndarray,
         embedding_model: Any,
         reranker: Any,
-        retrieval_depth: int = 350,
+        retrieval_depth: int = RRF_CANDIDATES_PER_RETRIEVER,
         rerank_depth: int = 45,
-        graph_seed_depth: int = 8,
-        graph_max_neighbors: int = 8,
-        graph_weight: float = 1.0,
-        hierarchy_weight: float = 0.15,
-        edge_trigger_rank: int = 60,
+        graph_seed_depth: int = GRAPH_SEED_LIMIT,
+        graph_max_neighbors: int = GRAPH_CANDIDATES_PER_SEED,
+        graph_max_hops: int = GRAPH_MAX_HOPS,
+        graph_max_candidates: int = GRAPH_SEED_LIMIT * GRAPH_CANDIDATES_PER_SEED,
+        graph_hop_decay: float = 0.5,
+        graph_weight: float = 0.25,
     ) -> None:
+        if graph_max_hops not in (1, 2):
+            raise ValueError("graph_max_hops must be 1 or 2")
+        if graph_max_neighbors < 1 or graph_max_candidates < 1:
+            raise ValueError("graph expansion bounds must be positive")
+        if not 0.0 < graph_hop_decay <= 1.0:
+            raise ValueError("graph_hop_decay must be in (0, 1]")
         self.corpus_rows = corpus_rows
         self.chunks = chunks
         self.embedding_model = embedding_model
@@ -163,9 +141,10 @@ class GitHubDocsRetriever:
         self.rerank_depth = rerank_depth
         self.graph_seed_depth = graph_seed_depth
         self.graph_max_neighbors = graph_max_neighbors
+        self.graph_max_hops = graph_max_hops
+        self.graph_max_candidates = graph_max_candidates
+        self.graph_hop_decay = graph_hop_decay
         self.graph_weight = graph_weight
-        self.hierarchy_weight = hierarchy_weight
-        self.edge_trigger_rank = edge_trigger_rank
         self.bm25 = BM25Index([chunk.text for chunk in chunks], min_df=1)
         self.embeddings = np.asarray(embeddings, dtype=np.float32)
         self.hnsw = hnswlib.Index(space="cosine", dim=int(self.embeddings.shape[1]))
@@ -178,8 +157,6 @@ class GitHubDocsRetriever:
         self.route_to_chunks: dict[str, list[int]] = defaultdict(list)
         self.page_title: dict[str, str] = {}
         self.page_route: dict[str, str] = {}
-        self.outgoing: dict[str, set[str]] = defaultdict(set)
-        self.incoming: dict[str, set[str]] = defaultdict(set)
         self.edge_records: list[dict[str, str]] = []
         self.doc_to_edge_indices: dict[str, list[int]] = defaultdict(list)
         for index, chunk in enumerate(chunks):
@@ -189,9 +166,6 @@ class GitHubDocsRetriever:
             self.page_route[chunk.doc_id] = chunk.route
         for row in corpus_rows:
             source = str(row["doc_id"])
-            for target in row.get("outgoing_ids", []):
-                self.outgoing[source].add(str(target))
-                self.incoming[str(target)].add(source)
             for edge in row.get("link_edges", []):
                 target = str(edge.get("target_id", ""))
                 if not target or target not in self.page_title:
@@ -248,7 +222,27 @@ class GitHubDocsRetriever:
         hits = self.bm25.search(query, self.retrieval_depth, allowed=allowed)
         return self._collapse_chunks(hits)
 
-    def _dense(self, query_vector: np.ndarray) -> tuple[list[str], dict[str, float], dict[str, int]]:
+    def _dense(
+        self,
+        query_vector: np.ndarray,
+        allowed: np.ndarray | None = None,
+    ) -> tuple[list[str], dict[str, float], dict[str, int]]:
+        if allowed is not None:
+            if not len(allowed):
+                return [], {}, {}
+            # HNSW's Python callback filter is both global and callback-bound.
+            # A scoped request is normally much smaller, so exact cosine over
+            # the permitted chunk rows is deterministic and cannot leak a
+            # document from outside the requested project/path prefix.
+            scores = self.embeddings[allowed] @ query_vector
+            hits = sorted(
+                (
+                    (int(chunk_index), float(score))
+                    for chunk_index, score in zip(allowed.tolist(), scores.tolist())
+                ),
+                key=lambda item: (-item[1], item[0]),
+            )[: self.retrieval_depth]
+            return self._collapse_chunks(hits)
         labels, distances = self.hnsw.knn_query(
             query_vector.reshape(1, -1),
             k=min(self.retrieval_depth, len(self.chunks)),
@@ -304,114 +298,117 @@ class GitHubDocsRetriever:
         reranked.extend(doc_id for doc_id in candidates if doc_id not in set(selected))
         return reranked, [float(scores[index]) for index in order]
 
-    def _graph_candidates(self, ranked: list[str]) -> tuple[list[str], int]:
-        existing = set(ranked)
-        additions: list[str] = []
-        for doc_id in ranked[: self.graph_seed_depth]:
-            neighbors = sorted(
-                self.outgoing.get(doc_id, set()) | self.incoming.get(doc_id, set()),
-                key=lambda value: (
-                    self.page_route.get(value) != self.page_route.get(doc_id),
-                    value,
-                ),
-            )[: self.graph_max_neighbors]
-            for neighbor in neighbors:
-                if neighbor not in existing:
-                    existing.add(neighbor)
-                    additions.append(neighbor)
-        return ranked[: self.rerank_depth] + additions, len(additions)
-
-    def _edge_graph_rank(
+    def _multihop_link_rank(
         self,
         query: str,
         fused: list[str],
         fused_scores: dict[str, float],
-        *,
-        always: bool,
-        use_hierarchy: bool,
-    ) -> tuple[list[str], bool, int, list[str]]:
-        if self.edge_bm25 is None:
+    ) -> tuple[list[str], bool, int, list[int]]:
+        """Expand every query over bounded, query-ranked Markdown-link paths."""
+
+        if self.edge_bm25 is None or self.graph_max_hops < 1:
             return fused, False, 0, []
         edge_hits = self.edge_bm25.search(
             query, min(1_500, len(self.edge_records))
         )
         edge_rank = {edge_index: rank for rank, (edge_index, _) in enumerate(edge_hits, 1)}
         seeds = fused[: self.graph_seed_depth]
-        incident_edges = {
-            edge_index
-            for seed in seeds
-            for edge_index in self.doc_to_edge_indices.get(seed, [])
-        }
-        best_incident_rank = min(
-            (edge_rank.get(edge_index, len(self.edge_records) + 1) for edge_index in incident_edges),
-            default=len(self.edge_records) + 1,
-        )
-        # RRF scores live on a much smaller scale than cross-encoder logits, so
-        # passing them to graph_trigger's margin test would label nearly every
-        # long query as uncertain. V2 uses lexical complexity plus edge-context
-        # evidence instead.
-        should_expand = always or (
-            len(query.split()) >= 8 and best_incident_rank <= self.edge_trigger_rank
-        )
-        selected_routes = self._select_routes(query) if use_hierarchy else []
         scores = dict(fused_scores)
-        if use_hierarchy:
-            for route_rank, route in enumerate(selected_routes, 1):
-                boost = self.hierarchy_weight / (60.0 + route_rank)
-                for doc_id in fused:
-                    if self.page_route.get(doc_id) == route:
-                        scores[doc_id] += boost
-        if not should_expand:
-            return (
-                sorted(scores, key=lambda doc_id: (-scores[doc_id], doc_id)),
-                False,
-                0,
-                selected_routes,
-            )
         additions: set[str] = set()
         graph_boosts: dict[str, float] = defaultdict(float)
         seed_rank = {doc_id: rank for rank, doc_id in enumerate(seeds, 1)}
-        for seed in seeds:
-            candidates: list[tuple[int, int, str]] = []
-            for edge_index in self.doc_to_edge_indices.get(seed, []):
-                edge = self.edge_records[edge_index]
-                neighbor = (
-                    edge["target_id"]
-                    if edge["source_id"] == seed
-                    else edge["source_id"]
-                )
-                candidates.append(
-                    (
-                        edge_rank.get(edge_index, len(self.edge_records) + 1),
-                        edge_index,
-                        neighbor,
+        # State: current page, root seed, edge contributions on the path, and
+        # pages already on the path. Each page enters the frontier once, while
+        # a better alternate path may still increase its final graph boost.
+        frontier: list[tuple[str, str, tuple[float, ...], frozenset[str]]] = [
+            (seed, seed, (), frozenset((seed,))) for seed in seeds
+        ]
+        discovered = set(seeds)
+        candidates_by_hop: list[int] = []
+        missing_edge_rank = len(self.edge_records) + 1
+
+        for hop in range(1, self.graph_max_hops + 1):
+            next_frontier: list[
+                tuple[str, str, tuple[float, ...], frozenset[str]]
+            ] = []
+            first_reached_this_hop: set[str] = set()
+            for current, root_seed, path_edges, path_nodes in frontier:
+                candidates: list[tuple[int, int, str]] = []
+                for edge_index in self.doc_to_edge_indices.get(current, []):
+                    edge = self.edge_records[edge_index]
+                    neighbor = (
+                        edge["target_id"]
+                        if edge["source_id"] == current
+                        else edge["source_id"]
                     )
-                )
-            candidates.sort(key=lambda value: (value[0], value[2]))
-            seen_neighbors: set[str] = set()
-            for current_edge_rank, _, neighbor in candidates:
-                if neighbor in seen_neighbors:
-                    continue
-                seen_neighbors.add(neighbor)
-                if len(seen_neighbors) > self.graph_max_neighbors:
-                    break
-                edge_component = (
-                    1.0 / (60.0 + current_edge_rank)
-                    if current_edge_rank <= len(self.edge_records)
-                    else 0.0
-                )
-                seed_component = 1.0 / (60.0 + seed_rank[seed])
-                contribution = self.graph_weight * (seed_component + edge_component)
-                graph_boosts[neighbor] = max(graph_boosts[neighbor], contribution)
-                if neighbor not in scores:
-                    additions.add(neighbor)
-                    scores[neighbor] = 0.0
+                    if neighbor in path_nodes:
+                        continue
+                    candidates.append(
+                        (
+                            edge_rank.get(edge_index, missing_edge_rank),
+                            edge_index,
+                            neighbor,
+                        )
+                    )
+                candidates.sort(key=lambda value: (value[0], value[2]))
+                seen_neighbors: set[str] = set()
+                for current_edge_rank, _, neighbor in candidates:
+                    if neighbor in seen_neighbors:
+                        continue
+                    seen_neighbors.add(neighbor)
+                    if len(seen_neighbors) > self.graph_max_neighbors:
+                        break
+                    edge_component = (
+                        1.0 / (60.0 + current_edge_rank)
+                        if current_edge_rank <= len(self.edge_records)
+                        else 0.0
+                    )
+                    if (
+                        neighbor not in discovered
+                        and len(discovered) - len(seeds) >= self.graph_max_candidates
+                    ):
+                        continue
+                    next_path_edges = (*path_edges, edge_component)
+                    seed_component = 1.0 / (60.0 + seed_rank[root_seed])
+                    contribution = (
+                        self.graph_weight
+                        * (seed_component + sum(next_path_edges))
+                        * self.graph_hop_decay ** (hop - 1)
+                    )
+                    graph_boosts[neighbor] = max(
+                        graph_boosts[neighbor], contribution
+                    )
+                    if neighbor not in scores:
+                        additions.add(neighbor)
+                        scores[neighbor] = 0.0
+                    if neighbor in discovered:
+                        continue
+                    discovered.add(neighbor)
+                    first_reached_this_hop.add(neighbor)
+                    next_frontier.append(
+                        (
+                            neighbor,
+                            root_seed,
+                            next_path_edges,
+                            path_nodes | {neighbor},
+                        )
+                    )
+            candidates_by_hop.append(len(first_reached_this_hop))
+            frontier = next_frontier
+            if not frontier:
+                break
         for doc_id, boost in graph_boosts.items():
             scores[doc_id] += boost
         ranked = sorted(scores, key=lambda doc_id: (-scores[doc_id], doc_id))
-        return ranked, True, len(additions), selected_routes
+        return ranked, True, len(additions), candidates_by_hop
 
-    def search(self, query: str, method: str, top_k: int = 20) -> tuple[list[str], dict[str, Any]]:
+    def search(
+        self,
+        query: str,
+        method: str,
+        top_k: int = 20,
+        allowed_doc_ids: set[str] | None = None,
+    ) -> tuple[list[str], dict[str, Any]]:
         started = time.perf_counter()
         query_vector = None
         if method != "bm25" and method != "pure_routing_bm25":
@@ -423,11 +420,27 @@ class GitHubDocsRetriever:
             )
         graph_applied = False
         graph_added = 0
+        graph_candidates_by_hop: list[int] = []
         selected_routes: list[str] = []
+        sparse_candidates = 0
+        dense_candidates = 0
+        fused_candidates = 0
+        scope_allowed = (
+            np.asarray(
+                sorted(
+                    chunk_index
+                    for doc_id in allowed_doc_ids
+                    for chunk_index in self.doc_to_chunks.get(doc_id, [])
+                ),
+                dtype=np.int64,
+            )
+            if allowed_doc_ids is not None
+            else None
+        )
 
         if method == "pure_routing_bm25":
             selected_routes = self._select_routes(query)
-            allowed = np.asarray(
+            route_allowed = np.asarray(
                 sorted(
                     {
                         index
@@ -437,31 +450,41 @@ class GitHubDocsRetriever:
                 ),
                 dtype=np.int64,
             )
-            ranked, _, _ = self._bm25(query, allowed=allowed)
+            if scope_allowed is not None:
+                route_allowed = np.intersect1d(
+                    route_allowed, scope_allowed, assume_unique=True
+                )
+            ranked, _, _ = self._bm25(query, allowed=route_allowed)
         else:
-            sparse_ranked, _, sparse_best = self._bm25(query)
+            sparse_ranked, _, sparse_best = self._bm25(
+                query, allowed=scope_allowed
+            )
+            sparse_candidates = len(sparse_ranked)
             if method == "bm25":
                 ranked = sparse_ranked
             else:
                 assert query_vector is not None
-                dense_ranked, _, dense_best = self._dense(query_vector)
+                dense_ranked, _, dense_best = self._dense(
+                    query_vector, allowed=scope_allowed
+                )
+                dense_candidates = len(dense_ranked)
                 if method == "hnsw":
                     ranked = dense_ranked
                 else:
                     fused, fused_scores = rrf((sparse_ranked, dense_ranked))
+                    fused_candidates = len(fused)
                     if method == "bm25_hnsw_rrf":
                         ranked = fused
-                    elif method in {
-                        "hybrid_edge_graph_rrf",
-                        "hybrid_edge_graph_rrf_always",
-                        "hybrid_hierarchy_edge_graph_rrf",
-                    }:
-                        ranked, graph_applied, graph_added, selected_routes = self._edge_graph_rank(
+                    elif method == "hybrid_multihop_link_expansion":
+                        (
+                            ranked,
+                            graph_applied,
+                            graph_added,
+                            graph_candidates_by_hop,
+                        ) = self._multihop_link_rank(
                             query,
                             fused,
                             fused_scores,
-                            always=method == "hybrid_edge_graph_rrf_always",
-                            use_hierarchy=method == "hybrid_hierarchy_edge_graph_rrf",
                         )
                     else:
                         if "hierarchy" in method:
@@ -474,29 +497,25 @@ class GitHubDocsRetriever:
                                     fused.index(doc_id),
                                 ),
                             )
-                        base_ranked, base_scores = self._rerank(
+                        base_ranked, _ = self._rerank(
                             query, fused, sparse_best, dense_best
                         )
                         ranked = base_ranked
-                        if "graph" in method and graph_trigger(query, base_scores):
-                            graph_applied = True
-                            graph_pool, graph_added = self._graph_candidates(base_ranked)
-                            ranked, _ = self._rerank(
-                                query,
-                                graph_pool,
-                                sparse_best,
-                                dense_best,
-                                depth=len(graph_pool),
-                            )
-                            ranked.extend(
-                                doc_id for doc_id in base_ranked if doc_id not in set(ranked)
-                            )
+        if allowed_doc_ids is not None:
+            ranked = [doc_id for doc_id in ranked if doc_id in allowed_doc_ids]
         latency_ms = (time.perf_counter() - started) * 1000.0
         return ranked[:top_k], {
             "latency_ms": latency_ms,
             "graph_applied": graph_applied,
             "graph_candidates_added": graph_added,
+            "graph_candidates_by_hop": graph_candidates_by_hop,
             "selected_routes": selected_routes,
+            "sparse_candidates": sparse_candidates,
+            "dense_candidates": dense_candidates,
+            "fused_candidates": fused_candidates,
+            "scope_documents": (
+                len(allowed_doc_ids) if allowed_doc_ids is not None else None
+            ),
         }
 
 
@@ -552,6 +571,14 @@ def summarize(rows: list[dict[str, Any]], group_keys: tuple[str, ...]) -> list[d
             "ndcg_at_10",
         ):
             item[metric] = statistics.fmean(float(row[metric]) for row in values)
+        for metric in (
+            "weighted_aspect_recall_at_5",
+            "weighted_aspect_recall_at_10",
+            "weighted_aspect_recall_at_20",
+            "alpha_ndcg_at_10",
+        ):
+            if all(metric in row for row in values):
+                item[metric] = statistics.fmean(float(row[metric]) for row in values)
         item["latency_p50_ms"] = float(
             np.percentile([float(row["latency_ms"]) for row in values], 50)
         )
@@ -562,15 +589,47 @@ def summarize(rows: list[dict[str, Any]], group_keys: tuple[str, ...]) -> list[d
     return output
 
 
+def summary_tables(
+    rows: list[dict[str, Any]],
+    *,
+    extra_slices: tuple[tuple[str, str], ...] = (),
+) -> dict[str, list[dict[str, Any]]]:
+    """Build the shared retrieval report tables without recomputing overall."""
+    overall = summarize(rows, ("method",))
+    slices = (
+        ("evidence_category", "evidence_category"),
+        ("intent_category", "intent_category"),
+        ("evidence_structure", "evidence_structure"),
+        ("qrel_count", "qrel_count_group"),
+        *extra_slices,
+    )
+    return {
+        "overall": overall,
+        "evaluated_overall": overall,  # Retain the existing report field.
+        **{f"by_{label}": summarize(rows, (field, "method")) for label, field in slices},
+    }
+
+
 def evaluate(args: argparse.Namespace) -> dict[str, Any]:
     from sentence_transformers import SentenceTransformer
 
     corpus_rows = _load_jsonl(args.dataset_dir / "corpus.jsonl")
-    questions = _load_jsonl(args.dataset_dir / "questions.jsonl")
-    if args.split != "all":
-        questions = [question for question in questions if question["split"] == args.split]
+    questions = load_records(args.dataset_dir)
+    aspects_by_id = (
+        {
+            str(row["question_id"]): row
+            for row in _load_jsonl(args.aspects)
+            if row.get("status", "accepted") == "accepted"
+        }
+        if args.aspects
+        else {}
+    )
+    if aspects_by_id:
+        questions = [row for row in questions if str(row["question_id"]) in aspects_by_id]
     if args.limit:
         questions = questions[: args.limit]
+    if not questions:
+        raise ValueError("no questions remain after aspect and limit filters")
     chunks = build_chunks(corpus_rows)
     print(f"Loading embedding model {args.embedding_model}", flush=True)
     embedding_model = SentenceTransformer(
@@ -601,9 +660,10 @@ def evaluate(args: argparse.Namespace) -> dict[str, Any]:
         rerank_depth=args.rerank_depth,
         graph_seed_depth=args.graph_seed_depth,
         graph_max_neighbors=args.graph_max_neighbors,
+        graph_max_hops=args.graph_max_hops,
+        graph_max_candidates=args.graph_max_candidates,
+        graph_hop_decay=args.graph_hop_decay,
         graph_weight=args.graph_weight,
-        hierarchy_weight=args.hierarchy_weight,
-        edge_trigger_rank=args.edge_trigger_rank,
     )
     retriever.search(questions[0]["query"], methods[0], top_k=args.top_k)
     rows: list[dict[str, Any]] = []
@@ -619,7 +679,6 @@ def evaluate(args: argparse.Namespace) -> dict[str, Any]:
                     "schema_version": args.schema_version,
                     "method": method,
                     "question_id": question["question_id"],
-                    "split": question["split"],
                     "intent_category": question["intent_category"],
                     "evidence_category": question["evidence_category"],
                     "evidence_structure": question.get(
@@ -637,6 +696,14 @@ def evaluate(args: argparse.Namespace) -> dict[str, Any]:
                     "ranked_ids": ranked_ids,
                     **diagnostics,
                     **retrieval_metrics(ranked_ids, set(question["qrel_ids"])),
+                    **(
+                        aspect_retrieval_metrics(
+                            ranked_ids,
+                            aspects_by_id[str(question["question_id"])]["aspects"],
+                        )
+                        if aspects_by_id
+                        else {}
+                    ),
                 }
             )
             if index % 50 == 0:
@@ -645,34 +712,20 @@ def evaluate(args: argparse.Namespace) -> dict[str, Any]:
     with (args.output_dir / "per_query.jsonl").open("w", encoding="utf-8") as handle:
         for row in rows:
             handle.write(json.dumps(row, ensure_ascii=False) + "\n")
-    test_rows = [row for row in rows if row["split"] == "test"]
     report = {
         "iteration": args.iteration,
         "schema_version": args.schema_version,
         "documents": len(corpus_rows),
         "chunks": len(chunks),
         "questions": len(questions),
+        "aspect_annotation_file": str(args.aspects) if args.aspects else None,
+        "aspect_aware_metrics": bool(aspects_by_id),
         "methods": list(methods),
-        "split_filter": args.split,
         "graph_weight": args.graph_weight,
-        "hierarchy_weight": args.hierarchy_weight,
-        "edge_trigger_rank": args.edge_trigger_rank,
-        "test_overall": summarize(test_rows, ("method",)),
-        "evaluated_overall": summarize(rows, ("method",)),
-        "test_by_evidence_category": summarize(
-            test_rows, ("evidence_category", "method")
-        ),
-        "test_by_intent_category": summarize(test_rows, ("intent_category", "method")),
-        "test_by_evidence_structure": summarize(
-            test_rows, ("evidence_structure", "method")
-        ),
-        "test_by_qrel_count": summarize(
-            test_rows, ("qrel_count_group", "method")
-        ),
-        "dev_by_evidence_category": summarize(
-            [row for row in rows if row["split"] == "dev"],
-            ("evidence_category", "method"),
-        ),
+        "graph_max_hops": args.graph_max_hops,
+        "graph_max_candidates": args.graph_max_candidates,
+        "graph_hop_decay": args.graph_hop_decay,
+        **summary_tables(rows),
         "latency_scope": "Warm per-query retrieval including query embedding and reranking; index build excluded.",
     }
     (args.output_dir / "report.json").write_text(
@@ -682,8 +735,13 @@ def evaluate(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Evaluate retrieval on real GitHub Docs questions")
+    parser = argparse.ArgumentParser(description="Evaluate retrieval on real DocsQA support questions")
     parser.add_argument("--dataset-dir", type=Path, required=True)
+    parser.add_argument(
+        "--aspects",
+        type=Path,
+        help="Optional frozen aspects.jsonl; add aspect-aware metrics and restrict to annotated questions.",
+    )
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--cache-dir", type=Path, required=True)
     parser.add_argument("--iteration", default="v1")
@@ -692,20 +750,28 @@ def main() -> None:
     parser.add_argument("--reranker-model", default="cross-encoder/ms-marco-MiniLM-L-6-v2")
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--local-files-only", action="store_true")
-    parser.add_argument("--retrieval-depth", type=int, default=350)
+    parser.add_argument(
+        "--retrieval-depth", type=int, default=RRF_CANDIDATES_PER_RETRIEVER
+    )
     parser.add_argument("--rerank-depth", type=int, default=45)
-    parser.add_argument("--graph-seed-depth", type=int, default=8)
-    parser.add_argument("--graph-max-neighbors", type=int, default=8)
-    parser.add_argument("--top-k", type=int, default=20)
-    parser.add_argument("--split", choices=("all", "dev", "test"), default="all")
-    parser.add_argument("--graph-weight", type=float, default=1.0)
-    parser.add_argument("--hierarchy-weight", type=float, default=0.15)
-    parser.add_argument("--edge-trigger-rank", type=int, default=60)
+    parser.add_argument("--graph-seed-depth", type=int, default=GRAPH_SEED_LIMIT)
+    parser.add_argument(
+        "--graph-max-neighbors", type=int, default=GRAPH_CANDIDATES_PER_SEED
+    )
+    parser.add_argument("--graph-max-hops", type=int, default=GRAPH_MAX_HOPS)
+    parser.add_argument(
+        "--graph-max-candidates",
+        type=int,
+        default=GRAPH_SEED_LIMIT * GRAPH_CANDIDATES_PER_SEED,
+    )
+    parser.add_argument("--graph-hop-decay", type=float, default=0.5)
+    parser.add_argument("--top-k", type=int, default=FINAL_RESULT_LIMIT)
+    parser.add_argument("--graph-weight", type=float, default=0.25)
     parser.add_argument("--limit", type=int)
     parser.add_argument("--methods", nargs="*")
     args = parser.parse_args()
     report = evaluate(args)
-    print(json.dumps(report["test_overall"], indent=2))
+    print(json.dumps(report["overall"], indent=2))
 
 
 if __name__ == "__main__":

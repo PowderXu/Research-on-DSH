@@ -1,150 +1,76 @@
-# Research Analysis
+# Research analysis and plan
 
-> A short working note to clarify what the project currently measures, what needs to be validated next, and how the research should move forward.
+Status: 2026-09-16. **The plan is partly complete. Step 1 is deferred at the
+project owner's request.** Implementation and software checks are not substitutes
+for completed research experiments.
 
-## 1. Where the project stands
+## Current task and data
 
-The project already has a strong engineering foundation:
+Given a real community question, retrieve evidence from the specified product's
+documentation and use it to answer the user. The pinned release has 467 questions,
+467 separate answer records, 4,860 documentation pages, 601 cited-page judgments,
+and 1,926 frozen answer aspects across GitHub Docs, Prisma, Supabase and Tailwind
+CSS. There are no dataset partitions. See [dataset design](DATASET_DESIGN.md).
 
-- A fixed GitHub Docs corpus with 3,740 canonical pages
-- 328 real GitHub Community questions
-- 421 page-level qrels from accepted-answer citations
-- Train / validation / test splits
-- Multiple retrieval approaches, including filesystem search, BM25, dense retrieval, hybrid retrieval, and graph-based retrieval
-- Both retrieval-only evaluation and integrated DSH agent evaluation
+The page judgments record citations from accepted community answers. Unjudged
+pages may still be useful. Page-retrieval scores measure recovery of those
+citations; answer-aspect coverage measures a different outcome.
 
-The core task is:
+## Recommended research plan
 
-> Given a real GitHub Community question, retrieve the official GitHub Docs pages that help answer it.
+| Step | Current status | Action |
+|---|---|---|
+| 1. Audit gold labels | **Deferred by project owner** | Use the existing labels unchanged for current experiments. |
+| 2. Compare standard retrieval baselines | **Completed: 467 questions, five methods** | BM25, dense, hybrid, hybrid + reranker, and existing native-link expansion; same questions and product corpus. |
+| 3. Explain failures | **Page-level analysis completed; passage analysis partial** | Candidate/rank failures and product, intent and citation-count slices are saved. Passage-failure frequency remains unmeasured. |
+| 4. Add a method only when justified | **Following this rule** | Keep the existing retrieval methods. A benchmark paper does not require a new RAG algorithm. |
+| 5. Evaluate LLM / agent value | Partial; matched comparison pending | Compare fixed evidence and adaptive search on the same cases with Luna, recording answer quality, latency, tokens and cost. |
 
-This is a retrieval benchmark first, not a reading-comprehension benchmark.
+### Baseline comparison
 
-## 2. The main research concern
+Freeze the corpus revision, questions, chunker, candidate depths and final top 10
+before running. Search only the question's product documentation. Record complete
+candidate traces so a missing candidate can be distinguished from a ranking
+failure. Reuse existing algorithms without tuning against this question pool.
 
-The current gold labels come from the official Docs pages linked in accepted Community answers.
+BM25 versus dense tests lexical versus semantic matching. Hybrid tests their
+combination. The reranker tests ordering of retrieved candidates. Native-link
+expansion tests whether existing documentation links improve page recovery.
+Results and experiment conditions are in [the result index](RESULTS.md).
 
-This has clear advantages:
+On the current pool, dense Recall@10 is 0.629, hybrid 0.607, reranked hybrid
+0.516 and native-link hybrid 0.610. Link expansion recovered additional cited
+pages into its candidate pool but did not produce a clear overall top-10 gain.
+The current reranker hurt recall; this is evidence about that model and chunk
+policy, not proof that reranking in general is ineffective.
 
-- real and traceable provenance
-- simple and reproducible construction
-- no need to manually judge all 3,740 pages
+### Failure analysis and interpretation
 
-But the labels are also sparse.
+For each cited page, distinguish: absent from the candidate pool; present but
+below rank 10; or recovered. A recovered page can still expose the wrong passage
+or produce an incomplete answer. The earlier seven-question fixed-RAG pilot
+contains such passage failures, but does not estimate their dataset-wide rate.
 
-A page that is not in the qrels is **unjudged**, not necessarily irrelevant. So the current benchmark reliably measures:
+Compare single- and multiple-citation questions without assuming that multiple
+citations prove necessary multi-file reasoning. Differences between products
+also reflect content, corpus size and question mix; they do not isolate a causal
+effect of directory depth or graph connectivity.
 
-> **Can the system recover pages that were actually cited in accepted answers?**
+### Agent comparison still needed
 
-It does not yet fully measure:
+The historical 361-question FS/hybrid/Neo4j run compares three agent tool setups.
+The seven-question fixed-evidence pilot compares retrieved snippets with selected
+source passages. Neither is a matched fixed-RAG versus adaptive-agent experiment.
+Use identical cases, model, answer rubric and explicit evidence/token budgets for
+that comparison. Do not combine scores from these different experiments.
 
-> **Did the system retrieve all useful evidence needed to answer the question?**
+## Paper claim supported so far
 
-Before adding more retrieval tricks, we should first understand how reliable the current gold labels are.
+The project studies reliable answers from product documentation using real
+community questions, page retrieval and fine-grained answer requirements.
+Whether its data exposes gaps in existing benchmarks is an empirical question.
+Current evidence does not establish that public benchmarks cannot be reused,
+that topology alone causes failures, or that a new RAG method is necessary.
 
-## 3. Recommended research plan
-
-### Step 1 — Audit the gold labels
-
-Start with a small set of train/validation questions.
-
-For each question, check:
-
-- Does the cited gold page actually support the answer?
-- Which section or passage contains the evidence?
-- Are there useful retrieved pages that are currently unjudged?
-- Does the gold page cover the whole answer or only part of it?
-
-The goal is not to prove the current labels are wrong. The goal is to understand what they really measure.
-
-### Step 2 — Build clear retrieval baselines
-
-Once the evaluation protocol is better understood, compare a small set of standard retrieval systems:
-
-- BM25
-- Dense retrieval
-- Hybrid retrieval
-- Hybrid + reranker
-- Graph / structure-aware retrieval
-
-Each baseline should answer a clear question, rather than simply adding another component.
-
-For example:
-
-- Does semantic retrieval improve over lexical matching?
-- Does reranking help when the right page is already in the candidate pool?
-- Does graph structure mainly help multi-page questions?
-
-### Step 3 — Analyze failures
-
-Do not stop at overall Recall or nDCG.
-
-Ask why each method fails:
-
-- Was the right page never retrieved?
-- Was it retrieved but ranked too low?
-- Was the right page found but the wrong chunk shown?
-- Are linked or multi-page questions much harder?
-- Do different question types favor different retrieval methods?
-
-The main output of this stage should be a small number of clear, repeatable failure modes.
-
-### Step 4 — Add a new method only if the failures justify it
-
-A new retrieval method should come from an observed problem.
-
-Examples:
-
-- If the right page is often in the candidate pool but ranked poorly, improve reranking.
-- If linked multi-page questions are the main weakness, graph expansion becomes well motivated.
-- If dense retrieval finds the right topic but the wrong documentation page, use metadata or document structure more carefully.
-
-The method should follow from the evidence, not from the availability of a particular technology.
-
-### Step 5 — Evaluate LLM / Agent value
-
-Only after the retrieval benchmark is stable should we ask:
-
-- Can an LLM correctly use a fixed set of retrieved evidence?
-- Does an agent improve results by searching again or rewriting queries?
-- How much extra cost, latency, and token usage does agentic search add?
-
-This connects retrieval quality to final answer quality without mixing all sources of error at once.
-
-## 4. Possible paper framing
-
-A natural first paper is:
-
-> **A dataset and benchmark for retrieving official GitHub documentation from real community questions, with a systematic comparison of lexical, dense, hybrid, reranking, and structure-aware retrieval.**
-
-Possible contributions:
-
-1. **Dataset / Benchmark**  
-   Real GitHub Community questions paired with a fixed official GitHub Docs corpus.
-
-2. **Empirical Study**  
-   A controlled comparison of standard retrieval approaches and their failure modes.
-
-3. **Optional Method**  
-   A targeted retrieval improvement, only if the baseline analysis reveals a clear and stable weakness.
-
-A new method is useful, but it is not required for the dataset/benchmark story to be meaningful.
-
-## 5. Research principle
-
-The next stage should follow this order:
-
-```text
-Gold-label audit
-        ↓
-Canonical retrieval baselines
-        ↓
-Failure analysis
-        ↓
-Targeted method (if justified)
-        ↓
-LLM / Agent evaluation
-```
-
-The key principle is simple:
-
-> **Validate the ruler first. Then measure the baselines. Understand the failures before designing the fix.**
+Detailed exploratory artifacts remain in the ignored local research directory.
+The current pool has been used during development, so its results are exploratory.

@@ -51,9 +51,9 @@ const REQUIRED_TOOL_NAMES: Readonly<Record<SkillArm, readonly string[]>> = Objec
 });
 
 const WHEN_TO_USE: Readonly<Record<SkillArm, string>> = Object.freeze({
-  fs: "Use for questions that require locating evidence in the pinned GitHub Docs Markdown repository with filesystem discovery and file reading.",
-  hybrid: "Use for questions that require lexical or semantic retrieval from the pinned GitHub Docs corpus and citation-ready passages.",
-  neo4j: "Use for questions that may require both hybrid retrieval and bounded traversal of evidence-backed GitHub Docs relationships.",
+  fs: "Use for questions that require locating evidence in pinned Markdown repositories with filesystem discovery and file reading.",
+  hybrid: "Use for questions that require lexical or semantic retrieval from the pinned DocsQA corpus and citation-ready passages.",
+  neo4j: "Use for questions that may require both hybrid retrieval and bounded traversal of evidence-backed documentation relationships.",
 });
 
 export function parseSkillDocument(
