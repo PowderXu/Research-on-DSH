@@ -93,6 +93,21 @@ filter; it is not WAC and is not used to rank agent answers. Whether each aspect
 has pinned local-document support is checked as a dataset-quality property; it
 does not change the WAC denominator during agent evaluation.
 
+The judge receives the complete answer and complete corpus text for each of
+the first ten distinct candidate source IDs that resolve in the corpus, plus
+the frozen gold evidence. The ten-source selection is unchanged; document
+text and answers are no longer cut off at 6,000 and 12,000 characters.
+
+Before any judge API calls, every selected question is checked against
+`--max-prompt-bytes` (default: 500,000 UTF-8 bytes for the serialized input and
+system instructions). This is a local size budget, not a model token limit;
+it excludes the response schema and API framing. An oversized input stops the
+run without shortening evidence or dropping the question. Raise the budget
+explicitly only after checking model context and cost. API truncation is also
+disabled, so model context overflow fails instead of producing a score from
+shortened input. Reports record the input policy, and its version is included
+in the prompt hash so caches from the previous truncation policy are not reused.
+
 ## Frozen aspect annotations
 
 Answer evaluation reads `aspects.jsonl` from the pinned dataset release for

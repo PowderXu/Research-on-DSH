@@ -35,6 +35,9 @@ DEFAULT_RUBRIC = (
 )
 ARM_ORDER = EXPECTED_ARMS
 CANONICAL_QUESTIONS = PROJECT_ROOT / "evaluation/dataset/evaluation_data/normalized/questions.jsonl"
+JUDGE_INPUT_POLICY = "full-selected-documents-and-answers-v1"
+# A local request-size budget, not an estimate of a model's token window.
+DEFAULT_MAX_PROMPT_BYTES = 500_000
 
 
 def load_frozen_aspects(path: Path, dataset_dir: Path) -> dict[str, dict[str, Any]]:
@@ -140,12 +143,12 @@ def _candidate_payload(
                 "evidence_id": doc_id,
                 "doc_id": doc_id,
                 "title": str(document.get("title") or ""),
-                "text": str(document.get("rendered_text") or "")[:6_000],
+                "text": str(document.get("rendered_text") or ""),
             }
         )
     return {
         "candidate": label,
-        "answer": answer[:12_000],
+        "answer": answer,
         "agent_completed": bool(row.get("agent_ok", True)),
         "cited_or_retrieved_ids": ranked_ids,
         "candidate_evidence": evidence,
@@ -186,6 +189,7 @@ def build_judge_prompt(
                     if evidence.get(key) is not None
                 }
     payload = {
+        "judge_input_policy": JUDGE_INPUT_POLICY,
         "rubric_version": rubric["rubric_version"],
         "question_id": question_id,
         "question": aspect_record["question"],
@@ -199,6 +203,28 @@ def build_judge_prompt(
         ],
     }
     return payload, aliases
+
+
+def _serialize_judge_prompt(
+    payload: dict[str, Any],
+    rubric: dict[str, Any],
+    max_prompt_bytes: int,
+) -> tuple[str, int]:
+    """Reject oversized inputs instead of judging a silently shortened packet."""
+    if max_prompt_bytes <= 0:
+        raise ValueError("--max-prompt-bytes must be positive")
+    prompt = json.dumps(payload, ensure_ascii=False, sort_keys=True)
+    input_bytes = len(prompt.encode("utf-8")) + len(
+        str(rubric["judge_system"]).encode("utf-8")
+    )
+    if input_bytes > max_prompt_bytes:
+        raise ValueError(
+            f"judge input for {payload['question_id']} uses {input_bytes} UTF-8 bytes; "
+            f"--max-prompt-bytes allows {max_prompt_bytes}. Nothing was truncated. "
+            "Review the complete packet and model context/cost budget before "
+            "explicitly raising the limit; no shortened-input score is produced."
+        )
+    return prompt, input_bytes
 
 
 def _usage(response: Any) -> dict[str, int]:
@@ -219,8 +245,9 @@ def judge_batch(
     reasoning_effort: str,
     rubric: dict[str, Any],
     payload: dict[str, Any],
+    max_prompt_bytes: int = DEFAULT_MAX_PROMPT_BYTES,
 ) -> tuple[AspectBatchJudgment, dict[str, Any]]:
-    prompt = json.dumps(payload, ensure_ascii=False, sort_keys=True)
+    prompt, input_bytes = _serialize_judge_prompt(payload, rubric, max_prompt_bytes)
     started = time.perf_counter()
     response = client.responses.parse(
         model=model,
@@ -228,6 +255,7 @@ def judge_batch(
         input=[{"role": "user", "content": prompt}],
         text_format=AspectBatchJudgment,
         reasoning={"effort": reasoning_effort},
+        truncation="disabled",
         store=False,
     )
     parsed = response.output_parsed
@@ -237,6 +265,8 @@ def judge_batch(
         "latency_seconds": round(time.perf_counter() - started, 6),
         "usage": _usage(response),
         "prompt_sha256": hashlib.sha256(prompt.encode()).hexdigest(),
+        "input_text_bytes": input_bytes,
+        "judge_input_policy": JUDGE_INPUT_POLICY,
     }
 
 
@@ -721,6 +751,7 @@ def _judge_one_question(
     reasoning_effort: str,
     resume: bool,
     question_from_rollout: bool = False,
+    max_prompt_bytes: int = DEFAULT_MAX_PROMPT_BYTES,
 ) -> dict[str, Any]:
     # The arm ordering is fixed independently of CLI argument order.
     paired = {arm: by_arm[arm][question_id] for arm in ARM_ORDER}
@@ -733,9 +764,8 @@ def _judge_one_question(
             "question": paired["fs"]["question"],
         }
     payload, aliases = build_judge_prompt(record, paired, corpus, rubric)
-    prompt_sha256 = hashlib.sha256(
-        json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
-    ).hexdigest()
+    prompt, _ = _serialize_judge_prompt(payload, rubric, max_prompt_bytes)
+    prompt_sha256 = hashlib.sha256(prompt.encode("utf-8")).hexdigest()
     cache_path = _call_cache_path(output_dir, question_id)
     cached = (
         _load_cached_call(
@@ -756,6 +786,7 @@ def _judge_one_question(
             reasoning_effort=reasoning_effort,
             rubric=rubric,
             payload=payload,
+            max_prompt_bytes=max_prompt_bytes,
         )
         resumed = False
     else:
@@ -834,6 +865,7 @@ def run_judgments(
     resume: bool,
     workers: int = 1,
     question_from_rollout: bool = False,
+    max_prompt_bytes: int = DEFAULT_MAX_PROMPT_BYTES,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Run one paired judge call per question with bounded concurrency.
 
@@ -844,9 +876,21 @@ def run_judgments(
 
     if workers <= 0:
         raise ValueError("--workers must be positive")
+    if max_prompt_bytes <= 0:
+        raise ValueError("--max-prompt-bytes must be positive")
     cache_paths = [_call_cache_path(output_dir, question_id) for question_id in ordered_ids]
     if len(set(cache_paths)) != len(cache_paths):
         raise ValueError("question IDs map to duplicate judge cache paths")
+
+    # Check the entire selected pool before starting any paid calls. An oversized
+    # later case must not silently disappear from the reported denominator.
+    for question_id in ordered_ids:
+        paired = {arm: by_arm[arm][question_id] for arm in ARM_ORDER}
+        record = aspects[question_id]
+        if question_from_rollout:
+            record = {**record, "question": paired["fs"]["question"]}
+        payload, _ = build_judge_prompt(record, paired, corpus, rubric)
+        _serialize_judge_prompt(payload, rubric, max_prompt_bytes)
 
     completed: dict[str, dict[str, Any]] = {}
     futures: dict[Future[dict[str, Any]], str] = {}
@@ -868,6 +912,7 @@ def run_judgments(
                 reasoning_effort=reasoning_effort,
                 resume=resume,
                 question_from_rollout=question_from_rollout,
+                max_prompt_bytes=max_prompt_bytes,
             )
             futures[future] = question_id
         for future in as_completed(futures):
@@ -1044,6 +1089,9 @@ def evaluate(args: argparse.Namespace, *, client: Any | None = None) -> dict[str
     workers = int(getattr(args, "workers", 1))
     if workers <= 0:
         raise ValueError("--workers must be positive")
+    max_prompt_bytes = int(getattr(args, "max_prompt_bytes", DEFAULT_MAX_PROMPT_BYTES))
+    if max_prompt_bytes <= 0:
+        raise ValueError("--max-prompt-bytes must be positive")
     args.output_dir.mkdir(parents=True, exist_ok=True)
     if client is None:
         import httpx
@@ -1075,6 +1123,7 @@ def evaluate(args: argparse.Namespace, *, client: Any | None = None) -> dict[str
         resume=bool(args.resume),
         workers=workers,
         question_from_rollout=mixed_generation,
+        max_prompt_bytes=max_prompt_bytes,
     )
     incremental_calls = [row for row in calls if not row["resumed"]]
     report = {
@@ -1082,6 +1131,15 @@ def evaluate(args: argparse.Namespace, *, client: Any | None = None) -> dict[str
         "questions": len(ordered_ids),
         "judge_model": args.model,
         "judge_workers": workers,
+        "judge_input_policy": {
+            "version": JUDGE_INPUT_POLICY,
+            "selected_documents_per_candidate": 10,
+            "document_text": "full",
+            "answer_text": "full",
+            "max_prompt_bytes": max_prompt_bytes,
+            "budget_scope": "UTF-8 bytes of serialized input plus system instructions; excludes response schema and API framing",
+            "on_oversize": "fail_before_any_api_call",
+        },
         "rubric_version": rubric["rubric_version"],
         "rubric_sha256": rubric_sha256,
         "primary_metric": {
@@ -1231,6 +1289,16 @@ def main() -> None:
     parser.add_argument("--reasoning-effort", default="medium")
     parser.add_argument("--request-timeout", type=float, default=120.0)
     parser.add_argument(
+        "--max-prompt-bytes",
+        type=int,
+        default=DEFAULT_MAX_PROMPT_BYTES,
+        help=(
+            "Maximum UTF-8 bytes of input JSON plus system instructions per paired "
+            "judgment (default: 500000); preflight all cases and fail without truncation. "
+            "This is a local size budget, not a model token limit."
+        ),
+    )
+    parser.add_argument(
         "--workers",
         type=int,
         default=1,
@@ -1301,6 +1369,8 @@ def main() -> None:
         raise SystemExit("duplicate --arm values")
     if args.workers <= 0:
         raise SystemExit("--workers must be positive")
+    if args.max_prompt_bytes <= 0:
+        raise SystemExit("--max-prompt-bytes must be positive")
     if not load_openai_key_from_configured_env():
         raise SystemExit("OPENAI_API_KEY is unset; set it or configure KBBENCH_OPENAI_ENV_FILE")
     print(json.dumps(evaluate(args), ensure_ascii=False, indent=2))

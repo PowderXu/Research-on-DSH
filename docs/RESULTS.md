@@ -191,6 +191,14 @@ PYTHONPATH=evaluation:. evaluation/.venv/bin/python \
 
 ## WAC final-answer evaluation
 
+**Historical judge-input limitation:** the 361-question answer scores below
+used at most the first 6,000 characters of each selected candidate document
+and 12,000 characters of each answer. Frozen gold evidence was supplied
+separately without these cutoffs. The current evaluator preserves full text
+and rejects oversized inputs (see [the protocol](EVALUATION_PROTOCOL.md)),
+but these answer scores have not been rerun under that policy. The effect on
+scores and rankings is unmeasured; retrieval Recall and nDCG are unaffected.
+
 The matched answers were judged with the optimized rule's frozen aspects and a
 paired `gpt-5.6-luna` call per question. Weighted Aspect Coverage (WAC) follows
 the formula and `{0, 0.5, 1}` aspect scale used by the
