@@ -1,87 +1,69 @@
-# DSH DocsQA plugin benchmark
+# DocsQA-Repo
 
-This is a strictly DeepSeek Harness foundation for building and evaluating
-knowledge-base plugins over large repositories of small, linked Markdown files.
-The repository has four top-level areas:
+A benchmark for answering real community questions using a specified product's
+GitHub documentation. The research asks how well existing retrieval methods find
+and use the required evidence, and whether documentation content and structure
+help explain their failures.
 
-```text
-docs/         dataset, plugin, evaluation, and result documentation
-results/      generated-output contract; run contents are ignored
-evaluation/   dataset construction plus KB/retrieval evaluation
-dsh_plugin/   DSH package, skills, profile, backend, and agent evaluation
-```
+This README summarizes the [research analysis and plan](docs/RESEARCH_ANALYSIS.md).
+Status: **2026-09-16**.
 
-The native DSH code is TypeScript source, not directly loaded source files. Its
-build and load path is:
+## Dataset
 
-```text
-dsh_plugin/plugin/src/*.ts
-  -> strict TypeScript check + TypeScript tests
-  -> tsc emits JavaScript and declarations to plugin/lib/types/
-  -> tsdown bundles four public ESM entries to plugin/lib/*.js
-  -> the headless DSH profile loads only the compiled lib entries
-  -> an arm patch enables one skill and the matching tool inventory
-```
+The release contains **467 questions**, separate reference answers, **4,860
+pages**, 601 cited-page judgments and 1,926 frozen answer aspects across GitHub
+Docs, Prisma, Supabase and Tailwind CSS. All questions form one pool without
+train/validation/test partitions.
 
-`plugin/lib/` is generated and ignored. `setup:dsh-profile` installs the plugin
-toolchain, builds those artifacts, and only then refreshes the local DSH
-profile, so a clean checkout follows the same path as the installed package.
-See [dsh_plugin/README.md](dsh_plugin/README.md) for the full source tree.
+Data and source manifests live in [docsqa-data](https://github.com/PowderXu/docsqa-data).
+This repository contains the benchmark code and evaluation protocol.
+Cited pages provide sparse relevance labels: unjudged pages may still be useful.
 
-The reference dataset contains 3,740 canonical GitHub Docs pages pinned at
-commit `c34e3dccad00f61133c799d20e7d1208a0e6cc92`, 328 real GitHub Community
-questions, and 421 accepted-answer page citations. The fixed split is 55 train,
-27 validation, and 246 held-out test questions.
+## Baseline findings
 
-## Three DSH arms
+Five existing methods were evaluated on the same 467 questions, each searching
+its product's documentation with the same chunking and final top 10.
+**Recall@10** averages the fraction of a question's labelled pages recovered;
+it measures retrieval, not answer correctness.
 
-**DocsQA** is the proposed system and evaluation umbrella, not one retrieval
-algorithm. The filesystem, hybrid, and Neo4j arms below are candidate DocsQA
-implementations evaluated behind the same DSH agent contract.
+| Method | Recall@10 |
+|---|---:|
+| BM25 | 47.2% |
+| Dense | 62.9% |
+| Hybrid | 60.7% |
+| Hybrid + reranker | 51.6% |
+| Hybrid + native document links | 61.0% |
 
-| Arm | Retrieval capability | Authored skill |
-|---|---|---|
-| Filesystem | bounded DSH filesystem search and read | `skills/fs/initial_skill.md` |
-| Hybrid | BM25 + HNSW + reciprocal-rank fusion | `skills/hybrid/initial_skill.md` |
-| Neo4j | hybrid seeds plus bounded typed graph expansion | `skills/neo4j/initial_skill.md` |
+- **Performance varies across the data.** The same hybrid method reaches 39.2%
+  recall on Prisma and 94.1% on Tailwind. Content, question mix and corpus size
+  also differ; document structure has not been isolated as the cause.
+- **Failures occur at both retrieval and ranking.** Of 601 annotated
+  question–page pairs, hybrid recovers 329 in its top 10, misses 147 from its
+  candidate pool and ranks another 125 below 10.
+- **Added components did not reliably improve retrieval.** Native-link expansion
+  gives no clear overall recall gain; the tested reranker reduces recall.
+  These findings apply to the evaluated configurations.
 
-The filesystem arm uses official DSH filesystem tools. Hybrid and Neo4j expose
-native `docsqa_search`, `docsqa_fetch`, and optional `docsqa_expand` tools
-through a local backend. The three authored skill files are versioned directly;
-there is no SkillOpt training or optimization layer.
+The question pool was used during development, so these results are exploratory.
+They do not establish that existing public benchmarks cannot be reused or that
+we need a new RAG method. See [full results and failure analysis](docs/RESULTS.md).
 
-## Evaluation layers
+## Research-plan status
 
-- Plugin/retrieval evaluation makes no model calls and measures Recall, Hit,
-  nDCG, warm latency, build time, and graph statistics.
-- Integrated DSH-agent evaluation runs real DSH episodes and additionally
-  measures model tokens, end-to-end latency, tool calls, failures, and graph use.
+| Step | Status |
+|---|---|
+| 1. Audit labels | Deferred as requested; existing labels used unchanged. |
+| 2. Compare standard baselines | Completed: five methods on all 467 questions. |
+| 3. Analyze failures | Page-level analysis completed; dataset-wide passage analysis remains unfinished. |
+| 4. Add a method only if justified | Existing methods retained; a new method is not required for a benchmark paper. |
+| 5. Evaluate LLM / agent value | Matched fixed-RAG versus adaptive-agent comparison remains pending. |
 
-Do not combine the two latency scopes. See [docs/RESULTS.md](docs/RESULTS.md) for
-separate run commands and current results.
+The next agent comparison should use the same questions, Luna model, scoring
+rules and explicit evidence/token budgets, measuring answer quality, latency,
+tokens and cost. Earlier agent runs and the small fixed-evidence pilot used
+different conditions and cannot substitute for that comparison.
 
-## Setup and verification
-
-```bash
-python3 -m venv evaluation/.venv
-evaluation/.venv/bin/pip install -e "./evaluation[retrieval,test]"
-npm ci --prefix dsh_plugin
-npm run --prefix dsh_plugin setup:dsh-profile
-npm run --prefix dsh_plugin verify:dsh
-evaluation/.venv/bin/python evaluation/dataset/verify.py
-evaluation/.venv/bin/python -m pytest -c evaluation/pyproject.toml
-```
-
-Neo4j evaluation additionally needs `evaluation/requirements-graph.txt` and a
-local Neo4j Community instance. Filesystem and agent evaluation need the pinned
-raw docs checkout:
-
-```bash
-evaluation/dataset/prepare_raw.sh
-```
-
-Design details are in [docs/DATASET_DESIGN.md](docs/DATASET_DESIGN.md),
-[docs/PLUGIN_DESIGN.md](docs/PLUGIN_DESIGN.md), and
-[docs/EVALUATION_PROTOCOL.md](docs/EVALUATION_PROTOCOL.md). Personal research
-thoughts and unresolved questions about the dataset, graph, retrieval, and DSH
-harness are recorded in [TODO.md](TODO.md).
+For details, see the [dataset design](docs/DATASET_DESIGN.md) and
+[evaluation protocol](docs/EVALUATION_PROTOCOL.md). Installation and execution
+instructions are in [evaluation](evaluation/README.md) and
+[agent setup](dsh_plugin/README.md).

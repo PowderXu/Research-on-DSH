@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "rubric_version": "generic-docsqa-rubric-v15",
+  "normalizer_version": "generic-docsqa-normalizer-v15",
+  "requirement_system": "Extract user requirements for a technical-support evaluation. Do not infer a solution method from the problem statement.",
+  "requirement_rules": [
+    "Use only the user's question. Do not anticipate an answer or documentation.",
+    "Represent desired outcomes and explicitly stated constraints without guessing an implementation method.",
+    "Treat a named method as required only when the user explicitly makes it a condition of success.",
+    "Do not convert symptoms, attempted actions, examples, or missing interface elements into inferred solution requirements.",
+    "Merge overlapping statements that describe the same practical outcome.",
+    "Do not add a compatibility requirement unless the user explicitly asks to preserve the attempted workflow.",
+    "Treat an unspecified error as context or ambiguity unless the user explicitly requests its diagnosis and supplies diagnostic information.",
+    "Use the smallest critical set that preserves the primary practical outcome, every independent requested outcome, and every explicit non-negotiable constraint.",
+    "Mark background, comparison, rationale, speculation, and implementation-detail requests noncritical unless the user explicitly makes one necessary for success.",
+    "Do not make mutually exclusive conditional branches simultaneously critical.",
+    "Every requirement must include an exact source quote from the question.",
+    "Record genuine ambiguity instead of resolving it from outside knowledge."
+  ],
+  "generation_system": "Normalize historical technical-support QA into a locally grounded standalone answer. Be precise and concise, and do not invent missing facts.",
+  "generation_rules": {
+    "local_only": "Use only the supplied evidence. External sources and model memory are forbidden.",
+    "combined_evidence": "The supplied evidence records may solve the problem jointly; no individual record must contain the complete answer.",
+    "composition": "When the question supplies an application scaffold and local evidence supplies a missing documented operation or rule, they may be composed unless the evidence contradicts the result.",
+    "syntax_precision": "Do not present reconstructed syntax as verified when the evidence establishes only semantics. Label illustrative syntax or omit it.",
+    "question_context": "Question context may establish the user's stated environment and intent, but it cannot prove a new product fact.",
+    "requirement_boundary": "Answer the fixed requirements. Evidence can support a requirement but cannot create or modify one. Preserve the antecedent of every conditional statement.",
+    "answer": "Write a standalone direct answer that preserves necessary qualifications and actionable details. Do not refer the user to an unexplained link.",
+    "claims": "Assign every material claim an identifier and one or more supplied evidence identifiers.",
+    "claim_minimality": "Include only claims needed for the fixed requirements. Remove a nonessential weak claim instead of repeatedly paraphrasing it.",
+    "reference_role": "Treat the accepted-answer record as adjudicated reference evidence, not an automatic pass. Preserve its supported resolution, but report insufficient evidence when the primary outcome remains unresolved.",
+    "links": "Do not emit live prose links. Local evidence paths are appended deterministically after acceptance.",
+    "images": "Use image-derived text as ordinary local evidence and do not claim access to an image vector.",
+    "insufficient": "Report insufficient evidence only when no safe complete or accurately bounded answer can be produced from the supplied records."
+  },
+  "grading_system": "Independently grade documentation QA using verifiable requirements and supplied evidence rather than style or outside knowledge.",
+  "grading_rules": {
+    "evidence_boundary": "Use only the supplied evidence records.",
+    "combined_evidence": "Evidence records may be complementary. Do not require one record to restate the complete answer.",
+    "reference_role": "Treat the accepted-answer record as adjudicated reference evidence, not an automatic pass. A directly stated claim is supported unless contradicted by other supplied evidence.",
+    "fixed_requirements": "Preserve every supplied requirement identifier, text, and critical flag exactly. Do not add, remove, or rewrite requirements.",
+    "conditional_evidence": "Conditional evidence supports a claim only with its antecedent preserved.",
+    "compositional_support": "Allow full credit when supplied records jointly establish the required operation, rule, application context, and conclusion.",
+    "qualified_resolution": "An accurate negative or bounded answer may fully solve a capability question when it resolves the primary requested outcome.",
+    "noncritical_coverage": "A missing noncritical detail may reduce directness but must not change the outcome when all critical requirements are fully resolved.",
+    "claim_support": "Grade each material claim against its cited supplied evidence identifiers.",
+    "unknown": "Use unknown when the supplied package is insufficient. Do not repair it from memory.",
+    "scale": {
+      "0": "wrong or absent",
+      "1": "major gaps",
+      "2": "materially partial",
+      "3": "minor gaps",
+      "4": "complete"
+    }
+  },
+  "grading_variants": {
+    "coverage": "Measure literal or compositional coverage of the fixed requirements.",
+    "falsification": "Attempt to identify unsupported inference, lost qualification, wrong scope, contradiction, or a citation that does not support its claim."
+  }
+}

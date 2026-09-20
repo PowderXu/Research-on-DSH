@@ -9,7 +9,7 @@ import {
 export const Config = SkillConfig;
 export type Config = SkillPluginConfig;
 
-export const name = "kbbench-skill-github-docs-fs";
+export const name = "kbbench-skill-docsqa-fs";
 export const inject = ["skills"] as const;
 
 export function apply(ctx: Context, config: Config = {}): () => void {

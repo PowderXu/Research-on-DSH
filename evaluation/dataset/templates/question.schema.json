@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DocsQA question input",
+  "type": "object",
+  "required": [
+    "question_id",
+    "query"
+  ],
+  "properties": {
+    "question_id": {
+      "type": "string"
+    },
+    "source_question_id": {
+      "type": "string"
+    },
+    "project": {
+      "type": "string"
+    },
+    "dataset": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "query": {
+      "type": "string"
+    },
+    "source_url": {
+      "type": "string"
+    },
+    "community_category": {
+      "type": "string"
+    },
+    "question_images": {
+      "type": "array"
+    },
+    "question_modalities": {
+      "type": "array"
+    }
+  },
+  "additionalProperties": false
+}

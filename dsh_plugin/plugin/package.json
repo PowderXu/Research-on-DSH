@@ -31,7 +31,8 @@
     "cordis.patch.yml",
     "README.md",
     "SERVICE_CONTRACT.md",
-    "GRAPH_SCHEMA.md"
+    "GRAPH_SCHEMA.md",
+    "graph_schema.json"
   ],
   "dsh": {
     "bundle": {
