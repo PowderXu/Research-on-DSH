@@ -208,21 +208,22 @@ def build_judge_prompt(
 def _serialize_judge_prompt(
     payload: dict[str, Any],
     rubric: dict[str, Any],
-    max_prompt_bytes: int,
+    max_prompt_bytes: int | None,
 ) -> tuple[str, int]:
-    """Reject oversized inputs instead of judging a silently shortened packet."""
-    if max_prompt_bytes <= 0:
-        raise ValueError("--max-prompt-bytes must be positive")
+    """Serialize full inputs and enforce the local byte budget when configured."""
+    if max_prompt_bytes is not None and max_prompt_bytes <= 0:
+        raise ValueError("--max-prompt-bytes must be positive or none")
     prompt = json.dumps(payload, ensure_ascii=False, sort_keys=True)
     input_bytes = len(prompt.encode("utf-8")) + len(
         str(rubric["judge_system"]).encode("utf-8")
     )
-    if input_bytes > max_prompt_bytes:
+    if max_prompt_bytes is not None and input_bytes > max_prompt_bytes:
         raise ValueError(
             f"judge input for {payload['question_id']} uses {input_bytes} UTF-8 bytes; "
             f"--max-prompt-bytes allows {max_prompt_bytes}. Nothing was truncated. "
             "Review the complete packet and model context/cost budget before "
-            "explicitly raising the limit; no shortened-input score is produced."
+            "explicitly raising the limit or setting --max-prompt-bytes none; "
+            "no shortened-input score is produced."
         )
     return prompt, input_bytes
 
@@ -245,7 +246,7 @@ def judge_batch(
     reasoning_effort: str,
     rubric: dict[str, Any],
     payload: dict[str, Any],
-    max_prompt_bytes: int = DEFAULT_MAX_PROMPT_BYTES,
+    max_prompt_bytes: int | None = DEFAULT_MAX_PROMPT_BYTES,
 ) -> tuple[AspectBatchJudgment, dict[str, Any]]:
     prompt, input_bytes = _serialize_judge_prompt(payload, rubric, max_prompt_bytes)
     started = time.perf_counter()
@@ -751,7 +752,7 @@ def _judge_one_question(
     reasoning_effort: str,
     resume: bool,
     question_from_rollout: bool = False,
-    max_prompt_bytes: int = DEFAULT_MAX_PROMPT_BYTES,
+    max_prompt_bytes: int | None = DEFAULT_MAX_PROMPT_BYTES,
 ) -> dict[str, Any]:
     # The arm ordering is fixed independently of CLI argument order.
     paired = {arm: by_arm[arm][question_id] for arm in ARM_ORDER}
@@ -865,7 +866,7 @@ def run_judgments(
     resume: bool,
     workers: int = 1,
     question_from_rollout: bool = False,
-    max_prompt_bytes: int = DEFAULT_MAX_PROMPT_BYTES,
+    max_prompt_bytes: int | None = DEFAULT_MAX_PROMPT_BYTES,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Run one paired judge call per question with bounded concurrency.
 
@@ -876,8 +877,8 @@ def run_judgments(
 
     if workers <= 0:
         raise ValueError("--workers must be positive")
-    if max_prompt_bytes <= 0:
-        raise ValueError("--max-prompt-bytes must be positive")
+    if max_prompt_bytes is not None and max_prompt_bytes <= 0:
+        raise ValueError("--max-prompt-bytes must be positive or none")
     cache_paths = [_call_cache_path(output_dir, question_id) for question_id in ordered_ids]
     if len(set(cache_paths)) != len(cache_paths):
         raise ValueError("question IDs map to duplicate judge cache paths")
@@ -1089,9 +1090,11 @@ def evaluate(args: argparse.Namespace, *, client: Any | None = None) -> dict[str
     workers = int(getattr(args, "workers", 1))
     if workers <= 0:
         raise ValueError("--workers must be positive")
-    max_prompt_bytes = int(getattr(args, "max_prompt_bytes", DEFAULT_MAX_PROMPT_BYTES))
-    if max_prompt_bytes <= 0:
-        raise ValueError("--max-prompt-bytes must be positive")
+    max_prompt_bytes = getattr(args, "max_prompt_bytes", DEFAULT_MAX_PROMPT_BYTES)
+    if max_prompt_bytes is not None:
+        max_prompt_bytes = int(max_prompt_bytes)
+        if max_prompt_bytes <= 0:
+            raise ValueError("--max-prompt-bytes must be positive or none")
     args.output_dir.mkdir(parents=True, exist_ok=True)
     if client is None:
         import httpx
@@ -1138,7 +1141,8 @@ def evaluate(args: argparse.Namespace, *, client: Any | None = None) -> dict[str
             "answer_text": "full",
             "max_prompt_bytes": max_prompt_bytes,
             "budget_scope": "UTF-8 bytes of serialized input plus system instructions; excludes response schema and API framing",
-            "on_oversize": "fail_before_any_api_call",
+            "on_oversize": "fail_before_any_api_call" if max_prompt_bytes is not None else None,
+            "api_truncation": "disabled",
         },
         "rubric_version": rubric["rubric_version"],
         "rubric_sha256": rubric_sha256,
@@ -1270,6 +1274,18 @@ def _rollout_sha_arg(value: str) -> tuple[str, str]:
     return arm, digest
 
 
+def _max_prompt_bytes_arg(value: str) -> int | None:
+    if value.strip().lower() == "none":
+        return None
+    try:
+        limit = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be a positive integer or none") from exc
+    if limit <= 0:
+        raise argparse.ArgumentTypeError("must be a positive integer or none")
+    return limit
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--aspects", type=Path)
@@ -1290,12 +1306,15 @@ def main() -> None:
     parser.add_argument("--request-timeout", type=float, default=120.0)
     parser.add_argument(
         "--max-prompt-bytes",
-        type=int,
+        type=_max_prompt_bytes_arg,
+        nargs="?",
+        const=None,
         default=DEFAULT_MAX_PROMPT_BYTES,
         help=(
             "Maximum UTF-8 bytes of input JSON plus system instructions per paired "
-            "judgment (default: 500000); preflight all cases and fail without truncation. "
-            "This is a local size budget, not a model token limit."
+            "judgment (default: 500000). Use 'none' or supply the flag without a value "
+            "to disable this local budget; model context limits still apply. "
+            "With a budget, preflight all cases and fail without truncation."
         ),
     )
     parser.add_argument(
@@ -1369,8 +1388,6 @@ def main() -> None:
         raise SystemExit("duplicate --arm values")
     if args.workers <= 0:
         raise SystemExit("--workers must be positive")
-    if args.max_prompt_bytes <= 0:
-        raise SystemExit("--max-prompt-bytes must be positive")
     if not load_openai_key_from_configured_env():
         raise SystemExit("OPENAI_API_KEY is unset; set it or configure KBBENCH_OPENAI_ENV_FILE")
     print(json.dumps(evaluate(args), ensure_ascii=False, indent=2))

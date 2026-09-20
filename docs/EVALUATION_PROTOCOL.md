@@ -102,11 +102,16 @@ Before any judge API calls, every selected question is checked against
 `--max-prompt-bytes` (default: 500,000 UTF-8 bytes for the serialized input and
 system instructions). This is a local size budget, not a model token limit;
 it excludes the response schema and API framing. An oversized input stops the
-run without shortening evidence or dropping the question. Raise the budget
-explicitly only after checking model context and cost. API truncation is also
-disabled, so model context overflow fails instead of producing a score from
-shortened input. Reports record the input policy, and its version is included
-in the prompt hash so caches from the previous truncation policy are not reused.
+run without shortening evidence or dropping the question. Supply a positive
+integer to change the budget, or `--max-prompt-bytes none` (also accepted: the
+flag without a value) to disable the local byte limit. Omitting the flag keeps
+the 500,000-byte default; Python callers can pass `max_prompt_bytes=None` for
+no local limit. Reports record an unlimited budget as JSON `null` and still
+record actual input size. Model context limits and request timeouts still
+apply. API truncation remains disabled, so context overflow fails instead of
+producing a score from shortened input. Reports record the input policy, and
+its version is included in the prompt hash so caches from the previous
+truncation policy are not reused.
 
 ## Frozen aspect annotations
 
