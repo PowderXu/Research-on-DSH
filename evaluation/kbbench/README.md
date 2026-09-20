@@ -29,6 +29,22 @@ intent, evidence category, evidence structure, and qrel count. An unjudged page
 receives no gain because the accepted-answer qrels are sparse; this does not
 prove that page is irrelevant.
 
+The `retrieval.py` component evaluator defaults to `--search-scope project`:
+warm-up and measured searches receive all corpus document IDs matching the
+question's input `project`. Qrels only validate that scope; they do not select
+candidates. Missing project metadata or qrels outside the project fail before
+indexing. Scope filters apply before candidate limits, route selection, and
+link traversal, so an outside page cannot consume graph slots or bridge a path.
+Reports record `search_scope`, question `project`, and `scope_documents`.
+Use `--search-scope corpus` explicitly for the former unrestricted search.
+
+This entry point keeps a shared index: BM25 statistics come from the full
+corpus, and scoped dense search uses exact cosine over permitted chunks.
+It is therefore not identical to building a separate BM25/HNSW index per
+product. Historical results must retain their original scope and index policy;
+the Step 2 five-baseline results used separate product indexes and are unchanged
+by this fix. This option does not change `plugin_eval.py` or agent-run scope.
+
 When `retrieval.py` or `plugin_eval.py` receives `--aspects`, it evaluates only
 questions in that frozen silver annotation file and additionally reports
 Weighted Aspect Recall@5/10 and alpha-nDCG@10. Answer-only aspects are not

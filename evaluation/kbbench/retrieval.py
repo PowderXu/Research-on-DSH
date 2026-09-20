@@ -254,8 +254,20 @@ class GitHubDocsRetriever:
         ]
         return self._collapse_chunks(hits)
 
-    def _select_routes(self, query: str, count: int = 4) -> list[str]:
-        return [self.routes[index] for index, _ in self.route_bm25.search(query, count)]
+    def _select_routes(
+        self, query: str, count: int = 4, allowed_doc_ids: set[str] | None = None
+    ) -> list[str]:
+        allowed = None
+        if allowed_doc_ids is not None:
+            routes = {self.page_route.get(doc_id) for doc_id in allowed_doc_ids}
+            allowed = np.asarray(
+                [index for index, route in enumerate(self.routes) if route in routes],
+                dtype=np.int64,
+            )
+        return [
+            self.routes[index]
+            for index, _ in self.route_bm25.search(query, count, allowed=allowed)
+        ]
 
     def _rerank(
         self,
@@ -303,13 +315,25 @@ class GitHubDocsRetriever:
         query: str,
         fused: list[str],
         fused_scores: dict[str, float],
+        allowed_doc_ids: set[str] | None = None,
     ) -> tuple[list[str], bool, int, list[int]]:
         """Expand every query over bounded, query-ranked Markdown-link paths."""
 
         if self.edge_bm25 is None or self.graph_max_hops < 1:
             return fused, False, 0, []
+        allowed_edges = None
+        if allowed_doc_ids is not None:
+            allowed_edges = np.asarray(
+                [
+                    index
+                    for index, edge in enumerate(self.edge_records)
+                    if edge["source_id"] in allowed_doc_ids
+                    and edge["target_id"] in allowed_doc_ids
+                ],
+                dtype=np.int64,
+            )
         edge_hits = self.edge_bm25.search(
-            query, min(1_500, len(self.edge_records))
+            query, min(1_500, len(self.edge_records)), allowed=allowed_edges
         )
         edge_rank = {edge_index: rank for rank, (edge_index, _) in enumerate(edge_hits, 1)}
         seeds = fused[: self.graph_seed_depth]
@@ -341,7 +365,9 @@ class GitHubDocsRetriever:
                         if edge["source_id"] == current
                         else edge["source_id"]
                     )
-                    if neighbor in path_nodes:
+                    if neighbor in path_nodes or (
+                        allowed_doc_ids is not None and neighbor not in allowed_doc_ids
+                    ):
                         continue
                     candidates.append(
                         (
@@ -439,7 +465,7 @@ class GitHubDocsRetriever:
         )
 
         if method == "pure_routing_bm25":
-            selected_routes = self._select_routes(query)
+            selected_routes = self._select_routes(query, allowed_doc_ids=allowed_doc_ids)
             route_allowed = np.asarray(
                 sorted(
                     {
@@ -485,10 +511,13 @@ class GitHubDocsRetriever:
                             query,
                             fused,
                             fused_scores,
+                            allowed_doc_ids=allowed_doc_ids,
                         )
                     else:
                         if "hierarchy" in method:
-                            selected_routes = self._select_routes(query)
+                            selected_routes = self._select_routes(
+                                query, allowed_doc_ids=allowed_doc_ids
+                            )
                             route_set = set(selected_routes)
                             fused = sorted(
                                 fused,
@@ -610,6 +639,34 @@ def summary_tables(
     }
 
 
+def _question_document_scopes(
+    corpus_rows: list[dict[str, Any]], questions: list[dict[str, Any]], search_scope: str
+) -> dict[str, set[str] | None]:
+    if search_scope == "corpus":
+        return {str(question["question_id"]): None for question in questions}
+    if search_scope != "project":
+        raise ValueError(f"unknown search scope: {search_scope}")
+    by_project: dict[str, set[str]] = defaultdict(set)
+    for document in corpus_rows:
+        project = str(document.get("project") or "").strip()
+        if not project:
+            raise ValueError(f"corpus document lacks project: {document['doc_id']}")
+        by_project[project].add(str(document["doc_id"]))
+    scopes: dict[str, set[str] | None] = {}
+    for question in questions:
+        question_id = str(question["question_id"])
+        project = str(question.get("project") or "").strip()
+        if project not in by_project:
+            raise ValueError(f"question {question_id} has no corpus project: {project!r}")
+        allowed = by_project[project]
+        # Qrels validate the scope; they never define its candidate documents.
+        outside = set(question["qrel_ids"]) - allowed
+        if outside:
+            raise ValueError(f"question {question_id} has qrels outside its project: {sorted(outside)}")
+        scopes[question_id] = allowed
+    return scopes
+
+
 def evaluate(args: argparse.Namespace) -> dict[str, Any]:
     from sentence_transformers import SentenceTransformer
 
@@ -630,6 +687,8 @@ def evaluate(args: argparse.Namespace) -> dict[str, Any]:
         questions = questions[: args.limit]
     if not questions:
         raise ValueError("no questions remain after aspect and limit filters")
+    search_scope = getattr(args, "search_scope", "project")
+    question_scopes = _question_document_scopes(corpus_rows, questions, search_scope)
     chunks = build_chunks(corpus_rows)
     print(f"Loading embedding model {args.embedding_model}", flush=True)
     embedding_model = SentenceTransformer(
@@ -665,13 +724,17 @@ def evaluate(args: argparse.Namespace) -> dict[str, Any]:
         graph_hop_decay=args.graph_hop_decay,
         graph_weight=args.graph_weight,
     )
-    retriever.search(questions[0]["query"], methods[0], top_k=args.top_k)
+    retriever.search(
+        questions[0]["query"], methods[0], top_k=args.top_k,
+        allowed_doc_ids=question_scopes[str(questions[0]["question_id"])],
+    )
     rows: list[dict[str, Any]] = []
     for method in methods:
         print(f"Evaluating {method} on {len(questions)} questions", flush=True)
         for index, question in enumerate(questions, start=1):
             ranked_ids, diagnostics = retriever.search(
-                str(question["query"]), method, top_k=args.top_k
+                str(question["query"]), method, top_k=args.top_k,
+                allowed_doc_ids=question_scopes[str(question["question_id"])],
             )
             rows.append(
                 {
@@ -679,6 +742,8 @@ def evaluate(args: argparse.Namespace) -> dict[str, Any]:
                     "schema_version": args.schema_version,
                     "method": method,
                     "question_id": question["question_id"],
+                    "project": question.get("project"),
+                    "search_scope": search_scope,
                     "intent_category": question["intent_category"],
                     "evidence_category": question["evidence_category"],
                     "evidence_structure": question.get(
@@ -718,6 +783,7 @@ def evaluate(args: argparse.Namespace) -> dict[str, Any]:
         "documents": len(corpus_rows),
         "chunks": len(chunks),
         "questions": len(questions),
+        "search_scope": search_scope,
         "aspect_annotation_file": str(args.aspects) if args.aspects else None,
         "aspect_aware_metrics": bool(aspects_by_id),
         "methods": list(methods),
@@ -737,6 +803,10 @@ def evaluate(args: argparse.Namespace) -> dict[str, Any]:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Evaluate retrieval on real DocsQA support questions")
     parser.add_argument("--dataset-dir", type=Path, required=True)
+    parser.add_argument(
+        "--search-scope", choices=("project", "corpus"), default="project",
+        help="Search the question's project (default); corpus reproduces unrestricted search.",
+    )
     parser.add_argument(
         "--aspects",
         type=Path,
