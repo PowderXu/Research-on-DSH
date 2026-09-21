@@ -19,8 +19,7 @@ The benchmark uses four native DSH plugin roles:
 The DSH profile loads the runtime and all three skill plugins, then an arm patch
 enables exactly the required tools and one skill. The skills remain external,
 versioned Markdown artifacts so instructions can be reviewed or edited without
-changing tool schemas or retrieval code. No optimizer-generated skill copies are
-created.
+changing tool schemas or retrieval code.
 
 ## Source, build, and profile boundary
 

@@ -29,9 +29,8 @@ Historical results keep their original evaluated cohorts and do not become
 467-question results after this storage migration. Existing development exposure
 also remains part of their provenance.
 
-The earlier annotation-preparation experiment is documented separately in
-[annotation provenance](RULE_OPTIMIZATION.md). Its optimizer is retired;
-current evaluation reads frozen annotations from the pinned dataset.
+Answer evaluation reads frozen annotations from the pinned dataset.
+Their format and source are documented in [aspect annotations](ASPECT_ANNOTATIONS.md).
 
 ## Zero-shot system protocol
 
@@ -41,10 +40,10 @@ For each question, a submitted system receives:
 - access to the same pinned documentation corpus; and
 - the same non-retrieval tools and final-answer schema.
 
-It does not receive the accepted answer, qrels, frozen aspects, aspect-rule
-optimization examples, or another benchmark answer. The system may make
-multiple search and read calls. All calls, returned identifiers, and the final
-response must be recorded in the trajectory.
+It does not receive the accepted answer, qrels, frozen aspects, or another
+benchmark answer. The system may make multiple search and read calls. All
+calls, returned identifiers, and the final response must be recorded in the
+trajectory.
 
 Agent failures remain in every denominator. A trajectory fails its validity
 gate if it does not establish a successful search-to-read evidence path,
@@ -116,14 +115,14 @@ truncation policy are not reused.
 ## Frozen aspect annotations
 
 Answer evaluation reads `aspects.jsonl` from the pinned dataset release for
-all 467 questions. It creates no training, validation, or held-out cohorts and
-performs no annotation-rule optimization. Deterministic checks validate aspect
-schemas, IDs, weights, and evidence mappings before scoring.
+all 467 questions. Aspect descriptions, weights, and evidence mappings stay
+fixed across systems. The LLM assigns coverage labels to each new answer;
+deterministic code computes its WAC score. Checks validate aspect schemas,
+IDs, weights, and evidence mappings before scoring.
 
 The existing annotations are model-generated silver labels. Their historical
-construction is documented in [annotation provenance](RULE_OPTIMIZATION.md).
-The earlier rule-selection results are historical evidence, not a requirement
-to partition the current dataset or proof of expert agreement.
+construction is documented in [aspect annotations](ASPECT_ANNOTATIONS.md).
+These labels have not been independently verified by domain experts.
 
 ## Baseline configurations
 
@@ -159,7 +158,7 @@ sensitivity analyses, not causal architecture comparisons.
 
 - dataset building: [`evaluation/dataset/scripts/README.md`](../evaluation/dataset/scripts/README.md)
 - normalization: [`NORMALIZED_DATASET.md`](NORMALIZED_DATASET.md)
-- historical annotation provenance: [`RULE_OPTIMIZATION.md`](RULE_OPTIMIZATION.md)
+- fixed aspects and annotation provenance: [`ASPECT_ANNOTATIONS.md`](ASPECT_ANNOTATIONS.md)
 - retrieval scoring: [`evaluation/kbbench/README.md`](../evaluation/kbbench/README.md)
 - DSH baseline composition: [`PLUGIN_DESIGN.md`](PLUGIN_DESIGN.md)
 - commands and maintained values: [`RESULTS.md`](RESULTS.md)

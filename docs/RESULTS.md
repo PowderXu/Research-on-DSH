@@ -2,7 +2,7 @@
 
 > The current dataset is one 467-question pool with no dataset partitions.
 > The retrieval-only comparison below uses that full pool. Later agent and
-> annotation tables retain their original historical sample sizes and settings.
+> answer tables retain their original historical sample sizes and settings.
 
 Status date: **2026-09-16**.
 
@@ -87,49 +87,17 @@ PYTHONPATH=evaluation:. evaluation/.venv/bin/python \
   --materialize-only
 ```
 
-## Aspect-rule optimization
+## Fixed answer aspects
 
-The historical annotation experiment created a deterministic project-stratified split
-from all 467 normalized records:
+The pinned dataset provides 1,926 frozen aspects for all 467 questions
+(mean 4.12 per question). These model-generated annotations specify required
+facts, actions, and conditions, together with weights and evidence mappings.
+Each evaluated system uses the same annotations; the LLM judge assigns coverage
+labels to its answers and deterministic code computes WAC.
 
-| Partition | GitHub Docs | Prisma | Supabase | Tailwind CSS | Total |
-|---|---:|---:|---:|---:|---:|
-| Train | 118 | 75 | 31 | 56 | **280** |
-| Validation | 40 | 25 | 10 | 19 | **94** |
-| Held-out test | 39 | 25 | 11 | 18 | **93** |
-
-The complete authorized Sol/Luna run finished on 2026-09-03:
-
-| Stage | Questions | Pass rate | Mean source coverage |
-|---|---:|---:|---:|
-| Initial-rule validation | 94 | 0.9574 | 0.9657 |
-| Best-rule validation | 94 | **0.9681** | **0.9681** |
-| Frozen held-out test | 93 | 0.9462 | 0.9462 |
-| Raw all-record generation | 467 | 0.9507 | — |
-
-SkillOpt accepted one of five edits and selected step 3. The final freeze
-contains all 467 questions and 1,926 aspects (mean 4.12). Raw generation
-produced 445 structurally materializable records; deterministic binding of
-exact evidence IDs from mapped normalized claims repaired 44 aspect fields in
-the 22 raw structural failures. No API or JSON-parsing failures occurred.
-`rule_eligibility.json` therefore marks the artifact
-eligible for agent judging.
-
-| Phase | Model calls | Prompt tokens | Completion tokens | Total tokens |
-|---|---:|---:|---:|---:|
-| SkillOpt train/selection | 911 | 6,869,089 | 1,175,093 | 8,044,182 |
-| Held-out test | 93 | 437,149 | 116,210 | 553,359 |
-| All-record aspect freeze | 467 | 2,240,376 | 592,087 | 2,832,463 |
-| **Total** | **1,471** | **9,546,614** | **1,883,390** | **11,430,004** |
-
-This is weak-supervision compatibility, not human-agreement evidence. The
-completed final-answer results below use only this optimized rule and its
-frozen aspects; superseded judge artifacts remain excluded.
-
-The completed annotation-run artifacts remain under
-`results/runs/rule-optimization/skillopt-sol-luna/` for provenance. The active
-optimizer has been retired; current evaluation downloads frozen annotations
-with the dataset. See [annotation provenance](RULE_OPTIMIZATION.md).
+The annotations were prepared before agent evaluation and have not been
+independently verified by domain experts. Their schema, scoring boundary, and
+historical source are documented in [aspect annotations](ASPECT_ANNOTATIONS.md).
 
 ## Trajectory retrieval evaluation
 
@@ -199,7 +167,7 @@ and rejects oversized inputs (see [the protocol](EVALUATION_PROTOCOL.md)),
 but these answer scores have not been rerun under that policy. The effect on
 scores and rankings is unmeasured; retrieval Recall and nDCG are unaffected.
 
-The matched answers were judged with the optimized rule's frozen aspects and a
+The matched answers were judged against the fixed aspect annotations with a
 paired `gpt-5.6-luna` call per question. Weighted Aspect Coverage (WAC) follows
 the formula and `{0, 0.5, 1}` aspect scale used by the
 [BRIGHT-Pro paper](https://arxiv.org/abs/2605.04018) and its
@@ -259,7 +227,7 @@ citation integrity, and paired bootstrap intervals.
 Current results show that retrieval and answer quality can improve while
 unsupported-claim rate also increases, and that similar latency can hide large
 token and validity differences. They also show that graph-capable configuration
-does not imply frequent graph use. The optimized aspect rule and WAC judge
+does not imply frequent graph use. The fixed aspect annotations and WAC judge
 have not been validated against domain experts. A publication release still
 needs an independent project-stratified human audit and a newly sealed system
 cohort.

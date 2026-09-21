@@ -42,5 +42,5 @@ run the Python checks with
 TypeScript checks with `npm run --prefix dsh_plugin verify:dsh`.
 These optional development checks are not required to run the benchmark.
 
-See [the protocol](../docs/EVALUATION_PROTOCOL.md), [annotation provenance](../docs/RULE_OPTIMIZATION.md),
+See [the protocol](../docs/EVALUATION_PROTOCOL.md), [aspect annotations](../docs/ASPECT_ANNOTATIONS.md),
 and [maintained results](../docs/RESULTS.md).
