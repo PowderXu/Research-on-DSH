@@ -1,6 +1,6 @@
 # Research analysis and plan
 
-Status: 2026-09-16. **The plan is partly complete. Step 1 is deferred at the
+Status: 2026-09-21. **The plan is partly complete. Step 1 is deferred at the
 project owner's request.** Implementation and software checks are not substitutes
 for completed research experiments.
 
@@ -21,7 +21,7 @@ citations; answer-aspect coverage measures a different outcome.
 | Step | Current status | Action |
 |---|---|---|
 | 1. Audit gold labels | **Deferred by project owner** | Use the existing labels unchanged for current experiments. |
-| 2. Compare standard retrieval baselines | **Completed: 467 questions, five methods** | BM25, dense, hybrid, hybrid + reranker, and existing native-link expansion; same questions and product corpus. |
+| 2. Compare standard retrieval baselines | **Completed, including two-scope rerun: 467 questions, five methods** | Primary: search each question’s product. Supplementary: search all four products. Report each project separately in both settings. |
 | 3. Explain failures | **Page-level analysis completed; passage analysis partial** | Candidate/rank failures and product, intent and citation-count slices are saved. Passage-failure frequency remains unmeasured. |
 | 4. Add a method only when justified | **Following this rule** | Keep the existing retrieval methods. A benchmark paper does not require a new RAG algorithm. |
 | 5. Evaluate LLM / agent value | Partial; matched comparison pending | Compare fixed evidence and adaptive search on the same cases with Luna, recording answer quality, latency, tokens and cost. |
@@ -38,11 +38,20 @@ combination. The reranker tests ordering of retrieved candidates. Native-link
 expansion tests whether existing documentation links improve page recovery.
 Results and experiment conditions are in [the result index](RESULTS.md).
 
-On the current pool, dense Recall@10 is 0.629, hybrid 0.607, reranked hybrid
+In the September 16 separate-product-index run, dense Recall@10 is 0.629, hybrid 0.607, reranked hybrid
 0.516 and native-link hybrid 0.610. Link expansion recovered additional cited
 pages into its candidate pool but did not produce a clear overall top-10 gain.
 The current reranker hurt recall; this is evidence about that model and chunk
 policy, not proof that reranking in general is ineffective.
+
+The September 21 rerun of the current entry point completed 4,670 retrieval
+evaluations across project-only and full-corpus scopes. Hybrid Recall@10 is
+0.6045 and 0.5842, respectively; every method is also reported by product.
+Both modes share global BM25 statistics, and dense search differs (scoped exact
+cosine versus unscoped HNSW). Keep these settings separate from the earlier
+product-index results and do not treat this as a pure causal scope ablation.
+The 361 historical agent answers and truncated-input answer scores were not
+rerun in this retrieval experiment.
 
 ### Failure analysis and interpretation
 

@@ -35,7 +35,8 @@ question's input `project`. Qrels only validate that scope; they do not select
 candidates. Missing project metadata or qrels outside the project fail before
 indexing. Scope filters apply before candidate limits, route selection, and
 link traversal, so an outside page cannot consume graph slots or bridge a path.
-Reports record `search_scope`, question `project`, and `scope_documents`.
+Reports record `search_scope`, question `project`, and `scope_documents`, with
+separate `by_project` and `by_search_scope` aggregate tables.
 Use `--search-scope corpus` explicitly for the former unrestricted search.
 
 This entry point keeps a shared index: BM25 statistics come from the full

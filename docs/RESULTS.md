@@ -4,14 +4,166 @@
 > The retrieval-only comparison below uses that full pool. Later agent and
 > answer tables retain their original historical sample sizes and settings.
 
-Status date: **2026-09-16**.
+Status date: **2026-09-21**.
 
 This file is the maintained result index. Generated datasets, model outputs,
 trajectories, indexes and detailed reports remain in ignored local directories.
 Current results are exploratory because the question pool was used in development.
 See [the research plan](RESEARCH_ANALYSIS.md) for completed and pending steps.
 
-## Current-release retrieval comparison
+## Current-entry-point scope rerun (2026-09-21)
+
+The current evaluator was rerun on all 467 questions with five methods and
+both `--search-scope project` and `--search-scope corpus`: **4,670 evaluations**.
+Models were loaded offline; no LLM API calls were made. Each run uses the same
+pinned 4,860 pages, cached embeddings, chunking, candidate/rerank/graph budgets,
+and final top 10 as the earlier five-method comparison.
+
+| Method | Product-only Recall@10 | Full-corpus Recall@10 | Product-only nDCG@10 | Full-corpus nDCG@10 |
+|---|---:|---:|---:|---:|
+| BM25 | 0.4660 | 0.4379 | 0.2913 | 0.2693 |
+| Dense | 0.6294 | 0.6133 | 0.4044 | 0.3957 |
+| Hybrid | 0.6045 | 0.5842 | 0.3822 | 0.3719 |
+| Hybrid + reranker | 0.4971 | 0.4892 | 0.2998 | 0.2947 |
+| Hybrid + native links | 0.6218 | 0.6068 | 0.3918 | 0.3806 |
+
+### Four projects, two search settings
+
+The four projects are dataset groups. The two scopes are search settings,
+and each setting is evaluated separately on all four groups:
+
+- **Primary setting (`project`):** each question searches only its own product’s documentation.
+- **Supplementary control (`corpus`):** each question can search documentation from all four products.
+
+| Project | Questions | Pages available in primary setting |
+|---|---:|---:|
+| GitHub Docs | 197 | 3,208 |
+| Prisma | 125 | 685 |
+| Supabase | 52 | 770 |
+| Tailwind CSS | 93 | 197 |
+| **Total** | **467** | **4,860** |
+
+Recall is the fraction of cited pages recovered; Hit is the fraction of
+questions with at least one cited page recovered; nDCG also rewards earlier
+positions; AllSupport is the fraction with every cited page recovered.
+All metrics use the top 10 and are averaged over questions, not projects.
+
+### Primary results: search the question’s product
+
+| Project | Method | Recall@10 | Hit@10 | nDCG@10 | AllSupport@10 |
+|---|---|---:|---:|---:|---:|
+| GitHub Docs | BM25 | 0.4432 | 0.4822 | 0.2794 | 0.4061 |
+| GitHub Docs | Dense | 0.6088 | 0.6650 | 0.4107 | 0.5482 |
+| GitHub Docs | Hybrid | 0.5853 | 0.6396 | 0.3984 | 0.5381 |
+| GitHub Docs | Hybrid + reranker | 0.4863 | 0.5330 | 0.3124 | 0.4467 |
+| GitHub Docs | Hybrid + native links | 0.6213 | 0.6650 | 0.4233 | 0.5838 |
+| Prisma | BM25 | 0.2587 | 0.3120 | 0.1540 | 0.2080 |
+| Prisma | Dense | 0.4640 | 0.5360 | 0.2719 | 0.4000 |
+| Prisma | Hybrid | 0.4080 | 0.4560 | 0.2255 | 0.3600 |
+| Prisma | Hybrid + reranker | 0.2747 | 0.3360 | 0.1449 | 0.2240 |
+| Prisma | Hybrid + native links | 0.3960 | 0.4480 | 0.2255 | 0.3440 |
+| Supabase | BM25 | 0.4135 | 0.4615 | 0.2606 | 0.3654 |
+| Supabase | Dense | 0.5673 | 0.6154 | 0.3699 | 0.5192 |
+| Supabase | Hybrid | 0.5673 | 0.6154 | 0.3455 | 0.5192 |
+| Supabase | Hybrid + reranker | 0.5288 | 0.5769 | 0.2890 | 0.4808 |
+| Supabase | Hybrid + native links | 0.5962 | 0.6346 | 0.3428 | 0.5577 |
+| Tailwind CSS | BM25 | 0.8226 | 0.8387 | 0.5183 | 0.8065 |
+| Tailwind CSS | Dense | 0.9301 | 0.9355 | 0.5887 | 0.9247 |
+| Tailwind CSS | Hybrid | 0.9301 | 0.9462 | 0.5788 | 0.9140 |
+| Tailwind CSS | Hybrid + reranker | 0.8011 | 0.8172 | 0.4873 | 0.7849 |
+| Tailwind CSS | Hybrid + native links | 0.9409 | 0.9462 | 0.5761 | 0.9355 |
+
+### Supplementary results: search all four products
+
+| Project | Method | Recall@10 | Hit@10 | nDCG@10 | AllSupport@10 |
+|---|---|---:|---:|---:|---:|
+| GitHub Docs | BM25 | 0.4347 | 0.4721 | 0.2724 | 0.4010 |
+| GitHub Docs | Dense | 0.5986 | 0.6548 | 0.4068 | 0.5381 |
+| GitHub Docs | Hybrid | 0.5752 | 0.6294 | 0.3942 | 0.5279 |
+| GitHub Docs | Hybrid + reranker | 0.4931 | 0.5431 | 0.3152 | 0.4518 |
+| GitHub Docs | Hybrid + native links | 0.6213 | 0.6650 | 0.4187 | 0.5838 |
+| Prisma | BM25 | 0.2467 | 0.2880 | 0.1465 | 0.2080 |
+| Prisma | Dense | 0.4640 | 0.5360 | 0.2694 | 0.4000 |
+| Prisma | Hybrid | 0.3960 | 0.4400 | 0.2195 | 0.3520 |
+| Prisma | Hybrid + reranker | 0.2747 | 0.3360 | 0.1434 | 0.2240 |
+| Prisma | Hybrid + native links | 0.4000 | 0.4560 | 0.2215 | 0.3440 |
+| Supabase | BM25 | 0.3846 | 0.4231 | 0.2346 | 0.3462 |
+| Supabase | Dense | 0.5481 | 0.5962 | 0.3484 | 0.5000 |
+| Supabase | Hybrid | 0.5481 | 0.5962 | 0.3356 | 0.5000 |
+| Supabase | Hybrid + reranker | 0.5000 | 0.5577 | 0.2716 | 0.4423 |
+| Supabase | Hybrid + native links | 0.5481 | 0.5962 | 0.3152 | 0.5000 |
+| Tailwind CSS | BM25 | 0.7312 | 0.7419 | 0.4470 | 0.7204 |
+| Tailwind CSS | Dense | 0.8817 | 0.8925 | 0.5683 | 0.8710 |
+| Tailwind CSS | Hybrid | 0.8763 | 0.8925 | 0.5498 | 0.8602 |
+| Tailwind CSS | Hybrid + reranker | 0.7634 | 0.7634 | 0.4677 | 0.7634 |
+| Tailwind CSS | Hybrid + native links | 0.8871 | 0.8925 | 0.5505 | 0.8817 |
+
+### Scope checks and interpretation
+
+| Method | Full-corpus questions returning any outside-product page | Project minus corpus Recall@10 | Descriptive 95% paired interval |
+|---|---:|---:|---:|
+| BM25 | 230/467 | +0.0282 | [+0.0150, +0.0428] |
+| Dense | 84/467 | +0.0161 | [+0.0064, +0.0278] |
+| Hybrid | 147/467 | +0.0203 | [+0.0054, +0.0364] |
+| Hybrid + reranker | 127/467 | +0.0079 | [-0.0075, +0.0239] |
+| Hybrid + native links | 69/467 | +0.0150 | [-0.0021, +0.0332] |
+
+Intervals use 10,000 paired resamples of the same 467 questions (seed
+20260921). They describe this reused pool and do not establish a causal effect
+of scope. Outside-product pages are permitted in the supplementary setting;
+their presence alone does not establish answer irrelevance.
+
+Every project-scoped result contains zero outside-product pages. All 4,670
+per-query Recall, Hit and nDCG values were independently recomputed; input and
+source hashes stayed unchanged during execution. Reports now include
+`by_project` and `by_search_scope` tables for every method. Full scope/product
+metrics, AllSupport@10, per-query rankings, paired descriptive intervals and
+provenance are retained locally in `phase12_scope_rerun/`.
+
+**Interpretation:** this entry point shares full-corpus BM25 statistics. Its
+project scope uses exact cosine over allowed chunks; corpus scope uses HNSW.
+Dense/hybrid contrasts therefore include an implementation difference, not
+just filtering. The earlier product-index experiment below built separate
+indexes and must remain a separate result. Neither experiment establishes that
+document structure alone causes the differences.
+
+The historical 361-question agent answers were not regenerated with enforced
+project scope, and their truncated-input judge scores were not rerun in this
+retrieval experiment. They are not updated full-evidence answer results.
+
+### Reproduction and provenance
+
+The run uses data commit `19af578bead6c8317d29598c409e982886951cbe` from
+`PowderXu/docsqa-data` (manifest SHA-256
+`c6193cc88cdf88adc2c8561441b03280415bf871e0b22f7d006a5968c714a361`).
+The 4,860 pages produce 31,608 chunks. Models are
+`sentence-transformers/all-MiniLM-L6-v2` (revision
+`1110a243fdf4706b3f48f1d95db1a4f5529b4d41`) and
+`cross-encoder/ms-marco-MiniLM-L-6-v2` (revision
+`233902d25c440f23af6f7d6e94d2946bac0bee0a`).
+The run records source base `ad9ba34` plus this PR’s aggregate-report change;
+full file hashes are retained in the local provenance record.
+
+Reproduce either scope using the downloaded dataset and the same cached models:
+
+```bash
+PYTHONPATH=evaluation:. OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 \
+  evaluation/.venv/bin/python -m kbbench.retrieval \
+  --dataset-dir evaluation/dataset/evaluation_data/normalized \
+  --cache-dir dsh_plugin/plugin/data/hybrid/indexes \
+  --output-dir results/runs/retrieval/scope-project \
+  --search-scope project --local-files-only --device cpu --top-k 10 \
+  --retrieval-depth 50 --rerank-depth 45 \
+  --graph-seed-depth 5 --graph-max-neighbors 10 --graph-max-hops 2 \
+  --graph-max-candidates 50 --graph-hop-decay 0.5 --graph-weight 0.25 \
+  --methods bm25 hnsw bm25_hnsw_rrf bm25_hnsw_rerank hybrid_multihop_link_expansion
+```
+
+Use `--search-scope corpus` and a different output directory for the full-corpus
+run. Hardware latency is descriptive; the local runner fixed Torch to four
+threads and ran scopes sequentially.
+
+## Earlier separate-product-index comparison (2026-09-16)
 
 Five existing methods were run on all 467 questions (2,335 evaluations), each
 restricted to its product's documentation. All use the same corpus and chunker,
@@ -101,8 +253,8 @@ historical source are documented in [aspect annotations](ASPECT_ANNOTATIONS.md).
 
 ## Trajectory retrieval evaluation
 
-The completed 361-question comparison uses contemporaneous current-source
-runs. All arms have matching question IDs, corpus, model, non-retrieval tools,
+The historical 361-question comparison used contemporaneous source versions.
+It was not rerun with the project-scope restriction or the full-evidence judge. All arms have matching question IDs, corpus, model, non-retrieval tools,
 answer contract, scoring implementation, skill/runtime generation, and locked
 dependencies. The three runners used isolated DSH homes and separate indexed
 services.
@@ -163,7 +315,7 @@ PYTHONPATH=evaluation:. evaluation/.venv/bin/python \
 used at most the first 6,000 characters of each selected candidate document
 and 12,000 characters of each answer. Frozen gold evidence was supplied
 separately without these cutoffs. The current evaluator preserves full text
-and rejects oversized inputs (see [the protocol](EVALUATION_PROTOCOL.md)),
+and applies an optional input-size limit (500,000 bytes by default) (see [the protocol](EVALUATION_PROTOCOL.md)),
 but these answer scores have not been rerun under that policy. The effect on
 scores and rankings is unmeasured; retrieval Recall and nDCG are unaffected.
 

@@ -791,7 +791,9 @@ def evaluate(args: argparse.Namespace) -> dict[str, Any]:
         "graph_max_hops": args.graph_max_hops,
         "graph_max_candidates": args.graph_max_candidates,
         "graph_hop_decay": args.graph_hop_decay,
-        **summary_tables(rows),
+        **summary_tables(
+            rows, extra_slices=(("project", "project"), ("search_scope", "search_scope"))
+        ),
         "latency_scope": "Warm per-query retrieval including query embedding and reranking; index build excluded.",
     }
     (args.output_dir / "report.json").write_text(
