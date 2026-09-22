@@ -336,6 +336,16 @@ def validate_arm_rollouts(
                 raise ValueError(
                     f"rollout lacks a persisted evaluation contract: {arm}/{row.get('id')}"
                 )
+            scope = contract.get("search_scope", "corpus")
+            if scope not in {"project", "corpus"}:
+                raise ValueError(f"invalid search scope: {arm}/{row.get('id')}")
+            previous_scope = shared_contract_fields.setdefault("search_scope", (arm, scope))
+            if previous_scope[1] != scope:
+                raise ValueError("search scope differs between matched rollouts")
+            if "search_scope" in contract and row.get("search_scope") != scope:
+                raise ValueError(f"row/contract search scope mismatch: {arm}/{row.get('id')}")
+            if scope == "project" and row.get("outside_scope_ids"):
+                raise ValueError(f"project-scoped run exposed outside documents: {arm}/{row.get('id')}")
             contracts.append(contract)
             if contract.get("retrieval") != retrieval_contract(arm):
                 raise ValueError(
@@ -622,6 +632,7 @@ def build_report(
         "evaluation_layer": "DSH agent + arm-specific skill + loaded retrieval plugins",
         "sample_kind": "paired DSH agent evaluation",
         "questions": len(expected_ids),
+        "search_scope": next(iter(by_arm.values()))[0]["evaluation_contract"].get("search_scope", "corpus"),
         "question_ids": sorted(expected_ids),
         "arms": arm_reports,
         "skill_optimization_used": False,
@@ -639,6 +650,7 @@ def render_markdown(report: dict[str, Any]) -> str:
         "# DocsQA DSH-agent performance report",
         "",
         f"This report contains **{report['questions']} identical real-model questions per DSH arm**.",
+        f"Search scope: `{report.get('search_scope', 'corpus')}`; product groups are reported separately.",
         "",
         "## Overall",
         "",

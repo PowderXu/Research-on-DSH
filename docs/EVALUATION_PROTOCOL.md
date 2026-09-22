@@ -5,8 +5,8 @@
 DocsQA-Repo evaluates an agent that must answer a real technical support
 question from a pinned local Markdown/MDX repository. The benchmark separates:
 
-1. **trajectory retrieval**: which documents the agent actually found and
-   read;
+1. **trajectory retrieval**: recorded search/read activity and recovery of
+   cited pages in the agent's final ordered sources;
 2. **final-answer quality**: whether the response covers required facts and
    actions using permitted local evidence; and
 3. **efficiency**: model tokens, tool calls, and end-to-end latency.
@@ -47,8 +47,8 @@ trajectory.
 
 Agent failures remain in every denominator. A trajectory fails its validity
 gate if it does not establish a successful search-to-read evidence path,
-returns unresolved sources, violates the final schema, or has an execution
-error.
+returns unresolved sources, accesses documents outside its project in the
+primary setting, violates the final schema, or has an execution error.
 
 ## Trajectory retrieval metrics
 
@@ -57,11 +57,16 @@ Qrels are the distinct in-corpus pages explicitly linked by the accepted source
 answer. Because those qrels are sparse, a retrieved page without a qrel has zero
 measured gain but is unjudged, not proven irrelevant.
 
-- **Recall@10**: fraction of the question's qrel pages present in the final ten
-  trajectory sources.
+- **Recall@10**: fraction of the question's qrel pages present in the agent's
+  final ordered source list, capped at ten distinct resolved pages.
 - **Hit@10**: 1 when at least one qrel is present, otherwise 0.
 - **nDCG@10**: discounted gain of qrel pages, normalized by the ideal ordering.
 - **AllSupport@10**: 1 when every qrel is present, otherwise 0.
+
+These primary agent metrics score final citations, not every page encountered
+during search. First-visible tool documents are separate diagnostics. The
+retrieval-only baselines instead score their ranked top-ten output; their
+scores are not interchangeable with agent final-source recovery.
 
 Report macro means over questions and the factual slices in
 [`evaluation/kbbench/protocol.json`](../evaluation/kbbench/protocol.json):
@@ -85,8 +90,11 @@ An LLM judge assigns the aspect support labels from the candidate answer and
 local evidence. Deterministic code computes the score. The judge may not add
 new aspects or alter their weights. Agent failures receive zero.
 
-Secondary answer diagnostics are critical-aspect success, unsupported-claim
-rate, and citation-integrity rate. The normalization score documented in
+Secondary answer diagnostics are critical-aspect success, material-claim-issue
+rate (the `unsupported_claim_rate` field counts material unsupported claims or
+contradictions), and citation-integrity rate. Only WAC is forced to zero by the
+agent validity gate; the diagnostic fields retain their judged values and must
+be interpreted alongside validity and coverage. The normalization score documented in
 [`NORMALIZED_DATASET.md`](NORMALIZED_DATASET.md) is only a dataset-construction
 filter; it is not WAC and is not used to rank agent answers. Whether each aspect
 has pinned local-document support is checked as a dataset-quality property; it
@@ -112,6 +120,16 @@ producing a score from shortened input. Reports record the input policy, and
 its version is included in the prompt hash so caches from the previous
 truncation policy are not reused.
 
+Judge output has a separate `--max-output-tokens` budget (default: 16,384).
+The structured output schema requires exactly three anonymous candidates and
+the frozen number and IDs of aspects for each candidate. Post-response checks
+also reject duplicate or missing IDs. Overall quality uses the explicit values
+`1, 2, 3, 4, 5`, with the same meaning as the former bounded integer. Responses are streamed; an incomplete
+response, including one that exhausts its output budget, fails without a score
+or reusable cache entry. The output policy and budget enter the cache identity,
+so changing them cannot silently reuse older judgments. This output budget
+does not shorten the documentation or answers supplied to the judge.
+
 ## Frozen aspect annotations
 
 Answer evaluation reads `aspects.jsonl` from the pinned dataset release for
@@ -129,11 +147,25 @@ These labels have not been independently verified by domain experts.
 All three DSH systems use `gpt-5.6-luna`, the same corpus and question order,
 the same non-retrieval configuration, and the same final-answer contract.
 
+The agent runner defaults to `--search-scope project`: the input question's
+project defines the searchable documents. Filesystem episodes use an exact
+product-only workspace, with a tool guard rejecting paths outside that root.
+Hybrid search intersects requested scopes with the episode's allowed documents;
+fetch rejects outside IDs. Neo4j traversal checks document nodes before its
+candidate limits, including intermediate pages in multi-hop link paths.
+Use `--search-scope corpus` for the supplementary four-product search setting.
+The report validator rejects mixing settings across arms. Historical answers
+retain their original scope and cannot substitute for fresh scoped generation.
+
 | Arm | Retrieval path |
 |---|---|
 | Filesystem | DSH skill plus bounded local filesystem search/read tools |
-| Hybrid | BM25 + HNSW, fused by reciprocal-rank fusion, then evidence reads |
+| Hybrid | BM25 + dense retrieval, fused by reciprocal-rank fusion, then evidence reads |
 | Neo4j-capable | identical hybrid seeds plus conditional bounded graph expansion |
+
+Both indexed arms share full-corpus BM25 statistics and cached embeddings.
+Dense retrieval uses exact cosine over allowed chunks in project scope and
+HNSW in corpus scope, so a scope contrast also changes dense-search execution.
 
 The Neo4j arm uses five hybrid seeds, at most two graph hops, entity degree at
 most 20, ten graph candidates per seed, and 50 total graph candidates. Graph

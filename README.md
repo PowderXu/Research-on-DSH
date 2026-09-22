@@ -6,7 +6,7 @@ and use the required evidence, and whether documentation content and structure
 help explain their failures.
 
 This README summarizes the [research analysis and plan](docs/RESEARCH_ANALYSIS.md).
-Status: **2026-09-21**.
+Status: **2026-09-22 (UTC)**.
 
 ## Dataset
 
@@ -45,8 +45,24 @@ and its candidate/ranking failure analysis are retained in
 
 The question pool was used during development, so these results are exploratory.
 They do not establish that existing public benchmarks cannot be reused or that
-we need a new RAG method. Full-evidence answer judging and scope-controlled agent
-answer generation have not been rerun.
+we need a new RAG method.
+
+All 467 questions have now been regenerated with Luna in each of the filesystem,
+hybrid and Neo4j-capable agents, restricted to the question's product. The 1,401
+episodes contain no observed outside-product access. All 467 paired full-evidence
+judgments are complete and independently checked.
+
+| Agent | Answer coverage (WAC) | Tokens / QA |
+|---|---:|---:|
+| Filesystem | 71.49% | 33,394 |
+| Hybrid | 71.07% | 13,192 |
+| Neo4j-capable | 72.19% | 13,686 |
+
+All three descriptive paired 95% intervals for WAC differences include zero.
+The indexed arms use fewer generation tokens, while this run does not establish
+a clear overall answer-coverage advantage. Project-level results differ and are
+reported in [full results](docs/RESULTS.md). Neo4j expansion was used on only
+2/467 questions, so its arm does not establish a general graph-traversal benefit.
 
 ## Research-plan status
 
@@ -56,12 +72,13 @@ answer generation have not been rerun.
 | 2. Compare standard baselines | Completed: five methods × 467 questions × two search scopes. |
 | 3. Analyze failures | Page-level analysis completed; dataset-wide passage analysis remains unfinished. |
 | 4. Add a method only if justified | Existing methods retained; a new method is not required for a benchmark paper. |
-| 5. Evaluate LLM / agent value | Matched fixed-RAG versus adaptive-agent comparison remains pending. |
+| 5. Evaluate LLM / agent value | Three product-scoped agents regenerated and fully judged; matched fixed-RAG versus adaptive-agent comparison remains pending. |
 
-The next agent comparison should use the same questions, Luna model, scoring
+The fixed-RAG versus adaptive-agent comparison should use the same questions, Luna model, scoring
 rules and explicit evidence/token budgets, measuring answer quality, latency,
-tokens and cost. Earlier agent runs and the small fixed-evidence pilot used
-different conditions and cannot substitute for that comparison.
+tokens and cost. The current three-arm run compares agent tool setups; it does
+not include a fixed-evidence control. The small historical fixed-evidence pilot
+used different conditions and cannot substitute for that comparison.
 
 For details, see the [dataset design](docs/DATASET_DESIGN.md) and
 [evaluation protocol](docs/EVALUATION_PROTOCOL.md). Installation and execution

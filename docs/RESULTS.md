@@ -1,15 +1,151 @@
 # Current results
 
 > The current dataset is one 467-question pool with no dataset partitions.
-> The retrieval-only comparison below uses that full pool. Later agent and
-> answer tables retain their original historical sample sizes and settings.
+> Current retrieval and agent comparisons use that full pool. Historical
+> tables retain their original sample sizes and settings.
 
-Status date: **2026-09-21**.
+Status date: **2026-09-22 (UTC)**.
 
 This file is the maintained result index. Generated datasets, model outputs,
 trajectories, indexes and detailed reports remain in ignored local directories.
 Current results are exploratory because the question pool was used in development.
 See [the research plan](RESEARCH_ANALYSIS.md) for completed and pending steps.
+
+## Fresh project-scoped agents and full-evidence judging (2026-09-22)
+
+All **467 questions × three Luna agents = 1,401 fresh episodes** were completed. Each
+question searches only its own product. The four project groups are GitHub Docs (197),
+Prisma (125), Supabase (52), and Tailwind CSS (93). All episodes remain in the
+denominator, including 6 filesystem, 5 hybrid and 5 Neo4j validity failures. No
+outside-product document access was observed in the recorded traces.
+
+**Answer scores are new:** the judge evaluated all three anonymous answers together for
+every question, using full answers, full selected document text and the unchanged 1,926
+frozen aspects. WAC is weighted answer coverage; invalid trajectories receive zero WAC.
+Recall/nDCG below score the final ordered citations, at most ten distinct pages. They do
+not score every page returned by the agent tools and are not directly interchangeable
+with the retrieval-only top-ten metrics.
+
+### Overall
+
+| Arm | Recall@10 | nDCG@10 | WAC | Critical-aspect success | Material claim issues | Citation integrity | Invalid trajectories |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Filesystem | 0.5458 | 0.4944 | 0.7149 | 0.5883 | 0.2377 | 1.0000 | 6/467 |
+| Hybrid | 0.4725 | 0.4277 | 0.7107 | 0.5792 | 0.2505 | 0.9979 | 5/467 |
+| Neo4j-capable | 0.5086 | 0.4411 | 0.7219 | 0.5930 | 0.2463 | 1.0000 | 5/467 |
+
+### Answer quality by project
+
+| Project | Arm | Questions | WAC | Critical-aspect success | Material claim issues | Citation integrity |
+|---|---|---:|---:|---:|---:|---:|
+| GitHub Docs | Filesystem | 197 | 0.6779 | 0.5069 | 0.2893 | 1.0000 |
+| GitHub Docs | Hybrid | 197 | 0.6733 | 0.5094 | 0.2741 | 1.0000 |
+| GitHub Docs | Neo4j-capable | 197 | 0.7046 | 0.5391 | 0.2792 | 1.0000 |
+| Prisma | Filesystem | 125 | 0.7566 | 0.6575 | 0.1840 | 1.0000 |
+| Prisma | Hybrid | 125 | 0.7870 | 0.6805 | 0.1920 | 0.9920 |
+| Prisma | Neo4j-capable | 125 | 0.7580 | 0.6915 | 0.1920 | 1.0000 |
+| Supabase | Filesystem | 52 | 0.6785 | 0.5785 | 0.2692 | 1.0000 |
+| Supabase | Hybrid | 52 | 0.6501 | 0.5337 | 0.3269 | 1.0000 |
+| Supabase | Neo4j-capable | 52 | 0.6841 | 0.5673 | 0.2692 | 1.0000 |
+| Tailwind CSS | Filesystem | 93 | 0.7575 | 0.6733 | 0.1828 | 1.0000 |
+| Tailwind CSS | Hybrid | 93 | 0.7214 | 0.6163 | 0.2366 | 1.0000 |
+| Tailwind CSS | Neo4j-capable | 93 | 0.7311 | 0.5891 | 0.2366 | 1.0000 |
+
+### Final-source recovery and efficiency by project
+
+| Project | Arm | Recall@10 | Hit@10 | nDCG@10 | AllSupport@10 | p50 / p95 latency | Tokens / QA | Tool calls / QA | Invalid trajectories | Graph used |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| GitHub Docs | Filesystem | 0.5256 | 0.5838 | 0.4760 | 0.4721 | 9.03 / 14.81 s | 32,814 | 7.52 | 1/197 | 0/197 |
+| GitHub Docs | Hybrid | 0.5060 | 0.5635 | 0.4593 | 0.4619 | 9.36 / 14.20 s | 12,352 | 5.63 | 3/197 | 0/197 |
+| GitHub Docs | Neo4j-capable | 0.5729 | 0.6193 | 0.4954 | 0.5330 | 8.38 / 12.58 s | 11,766 | 4.64 | 0/197 | 0/197 |
+| Prisma | Filesystem | 0.2467 | 0.3280 | 0.2327 | 0.1760 | 9.60 / 17.23 s | 39,901 | 8.35 | 4/125 | 0/125 |
+| Prisma | Hybrid | 0.1440 | 0.1920 | 0.1388 | 0.1040 | 10.71 / 15.72 s | 14,303 | 5.67 | 1/125 | 0/125 |
+| Prisma | Neo4j-capable | 0.1533 | 0.2080 | 0.1418 | 0.1040 | 10.01 / 14.54 s | 15,109 | 5.18 | 4/125 | 2/125 |
+| Supabase | Filesystem | 0.7596 | 0.8077 | 0.6751 | 0.7115 | 9.44 / 19.44 s | 31,385 | 9.06 | 1/52 | 0/52 |
+| Supabase | Hybrid | 0.5865 | 0.6346 | 0.5454 | 0.5385 | 9.13 / 11.87 s | 11,419 | 5.42 | 1/52 | 0/52 |
+| Supabase | Neo4j-capable | 0.6250 | 0.6731 | 0.5286 | 0.5769 | 10.03 / 15.40 s | 12,105 | 4.79 | 1/52 | 0/52 |
+| Tailwind CSS | Filesystem | 0.8710 | 0.8925 | 0.7842 | 0.8495 | 10.34 / 14.96 s | 26,997 | 9.01 | 0/93 | 0/93 |
+| Tailwind CSS | Hybrid | 0.7796 | 0.7849 | 0.6833 | 0.7742 | 11.74 / 15.58 s | 14,470 | 5.88 | 0/93 | 0/93 |
+| Tailwind CSS | Neo4j-capable | 0.7849 | 0.7957 | 0.6794 | 0.7742 | 9.59 / 24.21 s | 16,724 | 5.84 | 0/93 | 0/93 |
+
+Material claim issues count answers with material unsupported claims or contradictions.
+Critical-aspect and citation-integrity diagnostics retain their judged values even for
+invalid trajectories; interpret them alongside coverage and validity.
+
+### Paired answer-quality comparison
+
+| WAC contrast | Mean delta | Descriptive 95% paired interval |
+|---|---:|---:|
+| Hybrid − Filesystem | -0.0042 | [-0.0244, +0.0162] |
+| Neo4j-capable − Hybrid | +0.0112 | [-0.0054, +0.0277] |
+| Neo4j-capable − Filesystem | +0.0070 | [-0.0135, +0.0280] |
+
+Intervals use 10,000 paired resamples of the same 467 questions (seed 20260831). These
+are descriptive intervals on a development-exposed pool, not evidence of generalization
+to new products.
+
+All three intervals include zero. This run does not establish a clear overall
+WAC advantage for one arm, although the indexed arms use substantially fewer
+generation tokens. Final-source recovery and answer coverage also differ:
+Prisma hybrid Recall@10 is 0.1440 while WAC is 0.7870. Sparse cited-page labels
+and answer aspects measure different targets; neither should replace the other
+or the material-claim-issue diagnostics.
+
+### Usage, execution and provenance
+
+| Arm | Generation tokens | Tokens / QA | p50 / p95 agent latency | Tool calls / QA |
+|---|---:|---:|---:|---:|
+| Filesystem | 15,594,809 | 33,394 | 9.53 / 16.03 s | 8.21 |
+| Hybrid | 6,160,798 | 13,192 | 10.22 / 15.21 s | 5.67 |
+| Neo4j-capable | 6,391,246 | 13,686 | 9.41 / 14.37 s | 5.04 |
+
+The 467 final paired judgments report 21,503,505 tokens; median judge latency is 16.25
+s. Generation tokens are runner-reported totals, including cached input; they are not
+dollar cost. The judge's largest complete input is 875,394 UTF-8 bytes, and 24 questions
+exceed the default 500,000-byte local ceiling. This run explicitly used
+`--max-prompt-bytes none`; API input truncation remained disabled.
+
+All final judgments use Luna with medium reasoning, streaming, exactly three candidates
+and the frozen aspect IDs/counts, and a uniform 16,384-token output budget. Incomplete
+or malformed responses receive no score. Earlier attempts yielded 49 valid diagnostic
+judgments (46 unbounded, two bounded-v1, one enum-format probe); none enters these
+tables. The final schema enumerates the five overall-quality values explicitly,
+resolving a repeated whitespace-generation failure at that field without changing its
+meaning. Failed or interrupted requests are retained in local attempt logs and may lack
+returned token usage, so reported successful-response usage is not a complete billing
+total. Technical pilot judgments were reused only under the unchanged final
+configuration.
+
+Answer generation ran from September 21, 22:32 to September 22, 02:38 UTC. Final judging
+completed September 22 at 04:19 UTC. Agent arms ran sequentially with isolated DSH homes
+and four Torch threads; the judge used four workers. Every answer is the original
+first-pass output. The eight technical-pilot judgments were reused within the unchanged
+final configuration; earlier diagnostic judgments were excluded.
+
+The dataset commit and model/index revisions match the September 21 retrieval rerun
+below. Source provenance is `5cebdb9` plus this PR’s scope-enforcement changes for
+generation, followed by its bounded structured-output judge change. Phase-specific
+code/data hashes and all rollout hashes were verified. Independent checks recomputed all
+1,401 retrieval rows, all 1,401 WAC rows, and every project aggregate. Detailed outputs
+and verification records stay in the ignored local `phase13_scoped_agents/` directory.
+
+The Neo4j snapshot includes the existing KGGen artifact. Its identifiers are:
+
+```text
+snapshot:   037b7865cd56839115012d3d485c5f9dce9cf6ed896812378e3056c84b711ca8
+corpus:     4e7504a8e497e805f3b81905bbd380cfd34acf3cd7ef38d61c9519e491d1e519
+chunks:     79f6bc546ce4fffa7630c0980f579e041d2626db731a8a6066886d892e8b6566
+KGGen:      66f2f52ff675f561d07d41b3699e22c82f466add08f091b7adc4bbe39abcc183
+embeddings: c07139d92f735739fc6e3a41c960a25e8ed876aa65e9934a97ab721a39eca21c
+```
+
+Graph expansion succeeded on only **2/467 Neo4j episodes, both Prisma**. The arm-level
+comparison therefore cannot establish a general graph-traversal benefit. Product
+differences also mix content, corpus size and question types; they do not isolate
+topology. This run has no full-corpus agent control and no matched fixed-RAG answer
+control. Historical 361-question scores used a different cohort, scope and truncated
+judge inputs, so before/after differences cannot be attributed to removing truncation
+alone.
 
 ## Current-entry-point scope rerun (2026-09-21)
 
@@ -251,10 +387,11 @@ The annotations were prepared before agent evaluation and have not been
 independently verified by domain experts. Their schema, scoring boundary, and
 historical source are documented in [aspect annotations](ASPECT_ANNOTATIONS.md).
 
-## Trajectory retrieval evaluation
+## Historical trajectory retrieval evaluation (361 questions)
 
 The historical 361-question comparison used contemporaneous source versions.
-It was not rerun with the project-scope restriction or the full-evidence judge. All arms have matching question IDs, corpus, model, non-retrieval tools,
+The original answers and scores are preserved below. The fresh whole-pool run
+uses enforced project scope and a full-evidence judge. Historical arms have matching question IDs, corpus, model, non-retrieval tools,
 answer contract, scoring implementation, skill/runtime generation, and locked
 dependencies. The three runners used isolated DSH homes and separate indexed
 services.
@@ -269,8 +406,10 @@ The filesystem system uses about 3.23 times the hybrid tokens and has 40 more
 invalid trajectories. Neo4j graph expansion occurs on only nine questions, so
 the aggregate Neo4j-capable row does not isolate a graph-expansion effect.
 
-To produce a fully matched current-source run, first prepare each arm and start
-Neo4j for the graph arm:
+## Reproduce the current whole-pool agent comparison
+
+After downloading the pinned dataset and installing the DSH profile dependencies,
+prepare each arm and start Neo4j for the graph arm:
 
 ```bash
 for arm in fs hybrid neo4j; do
@@ -286,18 +425,37 @@ PYTHONPATH=evaluation:. evaluation/.venv/bin/python \
 ```
 
 Run each arm against its corresponding prepared store. The commands below use
-sequential execution for simplicity; the reported run used isolated DSH homes
-and separate indexed services so the three arms could run contemporaneously:
+sequential execution and isolated DSH homes, as in the current run. Start with
+a new output directory. The recorded comparison preserves first-pass agent
+failures; it does not retry them with `--resume`.
+
+The recorded Neo4j snapshot includes an existing KGGen artifact, not just native
+Markdown links. Reproducing its graph requires the same artifact through
+`ingest_neo4j --kggen-artifact` (the default location is the prepared Neo4j
+store's `artifacts/kggen_graph.json`). Its hashes are recorded with the current
+results. Ingesting only native links produces a different graph configuration.
 
 ```bash
-RUN_ROOT=results/runs/agents/whole-pool
+RUN_ROOT="$PWD/results/runs/agents/whole-pool"
+PROFILE_TEMPLATE="$PWD/dsh_plugin/dsh_home/profiles/headless"
 for arm in fs hybrid neo4j; do
+  ARM_HOME="$RUN_ROOT/homes/$arm"
+  mkdir -p "$ARM_HOME/profiles/headless"
+  cp "$PROFILE_TEMPLATE/"*.yml "$PROFILE_TEMPLATE/"*.json \
+    "$ARM_HOME/profiles/headless/"
+  ln -s "$PROFILE_TEMPLATE/node_modules" "$ARM_HOME/profiles/headless/node_modules"
   KBBENCH_OPENAI_ENV_FILE=/absolute/path/to/private.env \
-  PYTHONPATH=evaluation:. evaluation/.venv/bin/python \
+  PYTHONPATH=evaluation:. OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 \
+  HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 TOKENIZERS_PARALLELISM=false \
+  evaluation/.venv/bin/python \
     -m dsh_plugin.agent_eval.runner \
     --arm "$arm" \
-    --output-dir "$RUN_ROOT/$arm" \
-    --resume
+    --search-scope project \
+    --dataset-dir evaluation/dataset/evaluation_data/normalized \
+    --workspace "dsh_plugin/plugin/data/$arm/documents" \
+    --cache-dir dsh_plugin/plugin/data/hybrid/indexes \
+    --dsh-home "$ARM_HOME" \
+    --output-dir "$RUN_ROOT/$arm"
 done
 
 PYTHONPATH=evaluation:. evaluation/.venv/bin/python \
@@ -309,15 +467,16 @@ PYTHONPATH=evaluation:. evaluation/.venv/bin/python \
   --out-dir "$RUN_ROOT/trajectory-report"
 ```
 
-## WAC final-answer evaluation
+## Historical WAC final-answer evaluation (361 questions)
 
 **Historical judge-input limitation:** the 361-question answer scores below
 used at most the first 6,000 characters of each selected candidate document
 and 12,000 characters of each answer. Frozen gold evidence was supplied
 separately without these cutoffs. The current evaluator preserves full text
 and applies an optional input-size limit (500,000 bytes by default) (see [the protocol](EVALUATION_PROTOCOL.md)),
-but these answer scores have not been rerun under that policy. The effect on
-scores and rankings is unmeasured; retrieval Recall and nDCG are unaffected.
+and a separate output-generation budget. The fresh whole-pool run uses that
+policy. Comparing it with this historical table does not isolate the effect
+of removing truncation: question pool, scope and generated answers also changed.
 
 The matched answers were judged against the fixed aspect annotations with a
 paired `gpt-5.6-luna` call per question. Weighted Aspect Coverage (WAC) follows
@@ -346,8 +505,13 @@ hallucination diagnostics must therefore be interpreted together. The 361
 persisted judge calls use 5,511,339 total tokens; median judge-call latency is
 23.05 seconds.
 
-After downloading the pinned dataset and running all three agents on the full
-question pool, judge their matched answers as follows:
+## Reproduce the current full-evidence answer evaluation
+
+After running all three agents on the full question pool, judge their matched
+answers as follows. `none` disables the local input-byte ceiling; all selected
+document text and answers are preserved, and API input truncation is disabled.
+The output budget limits the judge's own generation and fails incomplete
+judgments without recording a score.
 
 ```bash
 RUN_ROOT=results/runs/agents/whole-pool
@@ -364,21 +528,24 @@ PYTHONPATH=evaluation:. evaluation/.venv/bin/python \
   --output-dir "$RUN_ROOT/aspect-judge" \
   --model gpt-5.6-luna \
   --reasoning-effort medium \
+  --max-prompt-bytes none \
+  --max-output-tokens 16384 \
   --request-timeout 600 \
   --workers 4 \
   --resume
 ```
 
-The downloaded annotation file covers all 467 questions. The historical table
-above used 361 questions and is not a result of these whole-pool commands.
+The downloaded annotation file covers all 467 questions. `--resume` reuses only
+validated judge caches with matching inputs, model, rubric and output policy.
+The historical 361-question table is not a result of these whole-pool commands.
 New reports contain WAC, critical-aspect success, unsupported claims,
 citation integrity, and paired bootstrap intervals.
 
 ## Publication boundary
 
-Current results show that retrieval and answer quality can improve while
-unsupported-claim rate also increases, and that similar latency can hide large
-token and validity differences. They also show that graph-capable configuration
+Historical results show that retrieval and answer quality can improve while
+the material-claim-issue rate also increases, and that similar latency can hide
+large token and validity differences. Graph-capable configuration
 does not imply frequent graph use. The fixed aspect annotations and WAC judge
 have not been validated against domain experts. A publication release still
 needs an independent project-stratified human audit and a newly sealed system

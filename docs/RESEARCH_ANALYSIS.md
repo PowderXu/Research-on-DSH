@@ -1,6 +1,6 @@
 # Research analysis and plan
 
-Status: 2026-09-21. **The plan is partly complete. Step 1 is deferred at the
+Status: 2026-09-22 (UTC). **The plan is partly complete. Step 1 is deferred at the
 project owner's request.** Implementation and software checks are not substitutes
 for completed research experiments.
 
@@ -24,7 +24,7 @@ citations; answer-aspect coverage measures a different outcome.
 | 2. Compare standard retrieval baselines | **Completed, including two-scope rerun: 467 questions, five methods** | Primary: search each question’s product. Supplementary: search all four products. Report each project separately in both settings. |
 | 3. Explain failures | **Page-level analysis completed; passage analysis partial** | Candidate/rank failures and product, intent and citation-count slices are saved. Passage-failure frequency remains unmeasured. |
 | 4. Add a method only when justified | **Following this rule** | Keep the existing retrieval methods. A benchmark paper does not require a new RAG algorithm. |
-| 5. Evaluate LLM / agent value | Partial; matched comparison pending | Compare fixed evidence and adaptive search on the same cases with Luna, recording answer quality, latency, tokens and cost. |
+| 5. Evaluate LLM / agent value | Three scoped agent arms regenerated and fully judged; matched fixed-RAG comparison pending | Compare fixed evidence and adaptive search on the same cases with Luna, recording answer quality, latency, tokens and cost. |
 
 ### Baseline comparison
 
@@ -50,8 +50,7 @@ evaluations across project-only and full-corpus scopes. Hybrid Recall@10 is
 Both modes share global BM25 statistics, and dense search differs (scoped exact
 cosine versus unscoped HNSW). Keep these settings separate from the earlier
 product-index results and do not treat this as a pure causal scope ablation.
-The 361 historical agent answers and truncated-input answer scores were not
-rerun in this retrieval experiment.
+That retrieval-only experiment made no answer-generation or judge calls.
 
 ### Failure analysis and interpretation
 
@@ -65,11 +64,28 @@ citations prove necessary multi-file reasoning. Differences between products
 also reflect content, corpus size and question mix; they do not isolate a causal
 effect of directory depth or graph connectivity.
 
-### Agent comparison still needed
+### Completed agent comparison and remaining control
 
-The historical 361-question FS/hybrid/Neo4j run compares three agent tool setups.
-The seven-question fixed-evidence pilot compares retrieved snippets with selected
-source passages. Neither is a matched fixed-RAG versus adaptive-agent experiment.
+The current run has regenerated all 467 questions for each of three Luna agents
+(filesystem, hybrid and Neo4j-capable), with the question's product enforced as
+the retrieval boundary. All 1,401 episodes stayed within that boundary. All 467
+paired judgments now use complete answers and complete selected-document text.
+Overall WAC is 0.7149 (filesystem), 0.7107 (hybrid), and 0.7219 (Neo4j-capable).
+All three paired 95% intervals for WAC differences include zero; indexed arms
+use fewer generation tokens, without a clear overall coverage advantage here.
+Graph expansion was used on only 2/467 Neo4j episodes, which does not establish
+a graph-traversal benefit.
+
+Project-level findings also distinguish the two evaluation targets: on Prisma,
+hybrid recovers only 0.1440 of cited pages in its final sources but achieves
+0.7870 WAC. Sparse accepted-answer citations and answer-aspect coverage therefore
+give different views of performance. This does not prove retrieval is unnecessary
+or that all high-WAC claims are supported; claim-issue diagnostics remain part
+of the result. See [the per-project tables](RESULTS.md).
+
+Both this run and the historical 361-question comparison evaluate agent tool
+setups. The seven-question fixed-evidence pilot compares retrieved snippets with
+selected source passages. None is a matched fixed-RAG versus adaptive-agent experiment.
 Use identical cases, model, answer rubric and explicit evidence/token budgets for
 that comparison. Do not combine scores from these different experiments.
 
