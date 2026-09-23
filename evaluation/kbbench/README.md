@@ -35,7 +35,8 @@ question's input `project`. Qrels only validate that scope; they do not select
 candidates. Missing project metadata or qrels outside the project fail before
 indexing. Scope filters apply before candidate limits, route selection, and
 link traversal, so an outside page cannot consume graph slots or bridge a path.
-Reports record `search_scope`, question `project`, and `scope_documents`.
+Reports record `search_scope`, question `project`, and `scope_documents`, with
+separate `by_project` and `by_search_scope` aggregate tables.
 Use `--search-scope corpus` explicitly for the former unrestricted search.
 
 This entry point keeps a shared index: BM25 statistics come from the full
@@ -49,7 +50,7 @@ When `retrieval.py` or `plugin_eval.py` receives `--aspects`, it evaluates only
 questions in that frozen silver annotation file and additionally reports
 Weighted Aspect Recall@5/10 and alpha-nDCG@10. Answer-only aspects are not
 retrieval targets. Aspect construction and the freeze boundary are documented
-in [`../../docs/RULE_OPTIMIZATION.md`](../../docs/RULE_OPTIMIZATION.md).
+in [`../../docs/ASPECT_ANNOTATIONS.md`](../../docs/ASPECT_ANNOTATIONS.md).
 
 For a fair plugin comparison, keep the corpus revision, question IDs, top-k,
 filesystem binary, embedding model, cache state, and Neo4j schema fixed. Change

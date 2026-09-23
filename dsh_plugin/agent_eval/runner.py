@@ -18,7 +18,7 @@ import yaml
 from dataset.scripts.records import load_records
 from kbbench.provenance import installed_dependency_versions as _installed_dependency_versions
 from kbbench.scoring import GitHubDocsSourceResolver, score_ranked_sources
-from dsh_plugin.backend.corpus_workspace import validate_corpus_workspace
+from dsh_plugin.backend.corpus_workspace import materialize_corpus_workspace, validate_corpus_workspace
 from dsh_plugin.backend.retrieval_policy import retrieval_contract
 
 from .credentials import load_openai_key_from_configured_env
@@ -501,12 +501,21 @@ def _visible_sources(events: Iterable[dict[str, Any]]) -> list[str]:
     return sources
 
 
-def build_prompt(item: dict[str, Any], arm: str) -> str:
-    dataset = str(item.get("dataset") or "pinned documentation")
+def question_project(item: Mapping[str, Any]) -> str:
+    return str(item.get("project") or item.get("dataset") or "")
+
+
+def build_prompt(item: dict[str, Any], arm: str, search_scope: str = "corpus") -> str:
+    dataset = question_project(item) or "pinned documentation"
+    scope_instruction = (
+        "Search and read only this question's documentation project. "
+        if search_scope == "project" else "You may search all four documentation projects. "
+    )
     return (
         f"DOCSQA DSH RETRIEVAL EVAL {item['id']} (corpus={dataset}). "
         "Load and follow the installed documentation retrieval skill before searching. "
         "Use only the pinned local documentation corpus and the tools available in this profile. "
+        f"{scope_instruction}"
         "Return exactly one JSON object and no Markdown, with this schema: "
         '{"answer":"concise evidence-grounded answer or NOT FOUND",'
         '"sources":["ordered canonical doc ID or repository .md path"]}. '
@@ -573,7 +582,7 @@ def _dsh_invocation(
         str(config.arm_patch.resolve()),
         "--patch",
         str(candidate_patch.resolve()),
-        build_prompt(item, config.arm),
+        build_prompt(item, config.arm, config.search_scope),
     ]
 
 
@@ -589,10 +598,16 @@ class DshCommandConfig:
     corpus_path: Path
     timeout_seconds: int = 180
     profile: str = "headless"
+    search_scope: str = "corpus"
+    scoped_workspace_root: Path | None = None
 
     def validate(self) -> None:
         if self.arm not in ARM_SKILL_PLUGIN_IDS:
             raise ValueError(f"unknown DSH arm: {self.arm}")
+        if self.search_scope not in {"project", "corpus"}:
+            raise ValueError("search_scope must be project or corpus")
+        if self.search_scope == "project" and self.scoped_workspace_root is None:
+            raise ValueError("project scope requires a scoped workspace root")
         for path in (
             self.dsh_binary,
             self.dsh_home,
@@ -606,20 +621,26 @@ class DshCommandConfig:
                 raise FileNotFoundError(path)
 
 
-def preflight_corpus_workspace(config: DshCommandConfig) -> dict[str, Any]:
+def preflight_corpus_workspace(
+    config: DshCommandConfig,
+    *,
+    corpus: list[dict[str, Any]] | None = None,
+    workspace: Path | None = None,
+) -> dict[str, Any]:
     """Verify corpus bytes and actual official tools without a model or QA labels."""
-    corpus = [
+    corpus = corpus if corpus is not None else [
         json.loads(line)
         for line in config.corpus_path.read_text(encoding="utf-8").splitlines()
         if line.strip()
     ]
-    snapshot = validate_corpus_workspace(corpus, config.workspace)
+    workspace = workspace or config.workspace
+    snapshot = validate_corpus_workspace(corpus, workspace)
     script = Path(__file__).resolve().parents[1] / "scripts/preflight_fs.ts"
     try:
         completed = subprocess.run(
             ["node", "--experimental-strip-types", str(script)],
             input=json.dumps({
-                "workspace": str(config.workspace.resolve()),
+                "workspace": str(workspace.resolve()),
                 "documents": [
                     {"path": row["source_path"], "text": row["rendered_text"]}
                     for row in corpus
@@ -649,7 +670,7 @@ def preflight_corpus_workspace(config: DshCommandConfig) -> dict[str, Any]:
     if not isinstance(tool_check.get("probe_count"), int) or tool_check["probe_count"] < 1:
         raise ValueError("official FS workspace preflight did not verify search/read probes")
     # Recheck after probing to catch content changes during the startup check.
-    if validate_corpus_workspace(corpus, config.workspace) != snapshot:
+    if validate_corpus_workspace(corpus, workspace) != snapshot:
         raise ValueError("corpus workspace changed during preflight")
     return {"protocol": "exact-corpus-official-fs-v1", **snapshot, "official_tools": tool_check}
 
@@ -666,6 +687,22 @@ class DshCommandRunner:
         self.preflight = preflight_corpus_workspace(config)
         self.config = config
         self.trace_provider = trace_provider
+        self.before_episode: Callable[[dict[str, Any]], None] | None = None
+        self.project_workspaces: dict[str, Path] = {}
+        if config.search_scope == "project":
+            corpus = [json.loads(line) for line in config.corpus_path.read_text().splitlines() if line.strip()]
+            projects = sorted({str(row.get("project") or "") for row in corpus})
+            scoped = {}
+            for project in projects:
+                if not re.fullmatch(r"[a-zA-Z0-9_-]+", project):
+                    raise ValueError(f"invalid corpus project: {project!r}")
+                rows = [row for row in corpus if row["project"] == project]
+                assert config.scoped_workspace_root is not None
+                workspace = config.scoped_workspace_root / project
+                materialize_corpus_workspace(rows, workspace)
+                scoped[project] = preflight_corpus_workspace(config, corpus=rows, workspace=workspace)
+                self.project_workspaces[project] = workspace
+            self.preflight["project_workspaces"] = scoped
 
     def __call__(
         self,
@@ -674,19 +711,22 @@ class DshCommandRunner:
         case_dir: Path,
     ) -> dict[str, Any]:
         case_dir.mkdir(parents=True, exist_ok=True)
+        workspace = self.config.workspace
+        if self.config.search_scope == "project":
+            project = question_project(item)
+            if project not in self.project_workspaces:
+                raise ValueError(f"unknown question project: {project!r}")
+            workspace = self.project_workspaces[project]
+        if self.before_episode is not None:
+            self.before_episode(item)
         candidate_patch = case_dir / "candidate-skill.patch.yml"
-        candidate_patch.write_text(
-            "\n".join(
-                (
-                    f"- id: {ARM_SKILL_PLUGIN_IDS[self.config.arm]}",
-                    "  disabled: false",
-                    "  config:",
-                    f"    skillPath: {json.dumps(str(skill_path.resolve()))}",
-                    "",
-                )
-            ),
-            encoding="utf-8",
-        )
+        skill_config = {"skillPath": str(skill_path.resolve())}
+        if self.config.arm == "fs":
+            skill_config["workspaceRoot"] = str(workspace.resolve())
+        candidate_patch.write_text(yaml.safe_dump([{
+            "id": ARM_SKILL_PLUGIN_IDS[self.config.arm],
+            "disabled": False, "config": skill_config,
+        }], sort_keys=False), encoding="utf-8")
         environment = dict(os.environ)
         environment["DSH_HOME"] = str(self.config.dsh_home.resolve())
         environment["DSH_PERMISSION_MODE"] = "read-only"
@@ -704,7 +744,7 @@ class DshCommandRunner:
         try:
             completed = subprocess.run(
                 command,
-                cwd=self.config.workspace,
+                cwd=workspace,
                 env=environment,
                 capture_output=True,
                 text=True,
@@ -813,6 +853,8 @@ def run_batch(
     runner: Runner,
     resume: bool = False,
     evaluation_contract: Mapping[str, Any] | None = None,
+    search_scope: str = "corpus",
+    allowed_by_project: Mapping[str, set[str]] | None = None,
 ) -> list[dict[str, Any]]:
     """Run real DSH episodes and persist trajectories plus deterministic scores."""
 
@@ -826,7 +868,12 @@ def run_batch(
 
     results: list[dict[str, Any]] = []
     for index, item in enumerate(items, start=1):
-        user_prompt = build_prompt(item, arm)
+        user_prompt = build_prompt(item, arm, search_scope)
+        allowed = None
+        if search_scope == "project":
+            allowed = (allowed_by_project or {}).get(question_project(item))
+            if not allowed or not set(map(str, item["qrel_ids"])) <= allowed:
+                raise ValueError(f"invalid question project or qrels: {item['id']}")
         evaluation_fingerprint = hashlib.sha256(
             json.dumps(
                 {
@@ -876,6 +923,20 @@ def run_batch(
             source for source in visible_sources if resolver.resolve(str(source)) is None
         ]
         metrics = score_ranked_sources(ranked_ids, item["qrel_ids"])
+        accessed_sources = [
+            doc_id for event in execution.get("backend_events") or []
+            for doc_id in event.get("ranked_ids") or []
+        ]
+        accessed_sources.extend(
+            str((outcome.get("arguments") or {}).get("file_path") or "")
+            for outcome in execution.get("tool_outcomes") or []
+            if outcome.get("name") == "read" and outcome.get("successful")
+        )
+        outside_scope = sorted({
+            doc_id for source in [*agent_sources, *accessed_sources]
+            if (doc_id := resolver.resolve(str(source))) is not None
+            and allowed is not None and doc_id not in allowed
+        })
         expected_skill_loaded = bool(execution.get("expected_skill_loaded"))
         retrieval_succeeded = bool(execution.get("retrieval_succeeded"))
         invalid_sources = list(execution.get("invalid_sources") or [])
@@ -889,6 +950,7 @@ def run_batch(
             and retrieval_succeeded
             and not invalid_sources
             and not unresolved_sources
+            and not outside_scope
         )
         if not agent_ok:
             metrics["hard"] = 0.0
@@ -924,6 +986,8 @@ def run_batch(
             failure_reasons.append("invalid_sources")
         if unresolved_sources:
             failure_reasons.append("unresolved_sources")
+        if outside_scope:
+            failure_reasons.append("outside_project_scope")
 
         result = {
             "id": str(item["id"]),
@@ -934,9 +998,10 @@ def run_batch(
             "task_description": item["question"],
             "task_type": item["task_type"],
             "intent_category": item.get("intent_category"),
-            "project": str(
-                item.get("dataset") or str(item["id"]).split("::", 1)[0]
-            ),
+            "project": question_project(item) or str(item["id"]).split("::", 1)[0],
+            "search_scope": search_scope,
+            "scope_documents": len(allowed) if allowed is not None else None,
+            "outside_scope_ids": outside_scope,
             "qrel_ids": list(map(str, item["qrel_ids"])),
             "evidence_structure": item.get("evidence_structure"),
             "qrel_count": int(item.get("qrel_count") or len(set(item["qrel_ids"]))),
@@ -1034,6 +1099,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--arm", choices=tuple(ARM_SKILL_PLUGIN_IDS), required=True)
     parser.add_argument("--limit", type=int)
+    parser.add_argument("--search-scope", choices=("project", "corpus"), default="project")
     parser.add_argument("--question-id", action="append", default=[])
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument(
@@ -1075,12 +1141,21 @@ def main() -> None:
     cache_dir = args.cache_dir or layout.indexes
 
     corpus_path = dataset_dir / "corpus.jsonl"
+    corpus_rows = [json.loads(line) for line in corpus_path.read_text().splitlines() if line.strip()]
+    allowed_by_project: dict[str, set[str]] = {}
+    for row in corpus_rows:
+        allowed_by_project.setdefault(str(row.get("project") or ""), set()).add(str(row["doc_id"]))
     items = load_question_items(
         dataset_dir,
         limit=args.limit,
         question_ids=set(args.question_id),
     )
     skill_path = args.skill or project_root / f"dsh_plugin/plugin/skills/{args.arm}/initial_skill.md"
+    if args.search_scope == "project":
+        for item in items:
+            allowed = allowed_by_project.get(question_project(item))
+            if not allowed or not set(map(str, item["qrel_ids"])) <= allowed:
+                raise ValueError(f"invalid question project or qrels: {item['id']}")
     config = DshCommandConfig(
         arm=args.arm,
         dsh_binary=args.dsh_binary,
@@ -1091,6 +1166,8 @@ def main() -> None:
         arm_patch=project_root / f"dsh_plugin/harness/docsqa_{args.arm}_system.patch.yml",
         corpus_path=corpus_path,
         timeout_seconds=args.timeout_seconds,
+        search_scope=args.search_scope,
+        scoped_workspace_root=args.output_dir / "workspaces",
     )
     command_runner = DshCommandRunner(config)
     args.output_dir.mkdir(parents=True, exist_ok=True)
@@ -1133,6 +1210,9 @@ def main() -> None:
         service_host.start()
         trace_provider = lambda: list(service.events)
         command_runner.trace_provider = trace_provider
+        command_runner.before_episode = lambda item: service.set_project_scope(
+            question_project(item) if args.search_scope == "project" else None
+        )
         service_identity = _stable_service_identity(service.health())
 
     try:
@@ -1164,6 +1244,13 @@ def main() -> None:
             corpus_identity["manifest"] = _file_identity(
                 manifest_path, "dataset/manifest.json"
             )
+        if args.search_scope == "project":
+            corpus_identity["project_workspaces"] = {
+                project: {field: snapshot[field] for field in (
+                    "protocol", "document_count", "corpus_sha256", "workspace_sha256", "ignore_sha256"
+                )}
+                for project, snapshot in command_runner.preflight["project_workspaces"].items()
+            }
         provider_identity = _provider_identity(config.model_patch, os.environ)
         rows = run_batch(
             items=items,
@@ -1173,7 +1260,10 @@ def main() -> None:
             resolver=GitHubDocsSourceResolver(corpus_path),
             runner=command_runner,
             resume=args.resume,
+            search_scope=args.search_scope,
+            allowed_by_project=allowed_by_project,
             evaluation_contract={
+                "search_scope": args.search_scope,
                 "retrieval": retrieval_contract(args.arm),
                 "backend_service": service_identity,
                 "embedding_model": args.embedding_model,

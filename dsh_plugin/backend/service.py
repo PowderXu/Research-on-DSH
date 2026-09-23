@@ -143,6 +143,7 @@ class GitHubDocsPluginService:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         self.revision = _corpus_revision(manifest, self.dataset_dir / "corpus.jsonl")
         self.rows_by_id = {str(row["doc_id"]): row for row in self.corpus_rows}
+        self.allowed_doc_ids: set[str] | None = None
         self.chunks = build_chunks(self.corpus_rows)
         self.embedding_model = SentenceTransformer(
             embedding_model_name,
@@ -213,6 +214,19 @@ class GitHubDocsPluginService:
     def close(self) -> None:
         if self.graph is not None:
             self.graph.close()
+
+    def set_project_scope(self, project: str | None) -> None:
+        """Set the corpus boundary between sequential evaluation episodes."""
+        if project is None:
+            self.allowed_doc_ids = None
+            return
+        allowed = {
+            doc_id for doc_id, row in self.rows_by_id.items()
+            if str(row.get("project") or "") == project
+        }
+        if not allowed:
+            raise ValueError(f"unknown documentation project: {project}")
+        self.allowed_doc_ids = allowed
 
     def health(self) -> dict[str, Any]:
         return {
@@ -314,6 +328,11 @@ class GitHubDocsPluginService:
         token_budget = _bounded(request.get("evidence_token_budget"), 200, 12_000, 2600)
         scope = str(request.get("scope") or RESOURCE_ROOT).rstrip("/")
         allowed_doc_ids = _scoped_doc_ids(scope, self.rows_by_id)
+        enforced = getattr(self, "allowed_doc_ids", None)
+        if enforced is not None:
+            allowed_doc_ids = enforced if allowed_doc_ids is None else allowed_doc_ids & enforced
+            if not allowed_doc_ids:
+                raise ValueError("search scope is outside the question's project")
         started = time.perf_counter()
         ranked, diagnostics = self.hybrid.search(
             query,
@@ -376,8 +395,11 @@ class GitHubDocsPluginService:
         if not isinstance(raw_seed_uris, list):
             raise ValueError("seed_uris must be an array")
         seed_ids: list[str] = []
+        allowed = getattr(self, "allowed_doc_ids", None)
         for uri in raw_seed_uris:
             doc_id = _doc_id(str(uri))
+            if allowed is not None and doc_id not in allowed:
+                raise ValueError("graph seed is outside the question's project")
             if doc_id in self.rows_by_id and doc_id not in seed_ids:
                 seed_ids.append(doc_id)
         if not seed_ids:
@@ -396,6 +418,7 @@ class GitHubDocsPluginService:
             max_link_hops=GRAPH_MAX_HOPS,
             max_graph_candidates_per_seed=GRAPH_CANDIDATES_PER_SEED,
             max_seed_count=GRAPH_SEED_LIMIT,
+            allowed_doc_ids=allowed,
         )
         results = [
             self._result(
@@ -452,6 +475,9 @@ class GitHubDocsPluginService:
         results: list[dict[str, Any]] = []
         for uri in raw_uris:
             doc_id = _doc_id(str(uri))
+            allowed = getattr(self, "allowed_doc_ids", None)
+            if allowed is not None and doc_id not in allowed:
+                raise ValueError("document is outside the question's project")
             row = self.rows_by_id.get(doc_id)
             if row is None or remaining <= 0:
                 continue

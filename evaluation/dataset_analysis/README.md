@@ -1,8 +1,8 @@
 # Dataset and answer normalization
 
 This package converts structurally valid support discussions into a local,
-standalone QA package. It does not implement retrieval or optimize the
-answer-evaluation rule.
+standalone QA package. Answer evaluation reads the fixed aspect annotations
+distributed with the dataset.
 
 ```text
 validate_sources.py   resolve internal documentation and linked-QA evidence
@@ -39,4 +39,4 @@ dataset construction; they are not the final-answer metric and do not partition 
 The current clean-generation rubric is `rubrics/normalization_v1.json`.
 Running it is a new dataset-construction experiment and must use a new work
 directory. Evaluation uses frozen aspects from the dataset release. Their historical
-construction is recorded in [`../../docs/RULE_OPTIMIZATION.md`](../../docs/RULE_OPTIMIZATION.md).
+construction is recorded in [`../../docs/ASPECT_ANNOTATIONS.md`](../../docs/ASPECT_ANNOTATIONS.md).

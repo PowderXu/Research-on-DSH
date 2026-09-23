@@ -12,10 +12,12 @@ export interface SkillConfig {
   skillPath?: string;
   maxSkillLines?: number;
   maxSkillCharacters?: number;
+  workspaceRoot?: string;
 }
 
 export const SkillConfig: z<SkillConfig> = z.object({
   skillPath: z.string(),
+  workspaceRoot: z.string(),
   maxSkillLines: z.number().step(1).min(40).max(400).default(180),
   maxSkillCharacters: z.number().step(1).min(2_000).max(40_000).default(16_000),
 });

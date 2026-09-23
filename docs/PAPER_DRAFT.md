@@ -1,9 +1,9 @@
 # DocsQA-Repo: A Benchmark for Evidence-Complete Question Answering over Linked Documentation Repositories
 
-> Current release note (2026-09-16): all 467 questions form one evaluation pool.
-> Train/validation/test assignments and the executable optimizer have been
-> removed. Rule-selection and 361-question results discussed below describe
-> earlier experiments and are retained as historical annotation/result provenance.
+> Current release note (2026-09-21): all 467 questions form one evaluation pool.
+> Answer evaluation uses the fixed aspects distributed with the dataset.
+> The 361-question agent results below are historical, exploratory results
+> with their original sample and judge-input settings.
 
 
 ## Abstract
@@ -22,16 +22,14 @@ URLs against the pinned corpus, so evaluation requires no live web content.
 DocsQA-Repo evaluates both retrieval trajectories and final answers. Retrieval
 uses Recall@10, Hit@10, nDCG@10, evidence-completeness, latency, tokens, and
 validity failures. Final answers use question-specific weighted aspects and
-Weighted Aspect Coverage (WAC), following BRIGHT-Pro's standard formula. Because
-human-authored aspects are unavailable, we define a weakly supervised
-aspect-rule optimization protocol. It assumes that most platform-selected
-answers are sufficiently correct when combined with their internally linked
-documentation. A frozen evaluator model applies one shared rule to construct
-aspects; SkillOpt uses a separate frontier model to propose domain-independent
-edits to that rule on a 60/20/20 train, validation, and held-out split. The
-rule, rather than any retrieval system, is optimized. The selected rule reaches
-0.968 validation pass rate and 0.946 on the one-time held-out test, then
-generates 1,926 frozen aspects for all 467 records.
+Weighted Aspect Coverage (WAC), following BRIGHT-Pro's standard formula.
+The dataset distributes 1,926 fixed aspects for all 467 records. These labels
+were generated offline from normalized questions, accepted answers, and local
+evidence. The same aspect descriptions, weights, and evidence mappings are
+used for every evaluated system. An LLM judges answer coverage against these
+fixed requirements, and deterministic code calculates WAC. The annotations
+are model-generated silver labels and have not been independently verified
+by domain experts.
 
 We report development results for three DeepSeek Harness baseline agents:
 filesystem search, BM25--HNSW hybrid retrieval, and hybrid retrieval with
@@ -80,8 +78,8 @@ DocsQA-Repo makes four contributions:
 2. a normalized repository-evidence representation covering links and code;
 3. separate protocols for trajectory retrieval, efficiency, and grounded
    final-answer quality; and
-4. a weakly supervised procedure that optimizes one general aspect-construction
-   rule without training or exposing benchmarked agents.
+4. a released set of fixed, evidence-linked answer aspects for comparing
+   systems against the same question-specific requirements.
 
 The present system results use a 361-question development pool that was
 inspected during benchmark development. They are exploratory rather than an
@@ -156,10 +154,10 @@ therefore reports document retrieval and final-answer quality separately.
 
 A submitted system receives only a question, its project name, and
 access to the pinned documentation. **Zero-shot** means that the system does
-not receive accepted answers, qrels, generated aspects, optimization examples,
-or supervised updates from the benchmark. It may make multiple search and read
-calls. It must return an answer and at most ten canonical documentation URLs, or
-abstain when the corpus is insufficient.
+not receive accepted answers, qrels, frozen aspects, or supervised updates
+from the benchmark. It may make multiple search and read calls. It must return
+an answer and at most ten canonical documentation URLs, or abstain when the
+corpus is insufficient.
 
 The benchmark has two tasks:
 
@@ -208,44 +206,34 @@ reason to remove it from the WAC denominator. Secondary diagnostics are
 critical-aspect success, unsupported-claim rate, citation integrity, and
 abstention behavior.
 
-### 4.4 Weakly supervised aspect-rule optimization
+### 4.4 Fixed aspect annotations
 
-BRIGHT-Pro uses human-authored aspects. DocsQA-Repo instead assumes that most
-accepted answers are sufficiently correct and complete when combined with
-their cited internal documentation. They are therefore noisy positive
-references rather than verified human gold.
+The dataset contains 1,926 aspects for all 467 questions. Each aspect specifies
+an atomic answer requirement, an importance weight, a criticality label, and
+supporting evidence. The annotations were prepared offline with
+`gpt-5.6-luna` from normalized questions, reference answers, claims, and local
+evidence. Accepted community answers supply weak supervision; they are not
+independently verified expert gold.
 
-A frozen `gpt-5.6-luna` applies one general rule to construct aspects. SkillOpt
-uses `gpt-5.6-sol` to improve that rule on the training set; validation selects
-the rule, and the held-out test is evaluated once after selection. The selected
-rule then generates the frozen aspects used to evaluate agent answers. Appendix
-C gives the optimization and validation details.
+Before evaluation, the dataset release fixes every aspect and its weight.
+Agents receive the question and documentation, while the judge separately
+receives the frozen annotations and the agent answers. The judge labels
+coverage without rewriting the aspect set. Appendix C describes the annotation
+fields and evaluation boundary.
 
 ```text
-Normalized QA
-      ↓
-Train / Validation / Test
-      ↓
-Luna applies the general aspect rule
-      ↓
-SkillOpt + GPT-5.6-sol improves the rule
-      ↓
-Validation selects the rule
-      ↓
-Held-out test
-      ↓
-Frozen aspects for answer evaluation
+Pinned dataset: fixed aspects and weights
+                     |
+Agent answer + local evidence
+                     |
+             LLM coverage labels
+                     |
+        Deterministic WAC calculation
 ```
 
-**Figure 1: Rule-optimization workflow.** SkillOpt optimizes one general
-aspect-construction rule. Validation selects the rule, while the held-out test
-is used only after optimization.
-
-The selected rule improves validation pass rate from 0.957 to 0.968 and obtains
-0.946 on the held-out test. It produces 1,926 structurally valid aspects for all
-467 questions. These results show consistency with the weak-supervision
-assumption, not agreement with expert-authored aspects. The procedure optimizes
-neither model weights nor the evaluated retrieval agents.
+**Figure 1: Fixed-aspect answer evaluation.** Every system uses the same
+question-specific requirements. Fixed annotations do not mean preassigned
+answer scores or deterministic LLM judgments.
 
 ### 4.5 Baseline systems
 
@@ -298,10 +286,10 @@ Agent latency includes model and tool execution but excludes offline index and
 graph construction. Each trajectory set contains one run per question, so
 provider and model variance are not estimated.
 
-The full Sol/Luna optimization, held-out test, and all-record aspect freeze were
-completed once. A frozen `gpt-5.6-luna` judge then compares the three anonymized
-answers for each question in one paired call. All agent failures remain in the
-answer-evaluation denominator and receive zero WAC.
+Each answer-evaluation run reads the same frozen annotation records. A
+`gpt-5.6-luna` judge compares the three anonymized answers for each question in
+one paired call. All agent failures remain in the answer-evaluation denominator
+and receive zero WAC.
 
 ## 6. Results
 
@@ -321,6 +309,11 @@ questions; therefore the aggregate Neo4j-capable result does not isolate the
 effect of graph expansion.
 
 ### 6.2 WAC final-answer evaluation
+
+These historical scores used candidate documents capped at 6,000 characters
+and answers capped at 12,000 characters, alongside separate frozen gold evidence.
+They have not been rerun with the current full-text judge-input policy; see
+[the result index](RESULTS.md#wac-final-answer-evaluation).
 
 | Agent arm | WAC (N=361) | Critical success | Unsupported claims | Citation integrity |
 |---|---:|---:|---:|---:|
@@ -355,7 +348,7 @@ completeness, evidence support, and missing requirements without seeing system
 outputs. The resulting labels can estimate the validity of the weak-supervision
 assumption and agreement with the frozen judge. A later system study should use
 a newly collected temporal or source-disjoint cohort after the dataset rules,
-aspect rule, judge, and agents are frozen.
+aspect annotations, judge, and agents are frozen.
 
 ## 9. Ethical Considerations
 
@@ -374,7 +367,6 @@ aspects, and judgments must be identified as silver annotations.
 - Mo, B., et al. 2025. [KGGen: Extracting Knowledge Graphs from Plain Text with Language Models](https://proceedings.neurips.cc/paper_files/paper/2025/hash/2b368455e832d2b1a60bcad8c4c6481f-Abstract-Conference.html). *NeurIPS 2025*.
 - Robertson, S. E., and Zaragoza, H. 2009. [The Probabilistic Relevance Framework: BM25 and Beyond](https://doi.org/10.1561/1500000019). *Foundations and Trends in Information Retrieval*.
 - Thakur, N., et al. 2025. [FreshStack: Building Realistic Benchmarks for Enterprise Retrieval](https://proceedings.neurips.cc/paper_files/paper/2025/hash/e6b5bcc872666d37c469e5c5ba723669-Abstract-Datasets_and_Benchmarks_Track.html). *NeurIPS 2025 Datasets and Benchmarks*.
-- Yang, et al. 2026. [SkillOpt: Optimizing Skills for Agents](https://arxiv.org/abs/2605.23904). *arXiv:2605.23904*.
 - You, Q., et al. 2026. [AgenticRAGTracer: A Hop-Aware Benchmark for Diagnosing Multi-Step Retrieval Reasoning in Agentic RAG](https://aclanthology.org/2026.findings-acl.66/). *Findings of ACL 2026*.
 - Zhao, Y., et al. 2026. [Rethinking Reasoning-Intensive Retrieval: Evaluating and Advancing Retrievers in Agentic Search Systems](https://aclanthology.org/2026.acl-long.1705/). *ACL 2026*.
 
@@ -419,8 +411,8 @@ score = 0.35 * critical requirement coverage
 Retention requires a score above 0.90 from both the construction and
 falsification views, full critical-requirement coverage, verification of every
 cited URL against the pinned snapshot, no unsupported material claim, and no contradiction. This
-formula is only a data-cleaning gate; it is distinct from aspect-rule
-optimization and WAC.
+formula is only a data-cleaning gate; final-answer evaluation uses the separate
+WAC metric.
 
 ### A.3 Evidence structure
 
@@ -431,25 +423,13 @@ multi-page cases; 23 of the latter connect through an authored documentation
 link and 29 are dispersed. These labels describe the pinned data and are not
 predicted by an evaluated agent.
 
-### A.4 Current question pool and historical annotation cohorts
+### A.4 Current question pool
 
-The current release stores all 467 questions in one pool. Question inputs and
-reference answers are separate files joined by question_id. Old physical
-partition labels are no longer stored or used. The following table describes
-only the earlier annotation-preparation experiment.
-
-Historical annotation cohorts:
-
-| Project | Train | Validation | Held-out test |
-|---|---:|---:|---:|
-| GitHub Docs | 118 | 40 | 39 |
-| Prisma | 75 | 25 | 25 |
-| Supabase | 31 | 10 | 11 |
-| Tailwind CSS | 56 | 19 | 18 |
-| **Total** | **280** | **94** | **93** |
-
-Duplicate source questions remain in one partition. This split controls rule
-optimization only and never changes agent inputs.
+The current release stores all 467 questions in one pool. Question inputs,
+reference answers, and frozen aspects are separate files joined by
+`question_id`. Every question has one aspect record. Evaluators use the whole
+pool unless an explicit pilot selector is supplied; historical agent results
+retain their original cohorts and development exposure.
 
 ## Appendix B. Metric and System Specifications
 
@@ -467,37 +447,31 @@ admits at most ten graph candidates per seed, limits entity degree to 20, and
 caps the graph candidate pool at 50. Graph construction is query-blind and
 receives no evaluation questions, answers, or qrels.
 
-## Appendix C. Aspect-Rule Optimization Details
+## Appendix C. Fixed Aspect Annotation Details
 
-The editable state is one general Markdown rule. The target model emits aspects
-containing the requirement, supporting claim, supporting documentation content,
-and `full`, `partial`, or `none` source-answer support. For aspect importance `w_i` and source-support value
-`s_i` in `{1, 0.5, 0}`, the optimization score is
-`sum_i w_i s_i / sum_i w_i`. This source-coverage score trains and selects the
-rule; it is not an agent result.
+Each aspect has an identifier, description, importance weight, criticality
+label, and mappings to the question's requirements, supporting claims, and
+local evidence. Structural checks verify identifiers and mappings; they do not
+establish that a requirement is semantically correct or exhaustive.
 
-SkillOpt receives train trajectories containing the current rule, structured
-output, deterministic errors, and pass/coverage scores. The Sol optimizer may
-apply bounded ADD, DELETE, or REPLACE edits. Prompts explicitly prohibit
-product-, question-, or case-specific instructions. Luna remains frozen.
-Validation chooses the best rule; the held-out partition is opened once after
-freeze. The run is eligible for final-answer evaluation only if validation
-pass rate is at least 0.80, the held-out evaluation completes, and all 467
-frozen aspect records pass structural validation.
+The dataset contains 467 frozen records and 1,926 aspects. Evaluation loads
+these records by `question_id`. The judge assigns coverage in `{0, 0.5, 1}`
+for the current answer, and code calculates WAC using the unchanged weights.
+All systems use the same aspect set, and agent failures receive zero WAC.
 
-In the completed run, the initial and selected validation pass rates are 0.9574
-and 0.9681, respectively; held-out pass rate is 0.9462. The selected rule is
-the only accepted update among five candidates. At freeze time, deterministic
-checks align every aspect with its supporting claim and documentation content
-without changing the aspect meaning. The final artifact contains 467 records
-and 1,926 aspects. The complete run uses 11.43 million model tokens across
-1,471 calls.
+The annotations were prepared before the current unpartitioned design.
+Their source and archived preparation details are documented in
+[aspect annotations](ASPECT_ANNOTATIONS.md). Prior development exposure remains
+a limitation; distributing fixed labels does not establish human agreement
+or make the evaluated question pool fresh confirmatory evidence.
 
 ## Appendix D. Reproducibility Boundary
 
-Generated corpora, indexes, trajectories, model outputs, and frozen aspects are
-kept in ignored local run directories. The repository retains construction
-code, data-format definitions, tests, commands, and consolidated result tables.
+Dataset records and frozen aspects are distributed by `docsqa-data` and
+pinned by this repository. Downloaded data, indexes, trajectories, and model
+outputs are kept in ignored local directories. The repository retains
+construction and evaluation code, data-format definitions, commands, and
+consolidated result tables. Software checks remain local and Git-ignored.
 The maintained tables use one contemporaneous current-source run whose three
 arms share skill, runtime, dependency, corpus, question, and model identities.
 The generated reports retain per-question trajectories, paired answer

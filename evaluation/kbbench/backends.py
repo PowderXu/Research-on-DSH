@@ -827,10 +827,14 @@ class Neo4jGitHubDocsGraphRAG:
         max_link_hops: int = GRAPH_MAX_HOPS,
         max_graph_candidates_per_seed: int = GRAPH_CANDIDATES_PER_SEED,
         max_seed_count: int = GRAPH_SEED_LIMIT,
+        allowed_doc_ids: set[str] | None = None,
     ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         """Run bounded typed traversal from the exact local-hybrid seeds."""
 
-        unique_seeds = list(dict.fromkeys(str(value) for value in seed_ids if value))[
+        unique_seeds = list(dict.fromkeys(
+            str(value) for value in seed_ids
+            if value and (allowed_doc_ids is None or str(value) in allowed_doc_ids)
+        ))[
             :max_seed_count
         ]
         if not unique_seeds:
@@ -850,6 +854,8 @@ class Neo4jGitHubDocsGraphRAG:
             CALL (seed) {{
               CALL (seed) {{
                 MATCH path=(seed)-{link_pattern}-(neighbor:{DOCUMENT_LABEL})
+                WHERE $allowed_doc_ids IS NULL
+                  OR all(page IN nodes(path) WHERE page.doc_id IN $allowed_doc_ids)
                 WITH DISTINCT neighbor, length(path) AS hops
                 ORDER BY hops, neighbor.doc_id
                 LIMIT $max_graph_candidates_per_seed
@@ -861,6 +867,7 @@ class Neo4jGitHubDocsGraphRAG:
                 MATCH (seed)-[:{INCLUDES}]->(reusable:{REUSABLE_LABEL})
                       <-[:{INCLUDES}]-(neighbor:{DOCUMENT_LABEL})
                 WHERE reusable.document_count <= $max_entity_degree
+                  AND ($allowed_doc_ids IS NULL OR neighbor.doc_id IN $allowed_doc_ids)
                 WITH DISTINCT neighbor
                 ORDER BY neighbor.doc_id
                 LIMIT $max_graph_candidates_per_seed
@@ -870,6 +877,7 @@ class Neo4jGitHubDocsGraphRAG:
                 MATCH (seed)-[:{MENTIONS}]->(code:{CODE_LABEL})
                       <-[:{MENTIONS}]-(neighbor:{DOCUMENT_LABEL})
                 WHERE code.document_count <= $max_entity_degree
+                  AND ($allowed_doc_ids IS NULL OR neighbor.doc_id IN $allowed_doc_ids)
                 WITH DISTINCT neighbor
                 ORDER BY neighbor.doc_id
                 LIMIT $max_graph_candidates_per_seed
@@ -879,6 +887,7 @@ class Neo4jGitHubDocsGraphRAG:
                 MATCH (seed)-[:{IN_ROUTE}]->(route:{ROUTE_LABEL})
                       <-[:{IN_ROUTE}]-(neighbor:{DOCUMENT_LABEL})
                 WHERE route.document_count <= $max_route_pages
+                  AND ($allowed_doc_ids IS NULL OR neighbor.doc_id IN $allowed_doc_ids)
                 WITH DISTINCT neighbor
                 ORDER BY neighbor.doc_id
                 LIMIT $max_graph_candidates_per_seed
@@ -895,6 +904,7 @@ class Neo4jGitHubDocsGraphRAG:
                 MATCH (neighbor:{DOCUMENT_LABEL})-[:{HAS_SECTION}]->(:{SECTION_LABEL})
                       -[:{HAS_UNIT}]->(neighbor_unit)
                 MATCH (neighbor_claim)-[:{USES_PREDICATE}]->(predicate:{PREDICATE_LABEL})
+                WHERE $allowed_doc_ids IS NULL OR neighbor.doc_id IN $allowed_doc_ids
                 WITH DISTINCT neighbor, predicate
                 ORDER BY neighbor.doc_id, predicate.canonical_name
                 LIMIT $max_graph_candidates_per_seed
@@ -943,6 +953,7 @@ class Neo4jGitHubDocsGraphRAG:
             max_entity_degree=max_entity_degree,
             max_route_pages=max_route_pages,
             max_graph_candidates_per_seed=max_graph_candidates_per_seed,
+            allowed_doc_ids=sorted(allowed_doc_ids) if allowed_doc_ids is not None else None,
             top_k=top_k,
         )
         results = [

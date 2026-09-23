@@ -15,7 +15,7 @@ from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any, Iterable, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, create_model
 
 from dataset.scripts.records import load_records, read_jsonl as _jsonl
 
@@ -38,6 +38,8 @@ CANONICAL_QUESTIONS = PROJECT_ROOT / "evaluation/dataset/evaluation_data/normali
 JUDGE_INPUT_POLICY = "full-selected-documents-and-answers-v1"
 # A local request-size budget, not an estimate of a model's token window.
 DEFAULT_MAX_PROMPT_BYTES = 500_000
+DEFAULT_MAX_OUTPUT_TOKENS = 16_384
+JUDGE_OUTPUT_POLICY = "fixed-candidates-and-aspects-v2"
 
 
 def load_frozen_aspects(path: Path, dataset_dir: Path) -> dict[str, dict[str, Any]]:
@@ -75,12 +77,43 @@ class CandidateAspectJudgment(BaseModel):
     aspects: list[AspectScore] = Field(min_length=1)
     claim_issues: list[ClaimIssue]
     invalid_citations: list[str]
-    overall_quality: int = Field(ge=1, le=5)
+    overall_quality: Literal[1, 2, 3, 4, 5]
     explanation: str
 
 
 class AspectBatchJudgment(BaseModel):
     candidates: list[CandidateAspectJudgment] = Field(min_length=1)
+
+
+def _judge_output_format(payload: dict[str, Any]) -> type[AspectBatchJudgment]:
+    """Enforce the existing candidate/aspect contract during decoding too."""
+    aspect_ids = tuple(str(row["aspect_id"]) for row in payload["frozen_aspects"])
+    aliases = tuple(str(row["candidate"]) for row in payload["candidates"])
+    if not aspect_ids or len(set(aspect_ids)) != len(aspect_ids):
+        raise ValueError("judge input needs distinct frozen aspect IDs")
+    if len(aliases) != 3 or len(set(aliases)) != 3:
+        raise ValueError("judge input needs exactly three distinct candidates")
+    score = create_model(
+        "FixedAspectScore", __base__=AspectScore,
+        aspect_id=(Literal[aspect_ids], ...),
+    )
+    candidate = create_model(
+        "FixedCandidateJudgment", __base__=CandidateAspectJudgment,
+        candidate=(Literal[aliases], ...),
+        aspects=(list[score], Field(min_length=len(aspect_ids), max_length=len(aspect_ids))),
+    )
+    return create_model(
+        "FixedBatchJudgment", __base__=AspectBatchJudgment,
+        candidates=(list[candidate], Field(min_length=3, max_length=3)),
+    )
+
+
+def _judge_prompt_hash(prompt: str, max_output_tokens: int) -> str:
+    if max_output_tokens <= 0:
+        raise ValueError("--max-output-tokens must be positive")
+    identity = {"prompt": prompt, "output_policy": JUDGE_OUTPUT_POLICY,
+                "max_output_tokens": max_output_tokens}
+    return hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
 
 
 def _unique_index(
@@ -247,27 +280,35 @@ def judge_batch(
     rubric: dict[str, Any],
     payload: dict[str, Any],
     max_prompt_bytes: int | None = DEFAULT_MAX_PROMPT_BYTES,
+    max_output_tokens: int = DEFAULT_MAX_OUTPUT_TOKENS,
 ) -> tuple[AspectBatchJudgment, dict[str, Any]]:
     prompt, input_bytes = _serialize_judge_prompt(payload, rubric, max_prompt_bytes)
+    prompt_sha256 = _judge_prompt_hash(prompt, max_output_tokens)
     started = time.perf_counter()
-    response = client.responses.parse(
+    with client.responses.stream(
         model=model,
         instructions=str(rubric["judge_system"]),
         input=[{"role": "user", "content": prompt}],
-        text_format=AspectBatchJudgment,
+        text_format=_judge_output_format(payload),
         reasoning={"effort": reasoning_effort},
+        max_output_tokens=max_output_tokens,
         truncation="disabled",
         store=False,
-    )
+    ) as stream:
+        response = stream.get_final_response()
+    if response.status != "completed":
+        raise ValueError(f"aspect judge response is {response.status}; no score was recorded")
     parsed = response.output_parsed
     if parsed is None:
         raise ValueError("aspect judge returned no structured output")
     return parsed, {
         "latency_seconds": round(time.perf_counter() - started, 6),
         "usage": _usage(response),
-        "prompt_sha256": hashlib.sha256(prompt.encode()).hexdigest(),
+        "prompt_sha256": prompt_sha256,
         "input_text_bytes": input_bytes,
         "judge_input_policy": JUDGE_INPUT_POLICY,
+        "judge_output_policy": JUDGE_OUTPUT_POLICY,
+        "max_output_tokens": max_output_tokens,
     }
 
 
@@ -753,6 +794,7 @@ def _judge_one_question(
     resume: bool,
     question_from_rollout: bool = False,
     max_prompt_bytes: int | None = DEFAULT_MAX_PROMPT_BYTES,
+    max_output_tokens: int = DEFAULT_MAX_OUTPUT_TOKENS,
 ) -> dict[str, Any]:
     # The arm ordering is fixed independently of CLI argument order.
     paired = {arm: by_arm[arm][question_id] for arm in ARM_ORDER}
@@ -766,7 +808,7 @@ def _judge_one_question(
         }
     payload, aliases = build_judge_prompt(record, paired, corpus, rubric)
     prompt, _ = _serialize_judge_prompt(payload, rubric, max_prompt_bytes)
-    prompt_sha256 = hashlib.sha256(prompt.encode("utf-8")).hexdigest()
+    prompt_sha256 = _judge_prompt_hash(prompt, max_output_tokens)
     cache_path = _call_cache_path(output_dir, question_id)
     cached = (
         _load_cached_call(
@@ -788,6 +830,7 @@ def _judge_one_question(
             rubric=rubric,
             payload=payload,
             max_prompt_bytes=max_prompt_bytes,
+            max_output_tokens=max_output_tokens,
         )
         resumed = False
     else:
@@ -867,6 +910,7 @@ def run_judgments(
     workers: int = 1,
     question_from_rollout: bool = False,
     max_prompt_bytes: int | None = DEFAULT_MAX_PROMPT_BYTES,
+    max_output_tokens: int = DEFAULT_MAX_OUTPUT_TOKENS,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Run one paired judge call per question with bounded concurrency.
 
@@ -879,6 +923,8 @@ def run_judgments(
         raise ValueError("--workers must be positive")
     if max_prompt_bytes is not None and max_prompt_bytes <= 0:
         raise ValueError("--max-prompt-bytes must be positive or none")
+    if max_output_tokens <= 0:
+        raise ValueError("--max-output-tokens must be positive")
     cache_paths = [_call_cache_path(output_dir, question_id) for question_id in ordered_ids]
     if len(set(cache_paths)) != len(cache_paths):
         raise ValueError("question IDs map to duplicate judge cache paths")
@@ -914,6 +960,7 @@ def run_judgments(
                 resume=resume,
                 question_from_rollout=question_from_rollout,
                 max_prompt_bytes=max_prompt_bytes,
+                max_output_tokens=max_output_tokens,
             )
             futures[future] = question_id
         for future in as_completed(futures):
@@ -1127,13 +1174,24 @@ def evaluate(args: argparse.Namespace, *, client: Any | None = None) -> dict[str
         workers=workers,
         question_from_rollout=mixed_generation,
         max_prompt_bytes=max_prompt_bytes,
+        max_output_tokens=int(getattr(args, "max_output_tokens", DEFAULT_MAX_OUTPUT_TOKENS)),
     )
     incremental_calls = [row for row in calls if not row["resumed"]]
     report = {
         "benchmark": "DSH frozen-aspect agent answer evaluation",
         "questions": len(ordered_ids),
         "judge_model": args.model,
+        "search_scope": next(iter(rollout_lists.values()))[0]["evaluation_contract"].get("search_scope", "corpus"),
         "judge_workers": workers,
+        "judge_output_policy": {
+            "version": JUDGE_OUTPUT_POLICY,
+            "max_output_tokens": int(getattr(args, "max_output_tokens", DEFAULT_MAX_OUTPUT_TOKENS)),
+            "candidate_count": 3,
+            "aspect_count": "exact frozen count per candidate",
+            "id_values": "frozen aspect IDs and anonymous candidate aliases",
+            "delivery": "streaming",
+            "incomplete_response": "fail_without_score",
+        },
         "judge_input_policy": {
             "version": JUDGE_INPUT_POLICY,
             "selected_documents_per_candidate": 10,
@@ -1304,6 +1362,10 @@ def main() -> None:
     parser.add_argument("--model", default="gpt-5.6-luna")
     parser.add_argument("--reasoning-effort", default="medium")
     parser.add_argument("--request-timeout", type=float, default=120.0)
+    parser.add_argument(
+        "--max-output-tokens", type=int, default=DEFAULT_MAX_OUTPUT_TOKENS,
+        help="Positive judge generation-token budget, including reasoning (default: 16384). Incomplete judgments fail without a score; input text remains complete.",
+    )
     parser.add_argument(
         "--max-prompt-bytes",
         type=_max_prompt_bytes_arg,

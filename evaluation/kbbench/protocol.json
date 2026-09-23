@@ -76,8 +76,8 @@
     "source": "aspects.jsonl in the pinned dataset release",
     "records": 467,
     "generation_model": "gpt-5.6-luna",
-    "optimization_during_evaluation": false,
+    "fixed_during_evaluation": true,
     "partitioning": "none",
-    "historical_provenance": "docs/RULE_OPTIMIZATION.md"
+    "historical_provenance": "docs/ASPECT_ANNOTATIONS.md"
   }
 }
